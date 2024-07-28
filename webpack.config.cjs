@@ -1,13 +1,17 @@
 const nodeExternals = require("webpack-node-externals");
 const path = require("path");
+const webpack = require("webpack");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
+const BundleAnalyzerPlugin =
+  require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 
 module.exports = {
   entry: "./src/app.ts",
   mode: "production",
   target: "node",
-  externals: [nodeExternals()], // Excludes node_modules
+  externals: [nodeExternals()],
+  devtool: "source-map",
   module: {
     rules: [
       {
@@ -20,19 +24,31 @@ module.exports = {
   optimization: {
     minimize: true,
     minimizer: [new TerserPlugin()],
-    usedExports: true, // Enable tree shaking
+    usedExports: true,
     splitChunks: {
       chunks: "all",
+      maxSize: 244000,
     },
+    concatenateModules: true,
   },
   resolve: {
     extensions: [".tsx", ".ts", ".js"],
   },
   output: {
-    filename: "[name].[contenthash].js", // Use unique filenames
+    filename: "[name].[contenthash].js",
     path: path.resolve(__dirname, "dist"),
   },
   plugins: [
-    new CleanWebpackPlugin(), // Clean the output directory before emit
+    new CleanWebpackPlugin(),
+    new webpack.DefinePlugin({
+      "process.env.NODE_ENV": JSON.stringify("production"),
+    }),
+    new BundleAnalyzerPlugin(),
   ],
+  cache: {
+    type: "filesystem",
+    buildDependencies: {
+      config: [__filename],
+    },
+  },
 };
