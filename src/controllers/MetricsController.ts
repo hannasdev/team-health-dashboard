@@ -1,16 +1,33 @@
 // src/controllers/MetricsController.ts
 import { Request, Response } from "express";
-import { MetricsService } from "../services/MetricsService";
+import { IMetricsService } from "../interfaces/IMetricsService";
 
 export class MetricsController {
-  constructor(private metricsService: MetricsService) {}
+  constructor(private metricsService: IMetricsService) {}
 
-  async getMetrics(req: Request, res: Response): Promise<void> {
+  public getAllMetrics = async (req: Request, res: Response): Promise<void> => {
     try {
-      const metrics = await this.metricsService.getMetrics();
-      res.json(metrics);
+      const result = await this.metricsService.getAllMetrics();
+
+      if (result.errors.length > 0) {
+        res.status(207).json({
+          success: true,
+          data: result.metrics,
+          errors: result.errors,
+        });
+      } else {
+        res.status(200).json({
+          success: true,
+          data: result.metrics,
+        });
+      }
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch metrics" });
+      console.error("Error in MetricsController:", error);
+      res.status(500).json({
+        success: false,
+        error:
+          error instanceof Error ? error.message : "An unknown error occurred",
+      });
     }
-  }
+  };
 }
