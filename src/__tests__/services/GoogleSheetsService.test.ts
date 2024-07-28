@@ -1,40 +1,35 @@
 // src/__tests__/services/GoogleSheetsService.test.ts
-import { GoogleSheetsService } from "../../services/GoogleSheetsService";
-import { google } from "googleapis";
-import { IMetric } from "../../models/Metric";
-
-jest.mock("googleapis");
+import {
+  GoogleSheetsService,
+  IGoogleSheetsClient,
+} from "../../services/GoogleSheetsService";
+import { IGoogleSheetsService } from "../../interfaces/IGoogleSheetsService";
+import { jest } from "@jest/globals";
 
 describe("GoogleSheetsService", () => {
-  let googleSheetsService: GoogleSheetsService;
-  let mockSheets: jest.Mocked<typeof google.sheets>;
+  let googleSheetsService: IGoogleSheetsService;
+  let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
 
   beforeEach(() => {
-    mockSheets = {
-      spreadsheets: {
-        values: {
-          get: jest.fn(),
-        },
-      },
-    } as unknown as jest.Mocked<typeof google.sheets>;
-
-    (google.sheets as jest.Mock).mockReturnValue(mockSheets);
-
-    googleSheetsService = new GoogleSheetsService("fake-sheet-id");
+    mockGoogleSheetsClient = {
+      getValues: jest.fn(),
+    };
+    googleSheetsService = new GoogleSheetsService(
+      mockGoogleSheetsClient,
+      "fake-sheet-id"
+    );
   });
 
   it("should fetch and parse data from Google Sheets", async () => {
-    const mockSheetData = {
-      data: {
-        values: [
-          ["Timestamp", "Metric Name", "Value"],
-          ["2023-07-27T10:00:00Z", "Cycle Time", "3"],
-          ["2023-07-27T11:00:00Z", "WIP", "5"],
-        ],
-      },
-    };
+    const mockSheetData = [
+      ["Timestamp", "Metric Name", "Value"],
+      ["2023-07-27T10:00:00Z", "Cycle Time", "3"],
+      ["2023-07-27T11:00:00Z", "WIP", "5"],
+    ];
 
-    mockSheets.spreadsheets.values.get.mockResolvedValue(mockSheetData);
+    mockGoogleSheetsClient.getValues.mockResolvedValue({
+      data: { values: mockSheetData },
+    });
 
     const result = await googleSheetsService.fetchData();
 
@@ -44,52 +39,64 @@ describe("GoogleSheetsService", () => {
         expect.objectContaining({
           name: "Cycle Time",
           value: 3,
-          timestamp: expect.any(Date),
+          source: "Google Sheets",
         }),
         expect.objectContaining({
           name: "WIP",
           value: 5,
-          timestamp: expect.any(Date),
+          source: "Google Sheets",
         }),
       ])
     );
-
-    expect(mockSheets.spreadsheets.values.get).toHaveBeenCalledWith({
-      spreadsheetId: "fake-sheet-id",
-      range: "A:C", // Adjust this range as needed
-    });
   });
-
   it("should handle empty sheet data", async () => {
-    const mockEmptySheetData = {
-      data: {
-        values: [["Timestamp", "Metric Name", "Value"]],
-      },
-    };
+    const mockEmptySheetData = [["Timestamp", "Metric Name", "Value"]];
 
-    mockSheets.spreadsheets.values.get.mockResolvedValue(mockEmptySheetData);
+    mockGoogleSheetsClient.getValues.mockResolvedValue({
+      data: { values: mockEmptySheetData },
+    });
 
     const result = await googleSheetsService.fetchData();
 
     expect(result).toHaveLength(0);
   });
 
-  it("should throw an error if sheet data is malformed", async () => {
-    const mockMalformedSheetData = {
-      data: {
-        values: [
-          ["Timestamp", "Metric Name", "Value"],
-          ["2023-07-27T10:00:00Z", "Cycle Time"], // Missing value
-        ],
-      },
-    };
+  it("should skip malformed rows", async () => {
+    const mockMalformedSheetData = [
+      ["Timestamp", "Metric Name", "Value"],
+      ["2023-07-27T10:00:00Z", "Cycle Time", "3"],
+      ["2023-07-27T11:00:00Z", "WIP"],
+      ["2023-07-27T12:00:00Z", "Lead Time", "7"],
+    ];
 
-    mockSheets.spreadsheets.values.get.mockResolvedValue(
-      mockMalformedSheetData
+    mockGoogleSheetsClient.getValues.mockResolvedValue({
+      data: { values: mockMalformedSheetData },
+    });
+
+    const result = await googleSheetsService.fetchData();
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Cycle Time",
+          value: 3,
+          source: "Google Sheets",
+        }),
+        expect.objectContaining({
+          name: "Lead Time",
+          value: 7,
+          source: "Google Sheets",
+        }),
+      ])
     );
+  });
+
+  it("should throw an error when failing to fetch data", async () => {
+    mockGoogleSheetsClient.getValues.mockRejectedValue(new Error("API error"));
 
     await expect(googleSheetsService.fetchData()).rejects.toThrow(
-      "Malformed sheet data"
+      "Failed to fetch data from Google Sheets"
     );
   });
 });

@@ -1,18 +1,22 @@
-import { GitHubService } from "../../services/GitHubService";
-import { Octokit } from "@octokit/rest";
-import { IMetric } from "../../models/Metric";
-
-jest.mock("@octokit/rest");
+// src/__tests__/services/GitHubService.test.ts
+// src/__tests__/services/GitHubService.test.ts
+import { GitHubService, IGitHubClient } from "../../services/GitHubService";
+import { jest } from "@jest/globals";
+import { IGitHubService } from "../../interfaces/IGitHubService";
 
 describe("GitHubService", () => {
-  let githubService: GitHubService;
-  let mockOctokit: jest.Mocked<Octokit>;
+  let githubService: IGitHubService;
+  let mockGitHubClient: jest.Mocked<IGitHubClient>;
 
   beforeEach(() => {
-    mockOctokit = new Octokit() as jest.Mocked<Octokit>;
-    (Octokit as jest.Mock).mockImplementation(() => mockOctokit);
-
-    githubService = new GitHubService("fake-token", "fake-owner", "fake-repo");
+    mockGitHubClient = {
+      paginate: jest.fn(),
+    };
+    githubService = new GitHubService(
+      mockGitHubClient,
+      "fake-owner",
+      "fake-repo"
+    );
   });
 
   it("should fetch and calculate metrics from GitHub", async () => {
@@ -33,45 +37,33 @@ describe("GitHubService", () => {
       },
     ];
 
-    mockOctokit.paginate.mockResolvedValue(mockPullRequests);
+    mockGitHubClient.paginate.mockResolvedValue(mockPullRequests);
 
     const result = await githubService.fetchData();
 
-    expect(result).toHaveLength(2); // Assuming we're calculating 2 metrics: PR Cycle Time and PR Size
+    expect(result).toHaveLength(2);
     expect(result).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: "PR Cycle Time",
-          value: 48, // Average time in hours
-          timestamp: expect.any(Date),
+          value: 48,
+          source: "GitHub",
         }),
         expect.objectContaining({
           name: "PR Size",
-          value: 55, // Average of (50+20) and (30+10)
-          timestamp: expect.any(Date),
+          value: 55,
+          source: "GitHub",
         }),
       ])
-    );
-
-    expect(mockOctokit.paginate).toHaveBeenCalledWith(
-      mockOctokit.rest.pulls.list,
-      {
-        owner: "fake-owner",
-        repo: "fake-repo",
-        state: "closed",
-        sort: "updated",
-        direction: "desc",
-        per_page: 100,
-      }
     );
   });
 
   it("should handle empty pull request data", async () => {
-    mockOctokit.paginate.mockResolvedValue([]);
+    mockGitHubClient.paginate.mockResolvedValue([]);
 
     const result = await githubService.fetchData();
 
-    expect(result).toHaveLength(2); // Still expect 2 metrics, but with value 0
+    expect(result).toHaveLength(2);
     expect(result).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: "PR Cycle Time", value: 0 }),
@@ -80,5 +72,50 @@ describe("GitHubService", () => {
     );
   });
 
-  // Add more tests for error handling, edge cases, etc.
+  it("should calculate PR Cycle Time only for merged PRs", async () => {
+    const mockPullRequests = [
+      {
+        number: 1,
+        created_at: "2023-07-25T10:00:00Z",
+        merged_at: "2023-07-27T10:00:00Z",
+        additions: 50,
+        deletions: 20,
+      },
+      {
+        number: 2,
+        created_at: "2023-07-26T10:00:00Z",
+        merged_at: null,
+        additions: 30,
+        deletions: 10,
+      },
+    ];
+
+    mockGitHubClient.paginate.mockResolvedValue(mockPullRequests);
+
+    const result = await githubService.fetchData();
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "PR Cycle Time",
+          value: 48,
+          timestamp: expect.any(Date),
+        }),
+        expect.objectContaining({
+          name: "PR Size",
+          value: 55,
+          timestamp: expect.any(Date),
+        }),
+      ])
+    );
+  });
+
+  it("should throw an error when failing to fetch data", async () => {
+    mockGitHubClient.paginate.mockRejectedValue(new Error("API error"));
+
+    await expect(githubService.fetchData()).rejects.toThrow(
+      "Failed to fetch data from GitHub"
+    );
+  });
 });

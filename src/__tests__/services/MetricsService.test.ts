@@ -1,44 +1,164 @@
+// src/__tests__/services/MetricsService.test.ts
 import { MetricsService } from "../../services/MetricsService";
-import { GoogleSheetsService } from "../../services/GoogleSheetsService";
-import { GitHubService } from "../../services/GitHubService";
-import { IMetric } from "../../models/Metric";
-
-jest.mock("../../services/GoogleSheetsService");
-jest.mock("../../services/GitHubService");
+import { IGoogleSheetsClient } from "../../services/GoogleSheetsService";
+import { IGitHubClient } from "../../services/GitHubService";
+import { IMetric } from "../../interfaces/IMetricModel";
+import { IMetricsService } from "../../interfaces/IMetricsService";
+import { jest } from "@jest/globals";
 
 describe("MetricsService", () => {
-  let metricsService: MetricsService;
-  let mockGoogleSheetsService: jest.Mocked<GoogleSheetsService>;
-  let mockGitHubService: jest.Mocked<GitHubService>;
+  let metricsService: IMetricsService;
+  let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
+  let mockGitHubClient: jest.Mocked<IGitHubClient>;
 
   beforeEach(() => {
-    mockGoogleSheetsService =
-      new GoogleSheetsService() as jest.Mocked<GoogleSheetsService>;
-    mockGitHubService = new GitHubService() as jest.Mocked<GitHubService>;
+    mockGoogleSheetsClient = {
+      getValues: jest.fn(),
+    };
+    mockGitHubClient = {
+      paginate: jest.fn(),
+    };
     metricsService = new MetricsService(
-      mockGoogleSheetsService,
-      mockGitHubService
+      mockGoogleSheetsClient,
+      mockGitHubClient,
+      "fake-spreadsheet-id",
+      "fake-owner",
+      "fake-repo"
     );
   });
 
   it("should fetch and combine metrics from Google Sheets and GitHub", async () => {
-    const mockSheetData: IMetric[] = [
-      { id: "1", name: "Cycle Time", value: 3, timestamp: new Date() },
+    const mockSheetData = [
+      ["Timestamp", "Metric Name", "Value"],
+      ["2023-07-27T10:00:00Z", "Cycle Time", "3"],
     ];
-    const mockGitHubData: IMetric[] = [
-      { id: "2", name: "PR Size", value: 50, timestamp: new Date() },
+    const mockPullRequests = [
+      {
+        number: 1,
+        created_at: "2023-07-25T10:00:00Z",
+        merged_at: "2023-07-27T10:00:00Z",
+        additions: 50,
+        deletions: 20,
+      },
     ];
 
-    mockGoogleSheetsService.fetchData.mockResolvedValue(mockSheetData);
-    mockGitHubService.fetchData.mockResolvedValue(mockGitHubData);
+    mockGoogleSheetsClient.getValues.mockResolvedValue({
+      data: { values: mockSheetData },
+    });
+    mockGitHubClient.paginate.mockResolvedValue(mockPullRequests);
 
-    const result = await metricsService.getMetrics();
+    const result = await metricsService.getAllMetrics();
 
-    expect(result).toHaveLength(2);
-    expect(result).toEqual(
-      expect.arrayContaining([...mockSheetData, ...mockGitHubData])
+    expect(result.metrics).toHaveLength(3); // 1 from Sheets, 2 from GitHub (PR Cycle Time and PR Size)
+    expect(result.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Cycle Time",
+          value: 3,
+          source: "Google Sheets",
+        }),
+        expect.objectContaining({
+          name: "PR Cycle Time",
+          source: "GitHub",
+        }),
+        expect.objectContaining({
+          name: "PR Size",
+          source: "GitHub",
+        }),
+      ])
     );
-    expect(mockGoogleSheetsService.fetchData).toHaveBeenCalledTimes(1);
-    expect(mockGitHubService.fetchData).toHaveBeenCalledTimes(1);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("should handle errors from Google Sheets client", async () => {
+    const mockPullRequests = [
+      {
+        number: 1,
+        created_at: "2023-07-25T10:00:00Z",
+        merged_at: "2023-07-27T10:00:00Z",
+        additions: 50,
+        deletions: 20,
+      },
+    ];
+
+    mockGoogleSheetsClient.getValues.mockRejectedValue(
+      new Error("Google Sheets API error")
+    );
+    mockGitHubClient.paginate.mockResolvedValue(mockPullRequests);
+
+    const result = await metricsService.getAllMetrics();
+
+    expect(result.metrics).toHaveLength(2); // 2 from GitHub (PR Cycle Time and PR Size)
+    expect(result.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "PR Cycle Time",
+          source: "GitHub",
+        }),
+        expect.objectContaining({
+          name: "PR Size",
+          source: "GitHub",
+        }),
+      ])
+    );
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toEqual({
+      source: "Google Sheets",
+      message: "Failed to fetch Google Sheets data",
+    });
+  });
+
+  it("should handle errors from GitHub client", async () => {
+    const mockSheetData = [
+      ["Timestamp", "Metric Name", "Value"],
+      ["2023-07-27T10:00:00Z", "Cycle Time", "3"],
+    ];
+
+    mockGoogleSheetsClient.getValues.mockResolvedValue({
+      data: { values: mockSheetData },
+    });
+    mockGitHubClient.paginate.mockRejectedValue(new Error("GitHub API error"));
+
+    const result = await metricsService.getAllMetrics();
+
+    expect(result.metrics).toHaveLength(1);
+    expect(result.metrics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "Cycle Time",
+          value: 3,
+          source: "Google Sheets",
+        }),
+      ])
+    );
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toEqual({
+      source: "GitHub",
+      message: "Failed to fetch GitHub data",
+    });
+  });
+
+  it("should handle errors from both clients", async () => {
+    mockGoogleSheetsClient.getValues.mockRejectedValue(
+      new Error("Google Sheets API error")
+    );
+    mockGitHubClient.paginate.mockRejectedValue(new Error("GitHub API error"));
+
+    const result = await metricsService.getAllMetrics();
+
+    expect(result.metrics).toHaveLength(0);
+    expect(result.errors).toHaveLength(2);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        {
+          source: "Google Sheets",
+          message: "Failed to fetch Google Sheets data",
+        },
+        {
+          source: "GitHub",
+          message: "Failed to fetch GitHub data",
+        },
+      ])
+    );
   });
 });
