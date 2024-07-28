@@ -12,8 +12,10 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "lib": ["es6", "dom"],
-    "types": ["jest", "node"]
+    "types": ["jest", "node"],
+    "sourceMap": true,
+    "declaration": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "**/*.test.ts"]
+  "exclude": ["node_modules", "**/*.spec.ts", "**/*.test.ts", "**/*.mock.ts"]
 }
