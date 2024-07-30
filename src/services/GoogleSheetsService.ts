@@ -1,30 +1,31 @@
 // src/services/GoogleSheetsService.ts
-import { Metric } from "../models/Metric";
-import { IGoogleSheetsService } from "../interfaces/IGoogleSheetsService";
-import { IMetric } from "../interfaces/IMetricModel";
-import { OAuth2Client } from "google-auth-library";
-import { google } from "googleapis";
+import { injectable, inject } from 'inversify';
+import { TYPES } from '../utils/types';
+import type { IMetric } from '../interfaces/IMetricModel';
+import type { IGoogleSheetsService } from '../interfaces/IGoogleSheetsService';
+import type { IGoogleSheetsClient } from '../interfaces/IGoogleSheetsClient';
+import { OAuth2Client } from 'google-auth-library';
+import { google } from 'googleapis';
+import type { IConfig } from '../interfaces/IConfig';
 
-export interface IGoogleSheetsClient {
-  getValues(
-    spreadsheetId: string,
-    range: string
-  ): Promise<{
-    data: {
-      values: any[][];
-    };
-  }>;
-}
-
+@injectable()
 export class GoogleSheetsService implements IGoogleSheetsService {
+  private spreadsheetId: string;
+
   constructor(
-    private client: IGoogleSheetsClient,
-    private spreadsheetId: string
-  ) {}
+    @inject(TYPES.GoogleSheetsClient)
+    private googleSheetsClient: IGoogleSheetsClient,
+    @inject(TYPES.Config) private configService: IConfig,
+  ) {
+    this.spreadsheetId = this.configService.GOOGLE_SHEETS_ID;
+  }
 
   async fetchData(): Promise<IMetric[]> {
     try {
-      const response = await this.client.getValues(this.spreadsheetId, "A:C");
+      const response = await this.googleSheetsClient.getValues(
+        this.spreadsheetId,
+        'A:C', // Adjust this range as needed
+      );
 
       const rows = response.data.values;
 
@@ -42,37 +43,42 @@ export class GoogleSheetsService implements IGoogleSheetsService {
           }
 
           const [timestamp, name, value] = row;
-          return new Metric(
-            `sheet-${index}`,
+          return {
+            id: `sheet-${index}`,
             name,
-            Number(value),
-            new Date(timestamp),
-            "Google Sheets"
-          );
+            value: Number(value),
+            timestamp: new Date(timestamp),
+            source: 'Google Sheets',
+          };
         })
         .filter((metric: IMetric | null): metric is IMetric => metric !== null);
     } catch (error) {
-      console.error("Error fetching data from Google Sheets:", error);
-      throw new Error("Failed to fetch data from Google Sheets");
+      console.error('Error fetching data from Google Sheets:', error);
+      throw new Error(
+        `Failed to fetch data from Google Sheets: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
     }
   }
 }
 
+@injectable()
 export class GoogleSheetsAdapter implements IGoogleSheetsClient {
   private sheets;
 
-  constructor(clientEmail: string, privateKey: string) {
+  constructor(@inject(TYPES.Config) private config: IConfig) {
     this.sheets = google.sheets({
-      version: "v4",
-      auth: this.getAuth(clientEmail, privateKey),
+      version: 'v4',
+      auth: this.getAuth(),
     });
   }
 
-  private getAuth(clientEmail: string, privateKey: string): OAuth2Client {
+  private getAuth(): OAuth2Client {
     return new google.auth.JWT({
-      email: clientEmail,
-      key: privateKey,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
+      email: this.config.GOOGLE_SHEETS_CLIENT_EMAIL,
+      key: this.config.GOOGLE_SHEETS_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
   }
 

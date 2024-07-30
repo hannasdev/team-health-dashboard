@@ -1,10 +1,17 @@
 // src/app.ts
-import express from 'express';
-import metricsRoutes from './routes/metrics';
+import 'reflect-metadata';
+import express, { Express, Request, Response } from 'express';
+import metricsRouter from './routes/metrics';
+import { container } from './container';
 
-const app = express();
+const app: Express = express();
 
-// Use the routes
-app.use('/api', metricsRoutes);
+// Root route
+app.get('/', (req: Request, res: Response) => {
+  res.send('Express + TypeScript Server');
+});
+
+// Use the metrics router
+app.use('/api', metricsRouter);
 
 export default app;

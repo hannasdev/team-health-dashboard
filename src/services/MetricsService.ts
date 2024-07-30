@@ -1,61 +1,44 @@
 // src/services/MetricsService.ts
-// src/services/MetricsService.ts
-import {
-  GoogleSheetsService,
-  IGoogleSheetsClient,
-} from "./GoogleSheetsService";
-import { GitHubService, IGitHubClient } from "./GitHubService";
-import { IMetric } from "../interfaces/IMetricModel";
-import { IMetricsService } from "../interfaces/IMetricsService";
-import { IGoogleSheetsService } from "../interfaces/IGoogleSheetsService";
-import { IGitHubService } from "../interfaces/IGitHubService";
+import { injectable, inject } from 'inversify';
+import { TYPES } from '../utils/types';
+import type { IMetricsService } from '../interfaces/IMetricsService';
+import type { IMetric } from '../interfaces/IMetricModel';
+import type { IGoogleSheetsService } from '../interfaces/IGoogleSheetsService';
+import type { IGitHubService } from '../interfaces/IGitHubService';
 
-interface ServiceError {
-  source: string;
-  message: string;
-}
-
+@injectable()
 export class MetricsService implements IMetricsService {
-  private googleSheetsService: IGoogleSheetsService;
-  private gitHubService: IGitHubService;
-
   constructor(
-    googleSheetsClient: IGoogleSheetsClient,
-    gitHubClient: IGitHubClient,
-    private spreadsheetId: string,
-    private owner: string,
-    private repo: string
-  ) {
-    this.googleSheetsService = new GoogleSheetsService(
-      googleSheetsClient,
-      spreadsheetId
-    );
-    this.gitHubService = new GitHubService(gitHubClient, owner, repo);
-  }
-
+    @inject(TYPES.GoogleSheetsService)
+    private googleSheetsService: IGoogleSheetsService,
+    @inject(TYPES.GitHubService) private gitHubService: IGitHubService,
+  ) {}
   async getAllMetrics(): Promise<{
     metrics: IMetric[];
-    errors: ServiceError[];
+    errors: { source: string; message: string }[];
   }> {
-    const errors: ServiceError[] = [];
+    const errors: { source: string; message: string }[] = [];
     let sheetData: IMetric[] = [];
     let githubData: IMetric[] = [];
 
     try {
       sheetData = await this.googleSheetsService.fetchData();
     } catch (error) {
-      console.error("Error fetching Google Sheets data:", error);
+      console.error('Error fetching Google Sheets data:', error);
       errors.push({
-        source: "Google Sheets",
-        message: "Failed to fetch Google Sheets data",
+        source: 'Google Sheets',
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
 
     try {
       githubData = await this.gitHubService.fetchData();
     } catch (error) {
-      console.error("Error fetching GitHub data:", error);
-      errors.push({ source: "GitHub", message: "Failed to fetch GitHub data" });
+      console.error('Error fetching GitHub data:', error);
+      errors.push({
+        source: 'GitHub',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
 
     const metrics = [...sheetData, ...githubData];

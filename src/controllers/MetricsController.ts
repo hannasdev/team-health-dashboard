@@ -1,13 +1,22 @@
 // src/controllers/MetricsController.ts
-import { Request, Response } from "express";
-import { IMetricsService } from "../interfaces/IMetricsService";
+import { Request, Response } from 'express';
+import { inject, injectable } from 'inversify';
+import { TYPES } from '../utils/types';
+import type { IMetricsService } from '../interfaces/IMetricsService';
+import type { IMetric } from '../interfaces/IMetricModel';
 
+@injectable()
 export class MetricsController {
-  constructor(private metricsService: IMetricsService) {}
+  constructor(
+    @inject(TYPES.MetricsService) private metricsService: IMetricsService,
+  ) {}
 
   public getAllMetrics = async (req: Request, res: Response): Promise<void> => {
     try {
-      const result = await this.metricsService.getAllMetrics();
+      const result: {
+        metrics: IMetric[];
+        errors: { source: string; message: string }[];
+      } = await this.metricsService.getAllMetrics();
 
       if (result.errors.length > 0) {
         res.status(207).json({
@@ -22,11 +31,18 @@ export class MetricsController {
         });
       }
     } catch (error) {
-      console.error("Error in MetricsController:", error);
+      console.error('Error in MetricsController:', error);
       res.status(500).json({
         success: false,
-        error:
-          error instanceof Error ? error.message : "An unknown error occurred",
+        errors: [
+          {
+            source: 'MetricsController',
+            message:
+              error instanceof Error
+                ? error.message
+                : 'An unknown error occurred',
+          },
+        ],
       });
     }
   };

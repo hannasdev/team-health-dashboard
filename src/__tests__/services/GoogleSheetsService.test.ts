@@ -1,12 +1,10 @@
 // src/__tests__/services/GoogleSheetsService.test.ts
-import {
-  GoogleSheetsService,
-  IGoogleSheetsClient,
-} from "../../services/GoogleSheetsService";
-import { IGoogleSheetsService } from "../../interfaces/IGoogleSheetsService";
-import { jest } from "@jest/globals";
+import { GoogleSheetsService } from '../../services/GoogleSheetsService';
+import { IGoogleSheetsService } from '../../interfaces/IGoogleSheetsService';
+import { IGoogleSheetsClient } from '../../interfaces/IGoogleSheetsClient';
+import { jest } from '@jest/globals';
 
-describe("GoogleSheetsService", () => {
+describe('GoogleSheetsService', () => {
   let googleSheetsService: IGoogleSheetsService;
   let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
 
@@ -16,15 +14,15 @@ describe("GoogleSheetsService", () => {
     };
     googleSheetsService = new GoogleSheetsService(
       mockGoogleSheetsClient,
-      "fake-sheet-id"
+      'fake-sheet-id',
     );
   });
 
-  it("should fetch and parse data from Google Sheets", async () => {
+  it('should fetch and parse data from Google Sheets', async () => {
     const mockSheetData = [
-      ["Timestamp", "Metric Name", "Value"],
-      ["2023-07-27T10:00:00Z", "Cycle Time", "3"],
-      ["2023-07-27T11:00:00Z", "WIP", "5"],
+      ['Timestamp', 'Metric Name', 'Value'],
+      ['2023-07-27T10:00:00Z', 'Cycle Time', '3'],
+      ['2023-07-27T11:00:00Z', 'WIP', '5'],
     ];
 
     mockGoogleSheetsClient.getValues.mockResolvedValue({
@@ -37,20 +35,20 @@ describe("GoogleSheetsService", () => {
     expect(result).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: "Cycle Time",
+          name: 'Cycle Time',
           value: 3,
-          source: "Google Sheets",
+          source: 'Google Sheets',
         }),
         expect.objectContaining({
-          name: "WIP",
+          name: 'WIP',
           value: 5,
-          source: "Google Sheets",
+          source: 'Google Sheets',
         }),
-      ])
+      ]),
     );
   });
-  it("should handle empty sheet data", async () => {
-    const mockEmptySheetData = [["Timestamp", "Metric Name", "Value"]];
+  it('should handle empty sheet data', async () => {
+    const mockEmptySheetData = [['Timestamp', 'Metric Name', 'Value']];
 
     mockGoogleSheetsClient.getValues.mockResolvedValue({
       data: { values: mockEmptySheetData },
@@ -61,12 +59,12 @@ describe("GoogleSheetsService", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("should skip malformed rows", async () => {
+  it('should skip malformed rows', async () => {
     const mockMalformedSheetData = [
-      ["Timestamp", "Metric Name", "Value"],
-      ["2023-07-27T10:00:00Z", "Cycle Time", "3"],
-      ["2023-07-27T11:00:00Z", "WIP"],
-      ["2023-07-27T12:00:00Z", "Lead Time", "7"],
+      ['Timestamp', 'Metric Name', 'Value'],
+      ['2023-07-27T10:00:00Z', 'Cycle Time', '3'],
+      ['2023-07-27T11:00:00Z', 'WIP'],
+      ['2023-07-27T12:00:00Z', 'Lead Time', '7'],
     ];
 
     mockGoogleSheetsClient.getValues.mockResolvedValue({
@@ -79,24 +77,24 @@ describe("GoogleSheetsService", () => {
     expect(result).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: "Cycle Time",
+          name: 'Cycle Time',
           value: 3,
-          source: "Google Sheets",
+          source: 'Google Sheets',
         }),
         expect.objectContaining({
-          name: "Lead Time",
+          name: 'Lead Time',
           value: 7,
-          source: "Google Sheets",
+          source: 'Google Sheets',
         }),
-      ])
+      ]),
     );
   });
 
-  it("should throw an error when failing to fetch data", async () => {
-    mockGoogleSheetsClient.getValues.mockRejectedValue(new Error("API error"));
+  it('should throw an error when failing to fetch data', async () => {
+    mockGoogleSheetsClient.getValues.mockRejectedValue(new Error('API error'));
 
     await expect(googleSheetsService.fetchData()).rejects.toThrow(
-      "Failed to fetch data from Google Sheets"
+      'Failed to fetch data from Google Sheets',
     );
   });
 });

@@ -1,7 +1,7 @@
 // src/__tests__/services/MetricsService.test.ts
 import { MetricsService } from '../../services/MetricsService';
-import { IGoogleSheetsClient } from '../../services/GoogleSheetsService';
-import { IGitHubClient } from '../../services/GitHubService';
+import { IGoogleSheetsClient } from '../../interfaces/IGoogleSheetsClient';
+import { IGitHubClient } from '../../interfaces/IGitHubClient';
 import { IMetricsService } from '../../interfaces/IMetricsService';
 import { jest } from '@jest/globals';
 
