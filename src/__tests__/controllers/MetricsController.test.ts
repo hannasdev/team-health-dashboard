@@ -1,11 +1,12 @@
 // src/__tests__/controllers/MetricsController.test.ts
-import { MetricsController } from "../../controllers/MetricsController";
-import { IMetricsService } from "../../interfaces/IMetricsService";
-import { IMetric } from "../../interfaces/IMetricModel";
-import { Request, Response } from "express";
-import { jest } from "@jest/globals";
+import 'reflect-metadata';
+import { MetricsController } from '../../controllers/MetricsController';
+import { IMetricsService } from '../../interfaces/IMetricsService';
+import { IMetric } from '../../interfaces/IMetricModel';
+import { Request, Response } from 'express';
+import { jest } from '@jest/globals';
 
-describe("MetricsController", () => {
+describe('MetricsController', () => {
   let metricsController: MetricsController;
   let mockMetricsService: jest.Mocked<IMetricsService>;
   let mockRequest: Partial<Request>;
@@ -24,22 +25,22 @@ describe("MetricsController", () => {
     } as Partial<Response>;
   });
 
-  describe("getAllMetrics", () => {
-    it("should return all metrics when both services succeed", async () => {
+  describe('getAllMetrics', () => {
+    it('should return all metrics when both services succeed', async () => {
       const mockMetrics: IMetric[] = [
         {
-          id: "1",
-          name: "Cycle Time",
+          id: '1',
+          name: 'Cycle Time',
           value: 5,
           timestamp: new Date(),
-          source: "Google Sheets",
+          source: 'Google Sheets',
         },
         {
-          id: "2",
-          name: "PR Size",
+          id: '2',
+          name: 'PR Size',
           value: 100,
           timestamp: new Date(),
-          source: "GitHub",
+          source: 'GitHub',
         },
       ];
 
@@ -50,7 +51,7 @@ describe("MetricsController", () => {
 
       await metricsController.getAllMetrics(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -60,36 +61,41 @@ describe("MetricsController", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(200);
     });
 
-    it("should handle errors and return a 500 status", async () => {
-      const errorMessage = "Failed to fetch metrics";
+    it('should handle errors and return a 500 status', async () => {
+      const errorMessage = 'Failed to fetch metrics';
       mockMetricsService.getAllMetrics.mockRejectedValue(
-        new Error(errorMessage)
+        new Error(errorMessage),
       );
 
       await metricsController.getAllMetrics(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith({
         success: false,
-        error: errorMessage,
+        errors: [
+          {
+            source: 'MetricsController',
+            message: errorMessage,
+          },
+        ],
       });
     });
 
-    it("should handle partial failures and return available metrics", async () => {
+    it('should handle partial failures and return available metrics', async () => {
       const mockMetrics: IMetric[] = [
         {
-          id: "1",
-          name: "Cycle Time",
+          id: '1',
+          name: 'Cycle Time',
           value: 5,
           timestamp: new Date(),
-          source: "Google Sheets",
+          source: 'Google Sheets',
         },
       ];
       const mockErrors = [
-        { source: "GitHub", message: "Failed to fetch GitHub data" },
+        { source: 'GitHub', message: 'Failed to fetch GitHub data' },
       ];
 
       mockMetricsService.getAllMetrics.mockResolvedValue({
@@ -99,7 +105,7 @@ describe("MetricsController", () => {
 
       await metricsController.getAllMetrics(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(207);

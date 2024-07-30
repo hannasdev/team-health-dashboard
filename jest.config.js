@@ -15,4 +15,5 @@ export default {
   },
   testMatch: ['**/__tests__/**/*.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
 };

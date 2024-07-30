@@ -1,20 +1,40 @@
 // src/__tests__/services/GoogleSheetsService.test.ts
+import 'reflect-metadata';
 import { GoogleSheetsService } from '../../services/GoogleSheetsService';
 import { IGoogleSheetsService } from '../../interfaces/IGoogleSheetsService';
 import { IGoogleSheetsClient } from '../../interfaces/IGoogleSheetsClient';
+import { IConfig } from '../../interfaces/IConfig';
 import { jest } from '@jest/globals';
 
 describe('GoogleSheetsService', () => {
   let googleSheetsService: IGoogleSheetsService;
   let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
+  let mockConfig: IConfig;
+
+  const originalConsoleWarn = console.warn;
+  const originalConsoleError = console.error;
+
+  beforeAll(() => {
+    console.warn = jest.fn();
+    console.error = jest.fn();
+  });
+
+  afterAll(() => {
+    console.warn = originalConsoleWarn;
+    console.error = originalConsoleError;
+  });
 
   beforeEach(() => {
     mockGoogleSheetsClient = {
       getValues: jest.fn(),
     };
+    mockConfig = {
+      GOOGLE_SHEETS_ID: 'fake-sheet-id',
+      // Add other required config properties with mock values
+    } as IConfig;
     googleSheetsService = new GoogleSheetsService(
       mockGoogleSheetsClient,
-      'fake-sheet-id',
+      mockConfig,
     );
   });
 

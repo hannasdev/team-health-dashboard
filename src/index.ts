@@ -1,4 +1,5 @@
 // src/index.ts
+import 'reflect-metadata';
 import './loadEnv'; // This should be the first import
 import app from './app';
 
