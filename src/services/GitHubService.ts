@@ -6,6 +6,7 @@ import type { IMetric } from '../interfaces/IMetricModel';
 import type { IGitHubClient } from '../interfaces/IGitHubClient';
 import type { IGitHubService } from '../interfaces/IGitHubService';
 import type { IConfig } from '../interfaces/IConfig';
+import { Logger } from '../utils/logger';
 
 @injectable()
 export class GitHubService implements IGitHubService {
@@ -15,26 +16,23 @@ export class GitHubService implements IGitHubService {
   constructor(
     @inject(TYPES.GitHubClient) private client: IGitHubClient,
     @inject(TYPES.Config) private configService: IConfig,
+    @inject(TYPES.Logger) private logger: Logger,
   ) {
     this.owner = this.configService.GITHUB_OWNER;
     this.repo = this.configService.GITHUB_REPO;
     // Validate owner and repo
     if (!this.owner || !this.repo) {
-      console.error('GitHub owner or repo is not set correctly');
+      this.logger.error('GitHub owner or repo is not set correctly');
     }
     // If repo contains a '/', split it
     if (this.repo.includes('/')) {
       [this.owner, this.repo] = this.repo.split('/');
     }
-
-    console.log(
-      `GitHubService initialized with owner: ${this.owner}, repo: ${this.repo}`,
-    );
   }
 
   async fetchData(): Promise<IMetric[]> {
     try {
-      console.log(`Fetching GitHub data for ${this.owner}/${this.repo}`);
+      this.logger.info(`Fetching GitHub data for ${this.owner}/${this.repo}`);
       const pullRequests = await this.client.paginate(
         'GET /repos/{owner}/{repo}/pulls',
         {
@@ -47,7 +45,7 @@ export class GitHubService implements IGitHubService {
         },
       );
 
-      console.log(`Fetched ${pullRequests.length} pull requests`);
+      this.logger.info(`Fetched ${pullRequests.length} pull requests`);
 
       const prCycleTime = this.calculateAveragePRCycleTime(pullRequests);
       const prSize = this.calculateAveragePRSize(pullRequests);
@@ -69,13 +67,13 @@ export class GitHubService implements IGitHubService {
         },
       ];
     } catch (error) {
-      console.error('Error fetching data from GitHub:', error);
+      this.logger.error('Error fetching data from GitHub:', error as Error);
       if (
         error instanceof Error &&
         'status' in error &&
         (error as any).status === 404
       ) {
-        console.error(
+        this.logger.error(
           'This could be due to incorrect owner/repo or insufficient permissions',
         );
       }

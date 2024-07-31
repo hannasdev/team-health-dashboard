@@ -5,18 +5,25 @@ import { IMetricsService } from '../../interfaces/IMetricsService';
 import { IMetric } from '../../interfaces/IMetricModel';
 import { Request, Response } from 'express';
 import { jest } from '@jest/globals';
+import { Logger } from '../../utils/logger';
 
 describe('MetricsController', () => {
   let metricsController: MetricsController;
   let mockMetricsService: jest.Mocked<IMetricsService>;
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
+  let mockLogger: jest.Mocked<Logger>;
 
   beforeEach(() => {
     mockMetricsService = {
       getAllMetrics: jest.fn(),
     };
-    metricsController = new MetricsController(mockMetricsService);
+    mockLogger = {
+      info: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+    };
+    metricsController = new MetricsController(mockMetricsService, mockLogger);
 
     mockRequest = {};
     mockResponse = {
@@ -59,10 +66,14 @@ describe('MetricsController', () => {
         data: mockMetrics,
       });
       expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockLogger.info).not.toHaveBeenCalled();
+      expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('should handle errors and return a 500 status', async () => {
       const errorMessage = 'Failed to fetch metrics';
+      const error = new Error(errorMessage);
+
       mockMetricsService.getAllMetrics.mockRejectedValue(
         new Error(errorMessage),
       );
@@ -82,6 +93,10 @@ describe('MetricsController', () => {
           },
         ],
       });
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error in MetricsController:',
+        error,
+      );
     });
 
     it('should handle partial failures and return available metrics', async () => {
@@ -114,6 +129,8 @@ describe('MetricsController', () => {
         data: mockMetrics,
         errors: mockErrors,
       });
+      expect(mockLogger.info).not.toHaveBeenCalled();
+      expect(mockLogger.error).not.toHaveBeenCalled();
     });
   });
 });

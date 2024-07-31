@@ -7,6 +7,7 @@ import type { IGoogleSheetsClient } from '../interfaces/IGoogleSheetsClient';
 import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import type { IConfig } from '../interfaces/IConfig';
+import { Logger } from '../utils/logger';
 
 @injectable()
 export class GoogleSheetsService implements IGoogleSheetsService {
@@ -16,6 +17,7 @@ export class GoogleSheetsService implements IGoogleSheetsService {
     @inject(TYPES.GoogleSheetsClient)
     private googleSheetsClient: IGoogleSheetsClient,
     @inject(TYPES.Config) private configService: IConfig,
+    @inject(TYPES.Logger) private logger: Logger,
   ) {
     this.spreadsheetId = this.configService.GOOGLE_SHEETS_ID;
   }
@@ -38,7 +40,7 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         .slice(1)
         .map((row: any[], index: number) => {
           if (row.length !== 3) {
-            console.warn(`Skipping malformed row: ${row}`);
+            this.logger.warn(`Skipping malformed row: ${row}`);
             return null;
           }
 
@@ -53,7 +55,10 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         })
         .filter((metric: IMetric | null): metric is IMetric => metric !== null);
     } catch (error) {
-      console.error('Error fetching data from Google Sheets:', error);
+      this.logger.error(
+        'Error fetching data from Google Sheets:',
+        error as Error,
+      );
       throw new Error(
         `Failed to fetch data from Google Sheets: ${
           error instanceof Error ? error.message : 'Unknown error'

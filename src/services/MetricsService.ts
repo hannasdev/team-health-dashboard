@@ -5,6 +5,7 @@ import type { IMetricsService } from '../interfaces/IMetricsService';
 import type { IMetric } from '../interfaces/IMetricModel';
 import type { IGoogleSheetsService } from '../interfaces/IGoogleSheetsService';
 import type { IGitHubService } from '../interfaces/IGitHubService';
+import { Logger } from '../utils/logger';
 
 @injectable()
 export class MetricsService implements IMetricsService {
@@ -12,6 +13,7 @@ export class MetricsService implements IMetricsService {
     @inject(TYPES.GoogleSheetsService)
     private googleSheetsService: IGoogleSheetsService,
     @inject(TYPES.GitHubService) private gitHubService: IGitHubService,
+    @inject(TYPES.Logger) private logger: Logger,
   ) {}
   async getAllMetrics(): Promise<{
     metrics: IMetric[];
@@ -24,7 +26,7 @@ export class MetricsService implements IMetricsService {
     try {
       sheetData = await this.googleSheetsService.fetchData();
     } catch (error) {
-      console.error('Error fetching Google Sheets data:', error);
+      this.logger.error('Error fetching Google Sheets data:', error as Error);
       errors.push({
         source: 'Google Sheets',
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -34,7 +36,7 @@ export class MetricsService implements IMetricsService {
     try {
       githubData = await this.gitHubService.fetchData();
     } catch (error) {
-      console.error('Error fetching GitHub data:', error);
+      this.logger.error('Error fetching GitHub data:', error as Error);
       errors.push({
         source: 'GitHub',
         message: error instanceof Error ? error.message : 'Unknown error',

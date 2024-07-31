@@ -4,12 +4,14 @@ import { GitHubService } from '../../services/GitHubService';
 import { IGitHubClient } from '../../interfaces/IGitHubClient';
 import { IGitHubService } from '../../interfaces/IGitHubService';
 import { IConfig } from '../../interfaces/IConfig';
+import { Logger } from '../../utils/logger';
 import { jest } from '@jest/globals';
 
 describe('GitHubService', () => {
   let githubService: IGitHubService;
   let mockGitHubClient: jest.Mocked<IGitHubClient>;
   let mockConfig: IConfig;
+  let mockLogger: jest.Mocked<Logger>;
 
   beforeEach(() => {
     mockGitHubClient = {
@@ -20,7 +22,12 @@ describe('GitHubService', () => {
       GITHUB_REPO: 'fake-repo',
       // Add other required config properties with mock values
     } as IConfig;
-    githubService = new GitHubService(mockGitHubClient, mockConfig);
+    mockLogger = {
+      info: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+    };
+    githubService = new GitHubService(mockGitHubClient, mockConfig, mockLogger);
   });
 
   it('should fetch and calculate metrics from GitHub', async () => {
@@ -120,6 +127,20 @@ describe('GitHubService', () => {
 
     await expect(githubService.fetchData()).rejects.toThrow(
       'Failed to fetch data from GitHub',
+    );
+  });
+
+  it('should log error when failing to fetch data', async () => {
+    const error = new Error('API error');
+    mockGitHubClient.paginate.mockRejectedValue(error);
+
+    await expect(githubService.fetchData()).rejects.toThrow(
+      'Failed to fetch data from GitHub',
+    );
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Error fetching data from GitHub:',
+      error,
     );
   });
 });

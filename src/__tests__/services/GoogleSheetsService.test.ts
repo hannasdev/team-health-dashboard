@@ -4,12 +4,14 @@ import { GoogleSheetsService } from '../../services/GoogleSheetsService';
 import { IGoogleSheetsService } from '../../interfaces/IGoogleSheetsService';
 import { IGoogleSheetsClient } from '../../interfaces/IGoogleSheetsClient';
 import { IConfig } from '../../interfaces/IConfig';
+import { Logger } from '../../utils/logger';
 import { jest } from '@jest/globals';
 
 describe('GoogleSheetsService', () => {
   let googleSheetsService: IGoogleSheetsService;
   let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
   let mockConfig: IConfig;
+  let mockLogger: jest.Mocked<Logger>;
 
   const originalConsoleWarn = console.warn;
   const originalConsoleError = console.error;
@@ -32,9 +34,15 @@ describe('GoogleSheetsService', () => {
       GOOGLE_SHEETS_ID: 'fake-sheet-id',
       // Add other required config properties with mock values
     } as IConfig;
+    mockLogger = {
+      info: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+    };
     googleSheetsService = new GoogleSheetsService(
       mockGoogleSheetsClient,
       mockConfig,
+      mockLogger,
     );
   });
 
@@ -110,11 +118,44 @@ describe('GoogleSheetsService', () => {
     );
   });
 
+  it('should log warning for malformed rows', async () => {
+    const mockMalformedSheetData = [
+      ['Timestamp', 'Metric Name', 'Value'],
+      ['2023-07-27T10:00:00Z', 'Cycle Time', '3'],
+      ['2023-07-27T11:00:00Z', 'WIP'],
+      ['2023-07-27T12:00:00Z', 'Lead Time', '7'],
+    ];
+
+    mockGoogleSheetsClient.getValues.mockResolvedValue({
+      data: { values: mockMalformedSheetData },
+    });
+
+    await googleSheetsService.fetchData();
+
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      'Skipping malformed row: 2023-07-27T11:00:00Z,WIP',
+    );
+  });
+
   it('should throw an error when failing to fetch data', async () => {
     mockGoogleSheetsClient.getValues.mockRejectedValue(new Error('API error'));
 
     await expect(googleSheetsService.fetchData()).rejects.toThrow(
       'Failed to fetch data from Google Sheets',
+    );
+  });
+
+  it('should log error when failing to fetch data', async () => {
+    const error = new Error('API error');
+    mockGoogleSheetsClient.getValues.mockRejectedValue(error);
+
+    await expect(googleSheetsService.fetchData()).rejects.toThrow(
+      'Failed to fetch data from Google Sheets',
+    );
+
+    expect(mockLogger.error).toHaveBeenCalledWith(
+      'Error fetching data from Google Sheets:',
+      error,
     );
   });
 });

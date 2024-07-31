@@ -4,11 +4,13 @@ import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
 import type { IMetricsService } from '../interfaces/IMetricsService';
 import type { IMetric } from '../interfaces/IMetricModel';
+import { Logger } from '../utils/logger';
 
 @injectable()
 export class MetricsController {
   constructor(
     @inject(TYPES.MetricsService) private metricsService: IMetricsService,
+    @inject(TYPES.Logger) private logger: Logger,
   ) {}
 
   public getAllMetrics = async (req: Request, res: Response): Promise<void> => {
@@ -31,7 +33,7 @@ export class MetricsController {
         });
       }
     } catch (error) {
-      console.error('Error in MetricsController:', error);
+      this.logger.error('Error in MetricsController:', error as Error);
       res.status(500).json({
         success: false,
         errors: [
