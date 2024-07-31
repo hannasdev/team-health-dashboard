@@ -14,4 +14,5 @@ export const TYPES = {
   Logger: Symbol.for('Logger'),
   MetricsService: Symbol.for('MetricsService'),
   MetricsController: Symbol.for('MetricsController'),
+  CacheService: Symbol.for('CacheService'),
 };

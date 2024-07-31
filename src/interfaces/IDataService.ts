@@ -1,6 +1,6 @@
 // src/interfaces/IDataService.ts
-import { IMetric } from "./IMetricModel";
+import { IMetric } from './IMetricModel';
 
 export interface IDataService {
-  fetchData(): Promise<IMetric[]>;
+  fetchData(startDate?: Date, endDate?: Date): Promise<IMetric[]>;
 }

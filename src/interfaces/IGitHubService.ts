@@ -1,4 +1,6 @@
 // src/interfaces/IGitHubService.ts
-import { IDataService } from "./IDataService";
+import { IMetric } from './IMetricModel';
 
-export interface IGitHubService extends IDataService {}
+export interface IGitHubService {
+  fetchData(startDate?: Date, endDate?: Date): Promise<IMetric[]>;
+}

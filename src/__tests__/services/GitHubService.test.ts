@@ -4,24 +4,56 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { GitHubService } from '../../services/GitHubService';
 import type { IGitHubClient } from '../../interfaces/IGitHubClient';
 import type { IConfig } from '../../interfaces/IConfig';
+import type { ICacheService } from '../../interfaces/ICacheService';
+import type { IMetric } from '../../interfaces/IMetricModel';
 import { createMockLogger } from '../../__mocks__/logger';
 import type { Logger } from '../../utils/logger';
+
+// Simple mock cache service
+class MockCacheService implements ICacheService {
+  private store: { [key: string]: any } = {};
+
+  get<T>(key: string): T | null {
+    return this.store[key] || null;
+  }
+
+  set<T>(key: string, value: T): void {
+    this.store[key] = value;
+  }
+
+  delete(key: string): void {
+    delete this.store[key];
+  }
+
+  clear(): void {
+    this.store = {};
+  }
+}
 
 describe('GitHubService', () => {
   let githubService: GitHubService;
   let mockGitHubClient: jest.Mocked<IGitHubClient>;
   let mockConfig: IConfig;
   let mockLogger: Logger;
+  let mockCacheService: ICacheService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGitHubClient = { paginate: jest.fn() };
+    mockGitHubClient = {
+      paginate: jest.fn(),
+    };
     mockConfig = {
       GITHUB_OWNER: 'fake-owner',
       GITHUB_REPO: 'fake-repo',
     } as IConfig;
     mockLogger = createMockLogger();
-    githubService = new GitHubService(mockGitHubClient, mockConfig, mockLogger);
+    mockCacheService = new MockCacheService();
+    githubService = new GitHubService(
+      mockGitHubClient,
+      mockConfig,
+      mockLogger,
+      mockCacheService,
+    );
   });
 
   it('should fetch and calculate metrics from GitHub', async () => {
@@ -42,7 +74,9 @@ describe('GitHubService', () => {
       },
     ];
 
-    mockGitHubClient.paginate.mockResolvedValue(mockPullRequests);
+    mockGitHubClient.paginate.mockReturnValue(
+      createAsyncIterator([{ data: mockPullRequests }]),
+    );
 
     const result = await githubService.fetchData();
 
@@ -66,7 +100,7 @@ describe('GitHubService', () => {
   });
 
   it('should handle empty pull request data', async () => {
-    mockGitHubClient.paginate.mockResolvedValue([]);
+    mockGitHubClient.paginate.mockReturnValue(createAsyncIterator([]));
 
     const result = await githubService.fetchData();
 
@@ -114,7 +148,9 @@ describe('GitHubService', () => {
       },
     ];
 
-    mockGitHubClient.paginate.mockResolvedValue(mockPullRequests);
+    mockGitHubClient.paginate.mockReturnValue(
+      createAsyncIterator([{ data: mockPullRequests }]),
+    );
 
     const result = await githubService.fetchData();
 
@@ -139,7 +175,9 @@ describe('GitHubService', () => {
 
   it('should throw an error when failing to fetch data', async () => {
     const error = new Error('API error');
-    mockGitHubClient.paginate.mockRejectedValue(error);
+    mockGitHubClient.paginate.mockImplementation(() => {
+      throw error;
+    });
 
     await expect(githubService.fetchData()).rejects.toThrow(
       'Failed to fetch data from GitHub',
@@ -149,4 +187,45 @@ describe('GitHubService', () => {
       error,
     );
   });
+
+  it('should use cached data if available', async () => {
+    const cachedData: IMetric[] = [
+      {
+        id: 'github-pr-cycle-time',
+        name: 'PR Cycle Time',
+        value: 25,
+        timestamp: new Date(),
+        source: 'GitHub',
+      },
+      {
+        id: 'github-pr-size',
+        name: 'PR Size',
+        value: 50,
+        timestamp: new Date(),
+        source: 'GitHub',
+      },
+    ];
+    mockCacheService.set('github-fake-owner/fake-repo-all-all', cachedData);
+
+    const result = await githubService.fetchData();
+
+    expect(result).toEqual(cachedData);
+    expect(mockGitHubClient.paginate).not.toHaveBeenCalled();
+  });
 });
+
+function createAsyncIterator<T>(items: T[]): AsyncIterableIterator<T> {
+  let index = 0;
+  return {
+    async next() {
+      if (index < items.length) {
+        return { value: items[index++], done: false };
+      } else {
+        return { value: undefined as any, done: true };
+      }
+    },
+    [Symbol.asyncIterator]() {
+      return this;
+    },
+  };
+}

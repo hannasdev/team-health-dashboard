@@ -23,6 +23,8 @@ import { ErrorHandler } from './middleware/ErrorHandler';
 import { IConfig } from './interfaces/IConfig';
 import { config } from './config/config';
 import { MetricsController } from './controllers/MetricsController';
+import { CacheService } from './services/CacheService';
+import { ICacheService } from './interfaces/ICacheService';
 
 const container = new Container();
 
@@ -54,5 +56,7 @@ container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService);
 container
   .bind<MetricsController>(TYPES.MetricsController)
   .to(MetricsController);
+
+container.bind<ICacheService>(TYPES.CacheService).to(CacheService);
 
 export { container };
