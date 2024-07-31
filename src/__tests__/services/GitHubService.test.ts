@@ -1,32 +1,26 @@
 // src/__tests__/services/GitHubService.test.ts
 import 'reflect-metadata';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import { GitHubService } from '../../services/GitHubService';
-import { IGitHubClient } from '../../interfaces/IGitHubClient';
-import { IGitHubService } from '../../interfaces/IGitHubService';
-import { IConfig } from '../../interfaces/IConfig';
-import { Logger } from '../../utils/logger';
-import { jest } from '@jest/globals';
+import type { IGitHubClient } from '../../interfaces/IGitHubClient';
+import type { IConfig } from '../../interfaces/IConfig';
+import { createMockLogger } from '../../__mocks__/logger';
+import type { Logger } from '../../utils/logger';
 
 describe('GitHubService', () => {
-  let githubService: IGitHubService;
+  let githubService: GitHubService;
   let mockGitHubClient: jest.Mocked<IGitHubClient>;
   let mockConfig: IConfig;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockLogger: Logger;
 
   beforeEach(() => {
-    mockGitHubClient = {
-      paginate: jest.fn(),
-    };
+    jest.clearAllMocks();
+    mockGitHubClient = { paginate: jest.fn() };
     mockConfig = {
       GITHUB_OWNER: 'fake-owner',
       GITHUB_REPO: 'fake-repo',
-      // Add other required config properties with mock values
     } as IConfig;
-    mockLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-    };
+    mockLogger = createMockLogger();
     githubService = new GitHubService(mockGitHubClient, mockConfig, mockLogger);
   });
 
@@ -34,15 +28,15 @@ describe('GitHubService', () => {
     const mockPullRequests = [
       {
         number: 1,
-        created_at: '2023-07-25T10:00:00Z',
-        merged_at: '2023-07-27T10:00:00Z',
+        created_at: '2023-01-01T00:00:00Z',
+        merged_at: '2023-01-02T00:00:00Z',
         additions: 50,
         deletions: 20,
       },
       {
         number: 2,
-        created_at: '2023-07-26T10:00:00Z',
-        merged_at: '2023-07-28T10:00:00Z',
+        created_at: '2023-01-02T00:00:00Z',
+        merged_at: '2023-01-03T12:00:00Z',
         additions: 30,
         deletions: 10,
       },
@@ -53,20 +47,22 @@ describe('GitHubService', () => {
     const result = await githubService.fetchData();
 
     expect(result).toHaveLength(2);
-    expect(result).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: 'PR Cycle Time',
-          value: 48,
-          source: 'GitHub',
-        }),
-        expect.objectContaining({
-          name: 'PR Size',
-          value: 55,
-          source: 'GitHub',
-        }),
-      ]),
-    );
+    expect(result).toEqual([
+      {
+        id: 'github-pr-cycle-time',
+        name: 'PR Cycle Time',
+        value: 30, // (24 + 36) / 2 = 30 hours average
+        timestamp: expect.any(Date),
+        source: 'GitHub',
+      },
+      {
+        id: 'github-pr-size',
+        name: 'PR Size',
+        value: 55, // (70 + 40) / 2 = 55
+        timestamp: expect.any(Date),
+        source: 'GitHub',
+      },
+    ]);
   });
 
   it('should handle empty pull request data', async () => {
@@ -75,29 +71,46 @@ describe('GitHubService', () => {
     const result = await githubService.fetchData();
 
     expect(result).toHaveLength(2);
-    expect(result).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ name: 'PR Cycle Time', value: 0 }),
-        expect.objectContaining({ name: 'PR Size', value: 0 }),
-      ]),
-    );
+    expect(result).toEqual([
+      {
+        id: 'github-pr-cycle-time',
+        name: 'PR Cycle Time',
+        value: 0,
+        timestamp: expect.any(Date),
+        source: 'GitHub',
+      },
+      {
+        id: 'github-pr-size',
+        name: 'PR Size',
+        value: 0,
+        timestamp: expect.any(Date),
+        source: 'GitHub',
+      },
+    ]);
   });
 
   it('should calculate PR Cycle Time only for merged PRs', async () => {
     const mockPullRequests = [
       {
         number: 1,
-        created_at: '2023-07-25T10:00:00Z',
-        merged_at: '2023-07-27T10:00:00Z',
+        created_at: '2023-01-01T00:00:00Z',
+        merged_at: '2023-01-02T00:00:00Z',
         additions: 50,
         deletions: 20,
       },
       {
         number: 2,
-        created_at: '2023-07-26T10:00:00Z',
-        merged_at: null,
+        created_at: '2023-01-02T00:00:00Z',
+        merged_at: '2023-01-03T12:00:00Z',
         additions: 30,
         deletions: 10,
+      },
+      {
+        number: 3,
+        created_at: '2023-01-03T00:00:00Z',
+        merged_at: null,
+        additions: 20,
+        deletions: 5,
       },
     ];
 
@@ -106,38 +119,31 @@ describe('GitHubService', () => {
     const result = await githubService.fetchData();
 
     expect(result).toHaveLength(2);
-    expect(result).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: 'PR Cycle Time',
-          value: 48,
-          timestamp: expect.any(Date),
-        }),
-        expect.objectContaining({
-          name: 'PR Size',
-          value: 55,
-          timestamp: expect.any(Date),
-        }),
-      ]),
-    );
+    expect(result).toEqual([
+      {
+        id: 'github-pr-cycle-time',
+        name: 'PR Cycle Time',
+        value: 30, // (24 + 36) / 2 = 30 hours average (ignoring the unmerged PR)
+        timestamp: expect.any(Date),
+        source: 'GitHub',
+      },
+      {
+        id: 'github-pr-size',
+        name: 'PR Size',
+        value: 45, // (70 + 40 + 25) / 3 = 45
+        timestamp: expect.any(Date),
+        source: 'GitHub',
+      },
+    ]);
   });
 
   it('should throw an error when failing to fetch data', async () => {
-    mockGitHubClient.paginate.mockRejectedValue(new Error('API error'));
-
-    await expect(githubService.fetchData()).rejects.toThrow(
-      'Failed to fetch data from GitHub',
-    );
-  });
-
-  it('should log error when failing to fetch data', async () => {
     const error = new Error('API error');
     mockGitHubClient.paginate.mockRejectedValue(error);
 
     await expect(githubService.fetchData()).rejects.toThrow(
       'Failed to fetch data from GitHub',
     );
-
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Error fetching data from GitHub:',
       error,

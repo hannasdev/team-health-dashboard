@@ -3,6 +3,7 @@ import { MetricsService } from '../../services/MetricsService';
 import { IGoogleSheetsService } from '../../interfaces/IGoogleSheetsService';
 import { IGitHubService } from '../../interfaces/IGitHubService';
 import { IMetricsService } from '../../interfaces/IMetricsService';
+import { createMockLogger, MockLogger } from '../../__mocks__/logger';
 import { Logger } from '../../utils/logger';
 import { jest } from '@jest/globals';
 
@@ -10,25 +11,25 @@ describe('MetricsService', () => {
   let metricsService: IMetricsService;
   let mockGoogleSheetsService: jest.Mocked<IGoogleSheetsService>;
   let mockGitHubService: jest.Mocked<IGitHubService>;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockLogger: MockLogger;
 
-  beforeEach(() => {
+  beforeAll(() => {
     mockGoogleSheetsService = {
       fetchData: jest.fn(),
     };
     mockGitHubService = {
       fetchData: jest.fn(),
     };
-    mockLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-    };
+    mockLogger = createMockLogger();
     metricsService = new MetricsService(
       mockGoogleSheetsService,
       mockGitHubService,
-      mockLogger,
+      mockLogger as Logger,
     );
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should fetch and combine metrics from Google Sheets and GitHub', async () => {

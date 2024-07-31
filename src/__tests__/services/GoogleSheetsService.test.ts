@@ -4,6 +4,7 @@ import { GoogleSheetsService } from '../../services/GoogleSheetsService';
 import { IGoogleSheetsService } from '../../interfaces/IGoogleSheetsService';
 import { IGoogleSheetsClient } from '../../interfaces/IGoogleSheetsClient';
 import { IConfig } from '../../interfaces/IConfig';
+import { createMockLogger, MockLogger } from '../../__mocks__/logger';
 import { Logger } from '../../utils/logger';
 import { jest } from '@jest/globals';
 
@@ -11,22 +12,9 @@ describe('GoogleSheetsService', () => {
   let googleSheetsService: IGoogleSheetsService;
   let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
   let mockConfig: IConfig;
-  let mockLogger: jest.Mocked<Logger>;
-
-  const originalConsoleWarn = console.warn;
-  const originalConsoleError = console.error;
+  let mockLogger: MockLogger;
 
   beforeAll(() => {
-    console.warn = jest.fn();
-    console.error = jest.fn();
-  });
-
-  afterAll(() => {
-    console.warn = originalConsoleWarn;
-    console.error = originalConsoleError;
-  });
-
-  beforeEach(() => {
     mockGoogleSheetsClient = {
       getValues: jest.fn(),
     };
@@ -34,16 +22,16 @@ describe('GoogleSheetsService', () => {
       GOOGLE_SHEETS_ID: 'fake-sheet-id',
       // Add other required config properties with mock values
     } as IConfig;
-    mockLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-    };
+    mockLogger = createMockLogger();
     googleSheetsService = new GoogleSheetsService(
       mockGoogleSheetsClient,
       mockConfig,
-      mockLogger,
+      mockLogger as Logger,
     );
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should fetch and parse data from Google Sheets', async () => {
@@ -75,6 +63,7 @@ describe('GoogleSheetsService', () => {
       ]),
     );
   });
+
   it('should handle empty sheet data', async () => {
     const mockEmptySheetData = [['Timestamp', 'Metric Name', 'Value']];
 

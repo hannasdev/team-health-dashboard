@@ -1,16 +1,17 @@
 // src/__mocks__/serviceMocks.ts
-import { IGitHubService } from "../interfaces/IGitHubService";
-import { IMetricsService } from "../interfaces/IMetricsService";
+import type { IGitHubService } from '../interfaces/IGitHubService';
+import type { IMetricsService } from '../interfaces/IMetricsService';
+import type { IGoogleSheetsService } from '../interfaces/IGoogleSheetsService';
 
-// export const createMockGoogleSheetsService =
-//   (): jest.Mocked<IGoogleSheetsService> => ({
-//     fetchData: jest.fn(),
-//   });
+export const createMockGoogleSheetsService =
+  (): jest.Mocked<IGoogleSheetsService> => ({
+    fetchData: jest.fn().mockResolvedValue([]),
+  });
 
 export const createMockGitHubService = (): jest.Mocked<IGitHubService> => ({
-  fetchData: jest.fn(),
+  fetchData: jest.fn().mockResolvedValue([]),
 });
 
 export const createMockMetricsService = (): jest.Mocked<IMetricsService> => ({
-  getAllMetrics: jest.fn(),
+  getAllMetrics: jest.fn().mockResolvedValue({ metrics: [], errors: [] }),
 });

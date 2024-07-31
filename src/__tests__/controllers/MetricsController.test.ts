@@ -1,35 +1,39 @@
 // src/__tests__/controllers/MetricsController.test.ts
 import 'reflect-metadata';
 import { MetricsController } from '../../controllers/MetricsController';
-import { IMetricsService } from '../../interfaces/IMetricsService';
-import { IMetric } from '../../interfaces/IMetricModel';
-import { Request, Response } from 'express';
+import type { IMetricsService } from '../../interfaces/IMetricsService';
+import type { IMetric } from '../../interfaces/IMetricModel';
+import type { Request, Response } from 'express';
 import { jest } from '@jest/globals';
-import { Logger } from '../../utils/logger';
+import { createMockLogger, MockLogger } from '../../__mocks__/logger';
+import type { Logger } from '../../utils/logger';
 
 describe('MetricsController', () => {
   let metricsController: MetricsController;
   let mockMetricsService: jest.Mocked<IMetricsService>;
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockLogger: MockLogger;
 
-  beforeEach(() => {
+  beforeAll(() => {
     mockMetricsService = {
       getAllMetrics: jest.fn(),
     };
-    mockLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-    };
-    metricsController = new MetricsController(mockMetricsService, mockLogger);
+    mockLogger = createMockLogger();
+    metricsController = new MetricsController(
+      mockMetricsService,
+      mockLogger as Logger,
+    );
 
     mockRequest = {};
     mockResponse = {
       json: jest.fn().mockReturnThis(),
       status: jest.fn().mockReturnThis(),
     } as Partial<Response>;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
   describe('getAllMetrics', () => {
@@ -74,9 +78,7 @@ describe('MetricsController', () => {
       const errorMessage = 'Failed to fetch metrics';
       const error = new Error(errorMessage);
 
-      mockMetricsService.getAllMetrics.mockRejectedValue(
-        new Error(errorMessage),
-      );
+      mockMetricsService.getAllMetrics.mockRejectedValue(error);
 
       await metricsController.getAllMetrics(
         mockRequest as Request,

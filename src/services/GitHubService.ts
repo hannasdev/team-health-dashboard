@@ -20,11 +20,9 @@ export class GitHubService implements IGitHubService {
   ) {
     this.owner = this.configService.GITHUB_OWNER;
     this.repo = this.configService.GITHUB_REPO;
-    // Validate owner and repo
     if (!this.owner || !this.repo) {
       this.logger.error('GitHub owner or repo is not set correctly');
     }
-    // If repo contains a '/', split it
     if (this.repo.includes('/')) {
       [this.owner, this.repo] = this.repo.split('/');
     }
@@ -68,20 +66,7 @@ export class GitHubService implements IGitHubService {
       ];
     } catch (error) {
       this.logger.error('Error fetching data from GitHub:', error as Error);
-      if (
-        error instanceof Error &&
-        'status' in error &&
-        (error as any).status === 404
-      ) {
-        this.logger.error(
-          'This could be due to incorrect owner/repo or insufficient permissions',
-        );
-      }
-      throw new Error(
-        `Failed to fetch data from GitHub: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
-      );
+      throw new Error(`Failed to fetch data from GitHub: ${error}`);
     }
   }
 
@@ -89,13 +74,17 @@ export class GitHubService implements IGitHubService {
     const mergedPRs = pullRequests.filter(pr => pr.merged_at);
     if (mergedPRs.length === 0) return 0;
 
-    const totalTime = mergedPRs.reduce((sum, pr) => {
-      const createdAt = new Date(pr.created_at).getTime();
-      const mergedAt = new Date(pr.merged_at).getTime();
-      return sum + (mergedAt - createdAt) / (1000 * 60 * 60); // Convert to hours
+    const totalHours = mergedPRs.reduce((sum, pr) => {
+      const createdAt = new Date(pr.created_at);
+      const mergedAt = new Date(pr.merged_at);
+      const diffInHours =
+        (mergedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+      return sum + diffInHours;
     }, 0);
 
-    return Math.round(totalTime / mergedPRs.length);
+    const average = totalHours / mergedPRs.length;
+
+    return Math.round(average);
   }
 
   private calculateAveragePRSize(pullRequests: any[]): number {
