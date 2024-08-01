@@ -4,7 +4,7 @@ import type { IMetric } from './IMetricModel';
 export type ProgressCallback = (
   progress: number,
   message: string,
-  details?: Record<string, any>,
+  details?: Record<string, any> & { currentPage?: number; totalPages?: number },
 ) => void;
 
 export interface IMetricsService {

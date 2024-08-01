@@ -21,10 +21,47 @@ export class MetricsController {
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
+    let githubPagesFetched = 0;
+    let totalGithubPages = 1; // Initial estimate, will be updated
+
+    const calculateProgress = (
+      serviceProgress: number,
+      service: 'sheets' | 'github',
+    ): number => {
+      if (service === 'sheets') {
+        return serviceProgress * 0.4; // Google Sheets accounts for 40% of total progress
+      } else {
+        // GitHub accounts for 60% of total progress
+        const githubProgress = (githubPagesFetched / totalGithubPages) * 100;
+        return 40 + githubProgress * 0.6;
+      }
+    };
+
     try {
       const result = await this.metricsService.getAllMetrics(
         (progress: number, message: string, details?: Record<string, any>) => {
-          sendEvent('progress', { progress, message, ...details });
+          let overallProgress: number;
+
+          if (message.startsWith('Google Sheets:')) {
+            overallProgress = calculateProgress(progress, 'sheets');
+          } else if (message.startsWith('GitHub:')) {
+            if (details && 'currentPage' in details) {
+              githubPagesFetched = details.currentPage;
+              totalGithubPages = Math.max(
+                totalGithubPages,
+                details.totalPages || 1,
+              );
+            }
+            overallProgress = calculateProgress(progress, 'github');
+          } else {
+            overallProgress = progress;
+          }
+
+          sendEvent('progress', {
+            progress: Math.min(Math.round(overallProgress), 100),
+            message,
+            ...details,
+          });
         },
       );
 
