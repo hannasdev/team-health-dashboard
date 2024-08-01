@@ -31,68 +31,39 @@ export class GitHubService implements IGitHubService {
   }
 
   async fetchData(
-    progressCallback?: (
-      progress: number,
-      message: string,
-      details?: any,
-    ) => void,
-    startDate?: Date,
-    endDate?: Date,
+    progressCallback?: (progress: number, message: string) => void,
   ): Promise<IMetric[]> {
-    const cacheKey = this.getCacheKey(startDate, endDate);
+    const cacheKey = this.getCacheKey();
     const cachedData = this.cacheService.get<IMetric[]>(cacheKey);
+
     if (cachedData) {
-      this.logger.info('Returning cached GitHub data');
-      progressCallback?.(100, 'Retrieved cached GitHub data', { cached: true });
       return cachedData;
     }
 
     try {
       progressCallback?.(0, 'Starting to fetch GitHub data');
-      this.logger.info(`Fetching GitHub data for ${this.owner}/${this.repo}`);
 
-      const pullRequests = await this.streamPullRequests(
-        progressCallback,
-        startDate,
-        endDate,
-      );
+      const pullRequests = await this.streamPullRequests(progressCallback);
+      progressCallback?.(50, 'Fetched pull requests');
 
-      this.logger.info(`Processed ${pullRequests.length} pull requests`);
-      progressCallback?.(80, `Processed ${pullRequests.length} pull requests`, {
-        totalPullRequests: pullRequests.length,
-      });
-
-      const prCycleTime = this.calculateAveragePRCycleTime(pullRequests);
-      const prSize = this.calculateAveragePRSize(pullRequests);
+      // TODO: For simplicity, we're not implementing separate fetches for issues and workflows
+      // You would need to implement similar streaming methods for these
 
       const metrics: IMetric[] = [
-        {
-          id: 'github-pr-cycle-time',
-          name: 'PR Cycle Time',
-          value: prCycleTime,
-          timestamp: new Date(),
-          source: 'GitHub',
-        },
-        {
-          id: 'github-pr-size',
-          name: 'PR Size',
-          value: prSize,
-          timestamp: new Date(),
-          source: 'GitHub',
-        },
+        this.calculatePRCycleTime(pullRequests),
+        this.calculatePRSize(pullRequests),
+        // TODO: Add other metric calculations here
       ];
 
       this.cacheService.set(cacheKey, metrics);
-      progressCallback?.(100, 'Finished processing GitHub data', {
-        totalPullRequests: pullRequests.length,
-      });
+      progressCallback?.(100, 'Finished processing GitHub data');
+
       return metrics;
     } catch (error) {
       this.logger.error('Error fetching data from GitHub:', error as Error);
-      progressCallback?.(100, 'Error fetching data from GitHub', {
-        error: true,
-      });
-      throw new Error(`Failed to fetch data from GitHub: ${error}`);
+      throw new Error(
+        `Failed to fetch data from GitHub: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -102,10 +73,8 @@ export class GitHubService implements IGitHubService {
       message: string,
       details?: any,
     ) => void,
-    startDate?: Date,
-    endDate?: Date,
   ) {
-    const params: any = {
+    const params = {
       owner: this.owner,
       repo: this.repo,
       state: 'closed',
@@ -113,10 +82,6 @@ export class GitHubService implements IGitHubService {
       direction: 'desc',
       per_page: 100,
     };
-
-    if (startDate) {
-      params.since = startDate.toISOString();
-    }
 
     let pageCount = 0;
     let totalPullRequests = 0;
@@ -132,16 +97,7 @@ export class GitHubService implements IGitHubService {
         { currentPage: pageCount, totalPullRequests },
       );
       for (const pr of response.data) {
-        if (endDate && new Date(pr.updated_at) > endDate) {
-          continue;
-        }
         yield pr;
-      }
-      if (
-        endDate &&
-        new Date(response.data[response.data.length - 1].updated_at) < endDate
-      ) {
-        break;
       }
     }
   }
@@ -152,24 +108,44 @@ export class GitHubService implements IGitHubService {
       message: string,
       details?: any,
     ) => void,
-    startDate?: Date,
-    endDate?: Date,
   ): Promise<any[]> {
     const pullRequests: any[] = [];
-    for await (const pr of this.pullRequestGenerator(
-      progressCallback,
-      startDate,
-      endDate,
-    )) {
+    for await (const pr of this.pullRequestGenerator(progressCallback)) {
       pullRequests.push(pr);
     }
     return pullRequests;
   }
 
-  private getCacheKey(startDate?: Date, endDate?: Date): string {
-    return `github-${this.owner}/${this.repo}-${
-      startDate?.toISOString() || 'all'
-    }-${endDate?.toISOString() || 'all'}`;
+  private getCacheKey(): string {
+    return `github-${this.owner}/${this.repo}-all-all`;
+  }
+
+  private calculatePRCycleTime(pullRequests: any[]): IMetric {
+    const averageCycleTime = this.calculateAveragePRCycleTime(pullRequests);
+    return {
+      id: 'github-pr-cycle-time',
+      metric_category: 'Efficiency',
+      metric_name: 'PR Cycle Time',
+      value: averageCycleTime,
+      timestamp: new Date(),
+      unit: 'hours',
+      additional_info: `Based on ${pullRequests.length} PRs`,
+      source: 'GitHub',
+    };
+  }
+
+  private calculatePRSize(pullRequests: any[]): IMetric {
+    const averageSize = this.calculateAveragePRSize(pullRequests);
+    return {
+      id: 'github-pr-size',
+      metric_category: 'Code Quality',
+      metric_name: 'PR Size',
+      value: averageSize,
+      timestamp: new Date(),
+      unit: 'lines',
+      additional_info: `Based on ${pullRequests.length} PRs`,
+      source: 'GitHub',
+    };
   }
 
   private calculateAveragePRCycleTime(pullRequests: any[]): number {
@@ -184,9 +160,7 @@ export class GitHubService implements IGitHubService {
       return sum + diffInHours;
     }, 0);
 
-    const average = totalHours / mergedPRs.length;
-
-    return Math.round(average);
+    return Math.round(totalHours / mergedPRs.length);
   }
 
   private calculateAveragePRSize(pullRequests: any[]): number {

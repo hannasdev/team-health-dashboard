@@ -30,7 +30,7 @@ export class GoogleSheetsService implements IGoogleSheetsService {
 
       const response = await this.googleSheetsClient.getValues(
         this.spreadsheetId,
-        'A:C', // Adjust this range as needed
+        'A:F', // This range is correct for the new structure
       );
 
       progressCallback?.(
@@ -49,17 +49,40 @@ export class GoogleSheetsService implements IGoogleSheetsService {
       const metrics = rows
         .slice(1)
         .map((row: any[], index: number) => {
-          if (row.length !== 3) {
-            this.logger.warn(`Skipping malformed row: ${row}`);
+          if (row.length < 4) {
+            this.logger.warn(`Skipping row with insufficient data: ${row}`);
             return null;
           }
 
-          const [timestamp, name, value] = row;
+          const [
+            timestamp,
+            metric_category,
+            metric_name,
+            value,
+            unit = '',
+            additional_info = '',
+          ] = row;
+
+          if (
+            !timestamp ||
+            !metric_category ||
+            !metric_name ||
+            value === undefined
+          ) {
+            this.logger.warn(
+              `Skipping row with missing essential data: ${row}`,
+            );
+            return null;
+          }
+
           return {
             id: `sheet-${index}`,
-            name,
+            metric_category,
+            metric_name,
             value: Number(value),
             timestamp: new Date(timestamp),
+            unit,
+            additional_info,
             source: 'Google Sheets',
           };
         })

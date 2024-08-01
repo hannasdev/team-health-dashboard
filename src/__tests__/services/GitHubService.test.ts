@@ -81,22 +81,28 @@ describe('GitHubService', () => {
     const result = await githubService.fetchData();
 
     expect(result).toHaveLength(2);
-    expect(result).toEqual([
-      {
-        id: 'github-pr-cycle-time',
-        name: 'PR Cycle Time',
-        value: 30, // (24 + 36) / 2 = 30 hours average
-        timestamp: expect.any(Date),
-        source: 'GitHub',
-      },
-      {
-        id: 'github-pr-size',
-        name: 'PR Size',
-        value: 55, // (70 + 40) / 2 = 55
-        timestamp: expect.any(Date),
-        source: 'GitHub',
-      },
-    ]);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'github-pr-cycle-time',
+          metric_category: 'Efficiency',
+          metric_name: 'PR Cycle Time',
+          value: 30, // (24 + 36) / 2 = 30 hours average
+          unit: 'hours',
+          additional_info: expect.any(String),
+          source: 'GitHub',
+        }),
+        expect.objectContaining({
+          id: 'github-pr-size',
+          metric_category: 'Code Quality',
+          metric_name: 'PR Size',
+          value: 55, // (70 + 40) / 2 = 55
+          unit: 'lines',
+          additional_info: expect.any(String),
+          source: 'GitHub',
+        }),
+      ]),
+    );
   });
 
   it('should handle empty pull request data', async () => {
@@ -108,16 +114,22 @@ describe('GitHubService', () => {
     expect(result).toEqual([
       {
         id: 'github-pr-cycle-time',
-        name: 'PR Cycle Time',
+        metric_category: 'Efficiency',
+        metric_name: 'PR Cycle Time',
         value: 0,
         timestamp: expect.any(Date),
+        unit: 'hours',
+        additional_info: 'Based on 0 PRs',
         source: 'GitHub',
       },
       {
         id: 'github-pr-size',
-        name: 'PR Size',
+        metric_category: 'Code Quality',
+        metric_name: 'PR Size',
         value: 0,
         timestamp: expect.any(Date),
+        unit: 'lines',
+        additional_info: 'Based on 0 PRs',
         source: 'GitHub',
       },
     ]);
@@ -158,16 +170,22 @@ describe('GitHubService', () => {
     expect(result).toEqual([
       {
         id: 'github-pr-cycle-time',
-        name: 'PR Cycle Time',
-        value: 30, // (24 + 36) / 2 = 30 hours average (ignoring the unmerged PR)
+        metric_category: 'Efficiency',
+        metric_name: 'PR Cycle Time',
+        value: 30,
         timestamp: expect.any(Date),
+        unit: 'hours',
+        additional_info: 'Based on 3 PRs',
         source: 'GitHub',
       },
       {
         id: 'github-pr-size',
-        name: 'PR Size',
-        value: 45, // (70 + 40 + 25) / 3 = 45
+        metric_category: 'Code Quality',
+        metric_name: 'PR Size',
+        value: 45,
         timestamp: expect.any(Date),
+        unit: 'lines',
+        additional_info: 'Based on 3 PRs',
         source: 'GitHub',
       },
     ]);
@@ -192,16 +210,22 @@ describe('GitHubService', () => {
     const cachedData: IMetric[] = [
       {
         id: 'github-pr-cycle-time',
-        name: 'PR Cycle Time',
+        metric_category: 'Efficiency',
+        metric_name: 'PR Cycle Time',
         value: 25,
         timestamp: new Date(),
+        unit: 'hours',
+        additional_info: 'Based on X PRs',
         source: 'GitHub',
       },
       {
         id: 'github-pr-size',
-        name: 'PR Size',
+        metric_category: 'Code Quality',
+        metric_name: 'PR Size',
         value: 50,
         timestamp: new Date(),
+        unit: 'lines',
+        additional_info: 'Based on Y PRs',
         source: 'GitHub',
       },
     ];

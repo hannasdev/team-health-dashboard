@@ -36,9 +36,12 @@ describe('MetricsController', () => {
       const mockMetrics: IMetric[] = [
         {
           id: '1',
-          name: 'Metric1',
+          metric_category: 'Efficiency',
+          metric_name: 'Metric1',
           value: 10,
           timestamp: new Date(),
+          unit: 'points',
+          additional_info: '',
           source: 'Source1',
         },
       ];

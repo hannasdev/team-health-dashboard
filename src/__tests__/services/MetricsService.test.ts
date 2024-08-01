@@ -37,25 +37,34 @@ describe('MetricsService', () => {
     const mockSheetMetrics = [
       {
         id: 'sheet-1',
-        name: 'Cycle Time',
+        metric_category: 'Efficiency',
+        metric_name: 'Cycle Time',
         value: 3,
         timestamp: new Date('2023-07-27T10:00:00Z'),
+        unit: 'days',
+        additional_info: '',
         source: 'Google Sheets',
       },
     ];
     const mockGitHubMetrics = [
       {
         id: 'github-1',
-        name: 'PR Cycle Time',
+        metric_category: 'Efficiency',
+        metric_name: 'PR Cycle Time',
         value: 48,
         timestamp: new Date(),
+        unit: 'hours',
+        additional_info: 'Based on X PRs',
         source: 'GitHub',
       },
       {
         id: 'github-2',
-        name: 'PR Size',
+        metric_category: 'Code Quality',
+        metric_name: 'PR Size',
         value: 55,
         timestamp: new Date(),
+        unit: 'lines',
+        additional_info: 'Based on Y PRs',
         source: 'GitHub',
       },
     ];

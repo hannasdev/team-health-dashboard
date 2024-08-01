@@ -20,7 +20,6 @@ describe('GoogleSheetsService', () => {
     };
     mockConfig = {
       GOOGLE_SHEETS_ID: 'fake-sheet-id',
-      // Add other required config properties with mock values
     } as IConfig;
     mockLogger = createMockLogger();
     googleSheetsService = new GoogleSheetsService(
@@ -36,9 +35,23 @@ describe('GoogleSheetsService', () => {
 
   it('should fetch and parse data from Google Sheets', async () => {
     const mockSheetData = [
-      ['Timestamp', 'Metric Name', 'Value'],
-      ['2023-07-27T10:00:00Z', 'Cycle Time', '3'],
-      ['2023-07-27T11:00:00Z', 'WIP', '5'],
+      [
+        'Timestamp',
+        'Metric Category',
+        'Metric Name',
+        'Value',
+        'Unit',
+        'Additional Info',
+      ],
+      [
+        '2023-07-27T10:00:00Z',
+        'Efficiency',
+        'Cycle Time',
+        '3',
+        'days',
+        'Sprint 1',
+      ],
+      ['2023-07-27T11:00:00Z', 'Workflow', 'WIP', '5', 'items', ''],
     ];
 
     mockGoogleSheetsClient.getValues.mockResolvedValue({
@@ -51,13 +64,19 @@ describe('GoogleSheetsService', () => {
     expect(result).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'Cycle Time',
+          metric_category: 'Efficiency',
+          metric_name: 'Cycle Time',
           value: 3,
+          unit: 'days',
+          additional_info: 'Sprint 1',
           source: 'Google Sheets',
         }),
         expect.objectContaining({
-          name: 'WIP',
+          metric_category: 'Workflow',
+          metric_name: 'WIP',
           value: 5,
+          unit: 'items',
+          additional_info: '',
           source: 'Google Sheets',
         }),
       ]),
@@ -65,7 +84,16 @@ describe('GoogleSheetsService', () => {
   });
 
   it('should handle empty sheet data', async () => {
-    const mockEmptySheetData = [['Timestamp', 'Metric Name', 'Value']];
+    const mockEmptySheetData = [
+      [
+        'Timestamp',
+        'Metric Category',
+        'Metric Name',
+        'Value',
+        'Unit',
+        'Additional Info',
+      ],
+    ];
 
     mockGoogleSheetsClient.getValues.mockResolvedValue({
       data: { values: mockEmptySheetData },
@@ -76,12 +104,60 @@ describe('GoogleSheetsService', () => {
     expect(result).toHaveLength(0);
   });
 
-  it('should skip malformed rows', async () => {
+  it('should handle rows with missing optional fields', async () => {
+    const mockSheetData = [
+      [
+        'Timestamp',
+        'Metric Category',
+        'Metric Name',
+        'Value',
+        'Unit',
+        'Additional Info',
+      ],
+      ['2023-07-27T10:00:00Z', 'Efficiency', 'Cycle Time', '3', 'days'],
+      ['2023-07-27T11:00:00Z', 'Workflow', 'WIP', '5'],
+    ];
+
+    mockGoogleSheetsClient.getValues.mockResolvedValue({
+      data: { values: mockSheetData },
+    });
+
+    const result = await googleSheetsService.fetchData();
+
+    expect(result).toHaveLength(2);
+    expect(result).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          metric_category: 'Efficiency',
+          metric_name: 'Cycle Time',
+          value: 3,
+          unit: 'days',
+          additional_info: '',
+        }),
+        expect.objectContaining({
+          metric_category: 'Workflow',
+          metric_name: 'WIP',
+          value: 5,
+          unit: '',
+          additional_info: '',
+        }),
+      ]),
+    );
+  });
+
+  it('should skip rows with missing essential fields', async () => {
     const mockMalformedSheetData = [
-      ['Timestamp', 'Metric Name', 'Value'],
-      ['2023-07-27T10:00:00Z', 'Cycle Time', '3'],
-      ['2023-07-27T11:00:00Z', 'WIP'],
-      ['2023-07-27T12:00:00Z', 'Lead Time', '7'],
+      [
+        'Timestamp',
+        'Metric Category',
+        'Metric Name',
+        'Value',
+        'Unit',
+        'Additional Info',
+      ],
+      ['2023-07-27T10:00:00Z', 'Efficiency', 'Cycle Time', '3', 'days'],
+      ['2023-07-27T11:00:00Z', 'Workflow'],
+      ['2023-07-27T12:00:00Z', 'Quality', 'Bug Count', '7', 'bugs'],
     ];
 
     mockGoogleSheetsClient.getValues.mockResolvedValue({
@@ -94,25 +170,32 @@ describe('GoogleSheetsService', () => {
     expect(result).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: 'Cycle Time',
+          metric_category: 'Efficiency',
+          metric_name: 'Cycle Time',
           value: 3,
-          source: 'Google Sheets',
         }),
         expect.objectContaining({
-          name: 'Lead Time',
+          metric_category: 'Quality',
+          metric_name: 'Bug Count',
           value: 7,
-          source: 'Google Sheets',
         }),
       ]),
     );
   });
 
-  it('should log warning for malformed rows', async () => {
+  it('should log warning for rows with missing essential fields', async () => {
     const mockMalformedSheetData = [
-      ['Timestamp', 'Metric Name', 'Value'],
-      ['2023-07-27T10:00:00Z', 'Cycle Time', '3'],
-      ['2023-07-27T11:00:00Z', 'WIP'],
-      ['2023-07-27T12:00:00Z', 'Lead Time', '7'],
+      [
+        'Timestamp',
+        'Metric Category',
+        'Metric Name',
+        'Value',
+        'Unit',
+        'Additional Info',
+      ],
+      ['2023-07-27T10:00:00Z', 'Efficiency', 'Cycle Time', '3', 'days'],
+      ['2023-07-27T11:00:00Z', 'Workflow'],
+      ['2023-07-27T12:00:00Z', 'Quality', 'Bug Count', '7', 'bugs'],
     ];
 
     mockGoogleSheetsClient.getValues.mockResolvedValue({
@@ -122,7 +205,9 @@ describe('GoogleSheetsService', () => {
     await googleSheetsService.fetchData();
 
     expect(mockLogger.warn).toHaveBeenCalledWith(
-      'Skipping malformed row: 2023-07-27T11:00:00Z,WIP',
+      expect.stringContaining(
+        'Skipping row with insufficient data: 2023-07-27T11:00:00Z,Workflow',
+      ),
     );
   });
 
