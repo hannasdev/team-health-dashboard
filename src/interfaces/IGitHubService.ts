@@ -2,5 +2,13 @@
 import { IMetric } from './IMetricModel';
 
 export interface IGitHubService {
-  fetchData(startDate?: Date, endDate?: Date): Promise<IMetric[]>;
+  fetchData(
+    progressCallback?: (
+      progress: number,
+      message: string,
+      details?: any,
+    ) => void,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<IMetric[]>;
 }

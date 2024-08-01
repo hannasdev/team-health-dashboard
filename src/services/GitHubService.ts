@@ -30,20 +30,37 @@ export class GitHubService implements IGitHubService {
     }
   }
 
-  async fetchData(startDate?: Date, endDate?: Date): Promise<IMetric[]> {
+  async fetchData(
+    progressCallback?: (
+      progress: number,
+      message: string,
+      details?: any,
+    ) => void,
+    startDate?: Date,
+    endDate?: Date,
+  ): Promise<IMetric[]> {
     const cacheKey = this.getCacheKey(startDate, endDate);
     const cachedData = this.cacheService.get<IMetric[]>(cacheKey);
     if (cachedData) {
       this.logger.info('Returning cached GitHub data');
+      progressCallback?.(100, 'Retrieved cached GitHub data', { cached: true });
       return cachedData;
     }
 
     try {
+      progressCallback?.(0, 'Starting to fetch GitHub data');
       this.logger.info(`Fetching GitHub data for ${this.owner}/${this.repo}`);
 
-      const pullRequests = await this.streamPullRequests(startDate, endDate);
+      const pullRequests = await this.streamPullRequests(
+        progressCallback,
+        startDate,
+        endDate,
+      );
 
       this.logger.info(`Processed ${pullRequests.length} pull requests`);
+      progressCallback?.(80, `Processed ${pullRequests.length} pull requests`, {
+        totalPullRequests: pullRequests.length,
+      });
 
       const prCycleTime = this.calculateAveragePRCycleTime(pullRequests);
       const prSize = this.calculateAveragePRSize(pullRequests);
@@ -66,14 +83,28 @@ export class GitHubService implements IGitHubService {
       ];
 
       this.cacheService.set(cacheKey, metrics);
+      progressCallback?.(100, 'Finished processing GitHub data', {
+        totalPullRequests: pullRequests.length,
+      });
       return metrics;
     } catch (error) {
       this.logger.error('Error fetching data from GitHub:', error as Error);
+      progressCallback?.(100, 'Error fetching data from GitHub', {
+        error: true,
+      });
       throw new Error(`Failed to fetch data from GitHub: ${error}`);
     }
   }
 
-  private async *pullRequestGenerator(startDate?: Date, endDate?: Date) {
+  private async *pullRequestGenerator(
+    progressCallback?: (
+      progress: number,
+      message: string,
+      details?: any,
+    ) => void,
+    startDate?: Date,
+    endDate?: Date,
+  ) {
     const params: any = {
       owner: this.owner,
       repo: this.repo,
@@ -87,10 +118,19 @@ export class GitHubService implements IGitHubService {
       params.since = startDate.toISOString();
     }
 
+    let pageCount = 0;
+    let totalPullRequests = 0;
     for await (const response of this.client.paginate(
       'GET /repos/{owner}/{repo}/pulls',
       params,
     )) {
+      pageCount++;
+      totalPullRequests += response.data.length;
+      progressCallback?.(
+        20 + pageCount * 5,
+        `Fetching page ${pageCount} of pull requests`,
+        { currentPage: pageCount, totalPullRequests },
+      );
       for (const pr of response.data) {
         if (endDate && new Date(pr.updated_at) > endDate) {
           continue;
@@ -107,11 +147,20 @@ export class GitHubService implements IGitHubService {
   }
 
   private async streamPullRequests(
+    progressCallback?: (
+      progress: number,
+      message: string,
+      details?: any,
+    ) => void,
     startDate?: Date,
     endDate?: Date,
   ): Promise<any[]> {
     const pullRequests: any[] = [];
-    for await (const pr of this.pullRequestGenerator(startDate, endDate)) {
+    for await (const pr of this.pullRequestGenerator(
+      progressCallback,
+      startDate,
+      endDate,
+    )) {
       pullRequests.push(pr);
     }
     return pullRequests;

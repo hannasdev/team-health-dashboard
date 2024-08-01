@@ -2,7 +2,10 @@
 import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
-import type { IMetricsService } from '../interfaces/IMetricsService';
+import type {
+  IMetricsService,
+  ProgressCallback,
+} from '../interfaces/IMetricsService';
 import type { IMetric } from '../interfaces/IMetricModel';
 import { Logger } from '../utils/logger';
 
@@ -14,27 +17,26 @@ export class MetricsController {
   ) {}
 
   public getAllMetrics = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const result: {
-        metrics: IMetric[];
-        errors: { source: string; message: string }[];
-      } = await this.metricsService.getAllMetrics();
+    const sendEvent = (event: string, data: any) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
 
-      if (result.errors.length > 0) {
-        res.status(207).json({
-          success: true,
-          data: result.metrics,
-          errors: result.errors,
-        });
-      } else {
-        res.status(200).json({
-          success: true,
-          data: result.metrics,
-        });
-      }
+    try {
+      const result = await this.metricsService.getAllMetrics(
+        (progress: number, message: string, details?: Record<string, any>) => {
+          sendEvent('progress', { progress, message, ...details });
+        },
+      );
+
+      sendEvent('result', {
+        success: true,
+        data: result.metrics,
+        errors: result.errors,
+        status: result.errors.length > 0 ? 207 : 200,
+      });
     } catch (error) {
       this.logger.error('Error in MetricsController:', error as Error);
-      res.status(500).json({
+      sendEvent('error', {
         success: false,
         errors: [
           {
@@ -45,6 +47,7 @@ export class MetricsController {
                 : 'An unknown error occurred',
           },
         ],
+        status: 500,
       });
     }
   };

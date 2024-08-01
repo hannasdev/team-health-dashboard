@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SSE Test</title>
+  </head>
+  <body>
+    <div id="messages"></div>
+
+    <script>
+      function connect() {
+        const eventSource = new EventSource(
+          'http://localhost:3000/api/metrics',
+        );
+
+        eventSource.onopen = function () {
+          console.log('Connection to server opened.');
+        };
+
+        eventSource.onerror = function (error) {
+          console.error('EventSource failed:', error);
+          eventSource.close();
+          setTimeout(connect, 5000); // Try to reconnect after 5 seconds
+        };
+
+        eventSource.onmessage = function (event) {
+          const message = JSON.parse(event.data);
+          document.getElementById('messages').innerHTML += `<p>${JSON.stringify(
+            message,
+          )}</p>`;
+        };
+
+        eventSource.addEventListener('progress', function (event) {
+          const progress = JSON.parse(event.data);
+          console.log('Progress:', progress);
+        });
+
+        eventSource.addEventListener('result', function (event) {
+          const result = JSON.parse(event.data);
+          console.log('Result:', result);
+          eventSource.close();
+        });
+
+        eventSource.addEventListener('error', function (event) {
+          const error = JSON.parse(event.data);
+          console.error('Error:', error);
+          eventSource.close();
+        });
+      }
+
+      connect();
+    </script>
+  </body>
+</html>

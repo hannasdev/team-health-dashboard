@@ -19,3 +19,4 @@ console.log(
 console.log('GITHUB_TOKEN:', process.env.GITHUB_TOKEN ? 'Set' : 'Not set');
 console.log('GITHUB_OWNER:', process.env.GITHUB_OWNER);
 console.log('GITHUB_REPO:', process.env.GITHUB_REPO);
+console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN || '*');

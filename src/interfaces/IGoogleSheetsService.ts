@@ -1,4 +1,8 @@
 // src/interfaces/IGoogleSheetsService.ts
-import { IDataService } from './IDataService';
+import { IMetric } from './IMetricModel';
 
-export interface IGoogleSheetsService extends IDataService {}
+export interface IGoogleSheetsService {
+  fetchData(
+    progressCallback?: (progress: number, message: string) => void,
+  ): Promise<IMetric[]>;
+}

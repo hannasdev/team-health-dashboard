@@ -22,21 +22,31 @@ export class GoogleSheetsService implements IGoogleSheetsService {
     this.spreadsheetId = this.configService.GOOGLE_SHEETS_ID;
   }
 
-  async fetchData(): Promise<IMetric[]> {
+  async fetchData(
+    progressCallback?: (progress: number, message: string) => void,
+  ): Promise<IMetric[]> {
     try {
+      progressCallback?.(0, 'Starting to fetch data from Google Sheets');
+
       const response = await this.googleSheetsClient.getValues(
         this.spreadsheetId,
         'A:C', // Adjust this range as needed
       );
 
+      progressCallback?.(
+        50,
+        'Data fetched from Google Sheets, processing rows',
+      );
+
       const rows = response.data.values;
 
       if (!rows || rows.length <= 1) {
+        progressCallback?.(100, 'No data found in Google Sheets');
         return [];
       }
 
       // Skip the header row
-      return rows
+      const metrics = rows
         .slice(1)
         .map((row: any[], index: number) => {
           if (row.length !== 3) {
@@ -54,11 +64,15 @@ export class GoogleSheetsService implements IGoogleSheetsService {
           };
         })
         .filter((metric: IMetric | null): metric is IMetric => metric !== null);
+
+      progressCallback?.(100, 'Finished processing Google Sheets data');
+      return metrics;
     } catch (error) {
       this.logger.error(
         'Error fetching data from Google Sheets:',
         error as Error,
       );
+      progressCallback?.(100, 'Error fetching data from Google Sheets');
       throw new Error(
         `Failed to fetch data from Google Sheets: ${
           error instanceof Error ? error.message : 'Unknown error'

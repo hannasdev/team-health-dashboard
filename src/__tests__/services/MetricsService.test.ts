@@ -1,3 +1,4 @@
+// src/__tests__/services/MetricsService.test.ts
 import 'reflect-metadata';
 import { MetricsService } from '../../services/MetricsService';
 import { IGoogleSheetsService } from '../../interfaces/IGoogleSheetsService';
@@ -32,7 +33,7 @@ describe('MetricsService', () => {
     jest.clearAllMocks();
   });
 
-  it('should fetch and combine metrics from Google Sheets and GitHub', async () => {
+  it('should fetch and combine metrics from Google Sheets and GitHub with progress updates', async () => {
     const mockSheetMetrics = [
       {
         id: 'sheet-1',
@@ -59,25 +60,62 @@ describe('MetricsService', () => {
       },
     ];
 
-    mockGoogleSheetsService.fetchData.mockResolvedValue(mockSheetMetrics);
-    mockGitHubService.fetchData.mockResolvedValue(mockGitHubMetrics);
+    mockGoogleSheetsService.fetchData.mockImplementation(async callback => {
+      if (callback) {
+        callback(50, 'Google Sheets data fetched');
+      }
+      return mockSheetMetrics;
+    });
 
-    const result = await metricsService.getAllMetrics();
+    mockGitHubService.fetchData.mockImplementation(async callback => {
+      if (callback) {
+        callback(50, 'GitHub data fetched');
+      }
+      return mockGitHubMetrics;
+    });
+
+    const mockProgressCallback = jest.fn();
+
+    const result = await metricsService.getAllMetrics(mockProgressCallback);
 
     expect(result.metrics).toHaveLength(3);
     expect(result.metrics).toEqual(
       expect.arrayContaining([...mockSheetMetrics, ...mockGitHubMetrics]),
     );
     expect(result.errors).toHaveLength(0);
+
+    expect(mockProgressCallback).toHaveBeenCalledTimes(4);
+    expect(mockProgressCallback).toHaveBeenNthCalledWith(
+      1,
+      0,
+      'Google Sheets: Starting to fetch Google Sheets data',
+    );
+    expect(mockProgressCallback).toHaveBeenNthCalledWith(
+      2,
+      25,
+      'Google Sheets: Google Sheets data fetched',
+    );
+    expect(mockProgressCallback).toHaveBeenNthCalledWith(
+      3,
+      50,
+      'GitHub: Starting to fetch GitHub data',
+    );
+    expect(mockProgressCallback).toHaveBeenNthCalledWith(
+      4,
+      75,
+      'GitHub: GitHub data fetched',
+    );
   });
 
-  it('should handle errors from Google Sheets service', async () => {
+  it('should handle errors from Google Sheets service with progress updates', async () => {
     mockGoogleSheetsService.fetchData.mockRejectedValue(
       new Error('Google Sheets API error'),
     );
     mockGitHubService.fetchData.mockResolvedValue([]);
 
-    const result = await metricsService.getAllMetrics();
+    const mockProgressCallback = jest.fn();
+
+    const result = await metricsService.getAllMetrics(mockProgressCallback);
 
     expect(result.metrics).toHaveLength(0);
     expect(result.errors).toHaveLength(1);
@@ -85,15 +123,23 @@ describe('MetricsService', () => {
       source: 'Google Sheets',
       message: 'Google Sheets API error',
     });
+
+    // Progress callback should still be called for GitHub service
+    expect(mockProgressCallback).toHaveBeenCalledWith(
+      50,
+      'GitHub: Starting to fetch GitHub data',
+    );
   });
 
-  it('should handle errors from GitHub service', async () => {
+  it('should handle errors from GitHub service with progress updates', async () => {
     mockGoogleSheetsService.fetchData.mockResolvedValue([]);
     mockGitHubService.fetchData.mockRejectedValue(
       new Error('GitHub API error'),
     );
 
-    const result = await metricsService.getAllMetrics();
+    const mockProgressCallback = jest.fn();
+
+    const result = await metricsService.getAllMetrics(mockProgressCallback);
 
     expect(result.metrics).toHaveLength(0);
     expect(result.errors).toHaveLength(1);
@@ -101,9 +147,15 @@ describe('MetricsService', () => {
       source: 'GitHub',
       message: 'GitHub API error',
     });
+
+    // Progress callback should still be called for Google Sheets service
+    expect(mockProgressCallback).toHaveBeenCalledWith(
+      0,
+      'Google Sheets: Starting to fetch Google Sheets data',
+    );
   });
 
-  it('should handle errors from both services', async () => {
+  it('should handle errors from both services with progress updates', async () => {
     mockGoogleSheetsService.fetchData.mockRejectedValue(
       new Error('Google Sheets API error'),
     );
@@ -111,7 +163,9 @@ describe('MetricsService', () => {
       new Error('GitHub API error'),
     );
 
-    const result = await metricsService.getAllMetrics();
+    const mockProgressCallback = jest.fn();
+
+    const result = await metricsService.getAllMetrics(mockProgressCallback);
 
     expect(result.metrics).toHaveLength(0);
     expect(result.errors).toHaveLength(2);
@@ -127,6 +181,16 @@ describe('MetricsService', () => {
         },
       ]),
     );
+
+    // Progress callbacks should still be called for both services
+    expect(mockProgressCallback).toHaveBeenCalledWith(
+      0,
+      'Google Sheets: Starting to fetch Google Sheets data',
+    );
+    expect(mockProgressCallback).toHaveBeenCalledWith(
+      50,
+      'GitHub: Starting to fetch GitHub data',
+    );
   });
 
   it('should log errors from services', async () => {
@@ -136,7 +200,9 @@ describe('MetricsService', () => {
     mockGoogleSheetsService.fetchData.mockRejectedValue(googleSheetsError);
     mockGitHubService.fetchData.mockRejectedValue(gitHubError);
 
-    await metricsService.getAllMetrics();
+    const mockProgressCallback = jest.fn();
+
+    await metricsService.getAllMetrics(mockProgressCallback);
 
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Error fetching Google Sheets data:',
