@@ -1,0 +1,147 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "sheet-0",
+      "metric_category": "Efficiency",
+      "metric_name": "Cycle Time",
+      "value": 3,
+      "timestamp": "2023-07-27T10:00:00.000Z",
+      "unit": "days",
+      "additional_info": "",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-1",
+      "metric_category": "Workflow",
+      "metric_name": "WIP Items",
+      "value": 5,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "items",
+      "additional_info": "",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-2",
+      "metric_category": "Efficiency",
+      "metric_name": "Lead Time",
+      "value": 7,
+      "timestamp": "2023-07-27T12:00:00.000Z",
+      "unit": "days",
+      "additional_info": "",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-3",
+      "metric_category": "Sprint Metrics",
+      "metric_name": "Sprint Velocity",
+      "value": 45,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "points",
+      "additional_info": "Sprint 23",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-4",
+      "metric_category": "Sprint Metrics",
+      "metric_name": "Burndown",
+      "value": 30,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "percent",
+      "additional_info": "Sprint 23, Day 3",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-5",
+      "metric_category": "Efficiency",
+      "metric_name": "Cycle Time",
+      "value": 3.5,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "days",
+      "additional_info": "",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-6",
+      "metric_category": "Efficiency",
+      "metric_name": "Code Review Time",
+      "value": 1.2,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "days",
+      "additional_info": "",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-7",
+      "metric_category": "Code Quality",
+      "metric_name": "PR Size (avg)",
+      "value": 250,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "lines",
+      "additional_info": "",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-8",
+      "metric_category": "Code Quality",
+      "metric_name": "Build Success",
+      "value": 95,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "percent",
+      "additional_info": "",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-9",
+      "metric_category": "Quality",
+      "metric_name": "Bug Resolution",
+      "value": 2.5,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "days",
+      "additional_info": "",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-10",
+      "metric_category": "Sprint Metrics",
+      "metric_name": "Goal Achievement",
+      "value": 80,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "percent",
+      "additional_info": "Sprint 23",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "sheet-11",
+      "metric_category": "Team Health",
+      "metric_name": "Happiness Index",
+      "value": 4.2,
+      "timestamp": "2023-08-01T00:00:00.000Z",
+      "unit": "score",
+      "additional_info": "Scale: 1-5",
+      "source": "Google Sheets"
+    },
+    {
+      "id": "github-pr-cycle-time",
+      "metric_category": "Efficiency",
+      "metric_name": "PR Cycle Time",
+      "value": 40,
+      "timestamp": "2024-08-01T08:22:00.849Z",
+      "unit": "hours",
+      "additional_info": "Based on 3080 PRs",
+      "source": "GitHub"
+    },
+    {
+      "id": "github-pr-size",
+      "metric_category": "Code Quality",
+      "metric_name": "PR Size",
+      "value": 0,
+      "timestamp": "2024-08-01T08:22:00.849Z",
+      "unit": "lines",
+      "additional_info": "Based on 3080 PRs",
+      "source": "GitHub"
+    }
+  ],
+  "errors": [],
+  "status": 200
+}

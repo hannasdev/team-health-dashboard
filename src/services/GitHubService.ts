@@ -13,6 +13,7 @@ import { Logger } from '../utils/logger';
 export class GitHubService implements IGitHubService {
   private owner: string;
   private repo: string;
+  private timeout: number = 300000; // 5 minutes timeout
 
   constructor(
     @inject(TYPES.GitHubClient) private client: IGitHubClient,
@@ -34,28 +35,45 @@ export class GitHubService implements IGitHubService {
     progressCallback?: (progress: number, message: string) => void,
   ): Promise<IMetric[]> {
     const cacheKey = this.getCacheKey();
-    const cachedData = this.cacheService.get<IMetric[]>(cacheKey);
+    const cachedData = this.cacheService.get<{
+      metrics: IMetric[];
+      lastProcessedPage: number;
+      lastProcessedPR: number;
+    }>(cacheKey);
+
+    let metrics: IMetric[] = [];
+    let lastProcessedPage = 0;
+    let lastProcessedPR = 0;
 
     if (cachedData) {
-      return cachedData;
+      metrics = cachedData.metrics;
+      lastProcessedPage = cachedData.lastProcessedPage;
+      lastProcessedPR = cachedData.lastProcessedPR;
+      progressCallback?.(50, `Resuming from page ${lastProcessedPage + 1}`);
+    } else {
+      progressCallback?.(0, 'Starting to fetch GitHub data');
     }
 
     try {
-      progressCallback?.(0, 'Starting to fetch GitHub data');
+      const pullRequests = await this.streamPullRequests(
+        progressCallback,
+        lastProcessedPage,
+        lastProcessedPR,
+      );
+      this.logger.info(`Fetched ${pullRequests.length} pull requests`);
+      progressCallback?.(75, `Fetched ${pullRequests.length} pull requests`);
 
-      const pullRequests = await this.streamPullRequests(progressCallback);
-      progressCallback?.(50, 'Fetched pull requests');
-
-      // TODO: For simplicity, we're not implementing separate fetches for issues and workflows
-      // You would need to implement similar streaming methods for these
-
-      const metrics: IMetric[] = [
+      metrics = [
+        ...metrics,
         this.calculatePRCycleTime(pullRequests),
         this.calculatePRSize(pullRequests),
-        // TODO: Add other metric calculations here
       ];
 
-      this.cacheService.set(cacheKey, metrics);
+      this.cacheService.set(cacheKey, {
+        metrics,
+        lastProcessedPage,
+        lastProcessedPR,
+      });
       progressCallback?.(100, 'Finished processing GitHub data');
 
       return metrics;
@@ -73,6 +91,8 @@ export class GitHubService implements IGitHubService {
       message: string,
       details?: any,
     ) => void,
+    startPage: number = 0,
+    startPR: number = 0,
   ) {
     const params = {
       owner: this.owner,
@@ -81,24 +101,70 @@ export class GitHubService implements IGitHubService {
       sort: 'updated',
       direction: 'desc',
       per_page: 100,
+      page: startPage + 1,
     };
 
-    let pageCount = 0;
-    let totalPullRequests = 0;
-    for await (const response of this.client.paginate(
-      'GET /repos/{owner}/{repo}/pulls',
-      params,
-    )) {
-      pageCount++;
-      totalPullRequests += response.data.length;
-      progressCallback?.(
-        20 + pageCount * 5,
-        `Fetching page ${pageCount} of pull requests`,
-        { currentPage: pageCount, totalPullRequests },
-      );
-      for (const pr of response.data) {
-        yield pr;
+    let pageCount = startPage;
+    let totalPullRequests = startPR;
+    const startTime = Date.now();
+
+    try {
+      for await (const response of this.client.paginate(
+        'GET /repos/{owner}/{repo}/pulls',
+        params,
+      )) {
+        pageCount++;
+        totalPullRequests += response.data.length;
+        this.logger.info(
+          `Fetched page ${pageCount} with ${response.data.length} PRs. Total: ${totalPullRequests}`,
+        );
+        progressCallback?.(
+          40 + pageCount * 2,
+          `Fetching page ${pageCount} of pull requests. Total: ${totalPullRequests}`,
+          { currentPage: pageCount, totalPullRequests },
+        );
+
+        for (const pr of response.data) {
+          if (Date.now() - startTime > this.timeout) {
+            this.logger.warn('Operation timed out, saving progress');
+            return;
+          }
+
+          try {
+            const detailedPR = await this.fetchDetailedPR(pr.number);
+            yield detailedPR;
+          } catch (error) {
+            this.logger.error(
+              `Error fetching detailed PR #${pr.number}: ${error}`,
+            );
+          }
+        }
+
+        // Save progress after each page
+        this.saveProgress(pageCount, totalPullRequests);
       }
+    } catch (error) {
+      this.logger.error(`Error in pullRequestGenerator: ${error}`);
+      throw error;
+    }
+  }
+
+  private async fetchDetailedPR(pullNumber: number): Promise<any> {
+    try {
+      for await (const response of this.client.paginate(
+        'GET /repos/{owner}/{repo}/pulls/{pull_number}',
+        {
+          owner: this.owner,
+          repo: this.repo,
+          pull_number: pullNumber,
+        },
+      )) {
+        return response.data;
+      }
+      throw new Error(`No data found for PR #${pullNumber}`);
+    } catch (error) {
+      this.logger.error(`Error fetching detailed PR #${pullNumber}: ${error}`);
+      throw error;
     }
   }
 
@@ -108,12 +174,38 @@ export class GitHubService implements IGitHubService {
       message: string,
       details?: any,
     ) => void,
+    startPage: number = 0,
+    startPR: number = 0,
   ): Promise<any[]> {
     const pullRequests: any[] = [];
-    for await (const pr of this.pullRequestGenerator(progressCallback)) {
-      pullRequests.push(pr);
+    try {
+      for await (const pr of this.pullRequestGenerator(
+        progressCallback,
+        startPage,
+        startPR,
+      )) {
+        pullRequests.push(pr);
+        if (pullRequests.length % 100 === 0) {
+          this.logger.info(`Processed ${pullRequests.length} pull requests`);
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error in streamPullRequests: ${error}`);
+      throw error;
     }
     return pullRequests;
+  }
+
+  private saveProgress(
+    lastProcessedPage: number,
+    lastProcessedPR: number,
+  ): void {
+    const cacheKey = this.getProgressCacheKey();
+    this.cacheService.set(cacheKey, { lastProcessedPage, lastProcessedPR });
+  }
+
+  private getProgressCacheKey(): string {
+    return `github-${this.owner}/${this.repo}-progress`;
   }
 
   private getCacheKey(): string {
@@ -166,10 +258,15 @@ export class GitHubService implements IGitHubService {
   private calculateAveragePRSize(pullRequests: any[]): number {
     if (pullRequests.length === 0) return 0;
 
-    const totalSize = pullRequests.reduce(
-      (sum, pr) => sum + (pr.additions || 0) + (pr.deletions || 0),
-      0,
-    );
+    const totalSize = pullRequests.reduce((sum, pr) => {
+      const additions = pr.additions || 0;
+      const deletions = pr.deletions || 0;
+      this.logger.info(
+        `PR #${pr.number}: additions=${additions}, deletions=${deletions}`,
+      );
+      return sum + additions + deletions;
+    }, 0);
+
     return Math.round(totalSize / pullRequests.length);
   }
 }
