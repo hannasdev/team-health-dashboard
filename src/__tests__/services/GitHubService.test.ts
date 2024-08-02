@@ -29,6 +29,22 @@ class MockCacheService implements ICacheService {
   }
 }
 
+function createMockAsyncIterator<T>(items: T[]): AsyncIterableIterator<T> {
+  let index = 0;
+  return {
+    async next() {
+      if (index < items.length) {
+        return { value: items[index++], done: false };
+      } else {
+        return { value: undefined as any, done: true };
+      }
+    },
+    [Symbol.asyncIterator]() {
+      return this;
+    },
+  };
+}
+
 describe('GitHubService', () => {
   let githubService: GitHubService;
   let mockGitHubClient: jest.Mocked<IGitHubClient>;
@@ -57,28 +73,35 @@ describe('GitHubService', () => {
       mockCacheService,
     );
     mockGitHubClient.request.mockResolvedValue({ data: { total_count: 3 } });
+
+    // Mock the current date
+    jest.useFakeTimers().setSystemTime(new Date('2024-08-02'));
   });
 
-  it('should fetch and calculate metrics from GitHub', async () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('should fetch and calculate metrics from GitHub within the correct date range', async () => {
     const mockPullRequests = [
       {
         number: 1,
-        created_at: '2023-01-01T00:00:00Z',
-        merged_at: '2023-01-02T00:00:00Z',
+        created_at: '2024-07-01T00:00:00Z',
+        merged_at: '2024-07-02T00:00:00Z',
         additions: 50,
         deletions: 20,
       },
       {
         number: 2,
-        created_at: '2023-01-02T00:00:00Z',
-        merged_at: '2023-01-03T12:00:00Z',
+        created_at: '2024-07-15T00:00:00Z',
+        merged_at: '2024-07-16T12:00:00Z',
         additions: 30,
         deletions: 10,
       },
     ];
 
     mockGitHubClient.paginate.iterator.mockReturnValue(
-      createAsyncIterator([{ data: mockPullRequests }]),
+      createMockAsyncIterator([{ data: mockPullRequests }]),
     );
     mockGitHubClient.request.mockResolvedValue({ data: { total_count: 2 } });
 
@@ -90,8 +113,158 @@ describe('GitHubService', () => {
     expect(result.timePeriod).toBe(90);
   });
 
+  it('should handle PRs outside the date range', async () => {
+    const mockPullRequests = [
+      {
+        number: 1,
+        created_at: '2024-07-01T00:00:00Z',
+        merged_at: '2024-07-02T00:00:00Z',
+        additions: 50,
+        deletions: 20,
+      },
+      {
+        number: 2,
+        created_at: '2024-04-15T00:00:00Z', // Outside 90-day range
+        merged_at: '2024-04-16T12:00:00Z',
+        additions: 30,
+        deletions: 10,
+      },
+    ];
+
+    mockGitHubClient.paginate.iterator.mockReturnValue(
+      createMockAsyncIterator([{ data: mockPullRequests }]),
+    );
+    mockGitHubClient.request.mockResolvedValue({ data: { total_count: 2 } });
+
+    const result = await githubService.fetchData();
+
+    expect(result.metrics).toHaveLength(2);
+    expect(result.totalPRs).toBe(2);
+    expect(result.fetchedPRs).toBe(1); // Only one PR should be within range
+  });
+
+  it('should stop pagination when reaching PRs outside the date range', async () => {
+    const mockPullRequests = [
+      {
+        number: 1,
+        created_at: '2024-07-01T00:00:00Z',
+        merged_at: '2024-07-02T00:00:00Z',
+        additions: 50,
+        deletions: 20,
+      },
+      {
+        number: 2,
+        created_at: '2024-04-15T00:00:00Z', // Outside 90-day range
+        merged_at: '2024-04-16T12:00:00Z',
+        additions: 30,
+        deletions: 10,
+      },
+    ];
+
+    mockGitHubClient.paginate.iterator.mockReturnValue(
+      createMockAsyncIterator([{ data: mockPullRequests }, { data: [] }]),
+    );
+    mockGitHubClient.request.mockResolvedValue({ data: { total_count: 2 } });
+
+    await githubService.fetchData();
+
+    expect(mockGitHubClient.paginate.iterator).toHaveBeenCalledTimes(1);
+  });
+
+  it('should handle timeout during PR fetching', async () => {
+    const mockPullRequests = Array(200).fill({
+      number: 1,
+      created_at: '2024-07-01T00:00:00Z',
+      merged_at: '2024-07-02T00:00:00Z',
+      additions: 50,
+      deletions: 20,
+    });
+
+    mockGitHubClient.paginate.iterator.mockReturnValue(
+      createMockAsyncIterator([
+        { data: mockPullRequests },
+        { data: mockPullRequests.slice(0, 100) }, // Simulate partial data on second call
+      ]),
+    );
+    mockGitHubClient.request.mockResolvedValue({ data: { total_count: 200 } });
+
+    // Mock Date.now to simulate timeout after first iteration
+    const originalDateNow = Date.now;
+    const mockedDateNow = jest
+      .fn(() => 0)
+      .mockReturnValueOnce(0)
+      .mockReturnValue(600000) as jest.MockedFunction<typeof Date.now>;
+    Date.now = mockedDateNow;
+
+    const result = await githubService.fetchData();
+
+    expect(result.fetchedPRs).toBeGreaterThan(0);
+    expect(result.fetchedPRs).toBeLessThanOrEqual(200);
+    expect(mockLogger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('Operation timed out'),
+    );
+
+    // Restore original Date.now
+    Date.now = originalDateNow;
+  });
+
+  it('should use the correct date range in getTotalPRCount', async () => {
+    mockGitHubClient.paginate.iterator.mockReturnValue(
+      createMockAsyncIterator([{ data: [] }]),
+    );
+
+    await githubService.fetchData();
+
+    expect(mockGitHubClient.request).toHaveBeenCalledWith(
+      'GET /search/issues',
+      expect.objectContaining({
+        q: expect.stringContaining('created:2024-05-04..2024-08-02'),
+      }),
+    );
+  });
+
+  it('should update progress correctly', async () => {
+    const mockProgressCallback = jest.fn();
+    const mockPullRequests = Array(100).fill({
+      number: 1,
+      created_at: '2024-07-01T00:00:00Z',
+      merged_at: '2024-07-02T00:00:00Z',
+      additions: 50,
+      deletions: 20,
+    });
+
+    mockGitHubClient.paginate.iterator.mockReturnValue(
+      createMockAsyncIterator([{ data: mockPullRequests }]),
+    );
+    mockGitHubClient.request.mockResolvedValue({ data: { total_count: 100 } });
+
+    await githubService.fetchData(mockProgressCallback);
+
+    expect(mockProgressCallback).toHaveBeenCalled();
+
+    // Check for the initial progress call
+    expect(mockProgressCallback).toHaveBeenCalledWith(
+      0,
+      'Starting to fetch GitHub data',
+    );
+
+    // Check for the final progress call
+    expect(mockProgressCallback).toHaveBeenCalledWith(
+      100,
+      'Finished processing GitHub data',
+    );
+
+    // Check for a progress update during fetching
+    const fetchingProgressCall = mockProgressCallback.mock.calls.find(
+      call => typeof call[1] === 'string' && call[1].includes('Fetched'),
+    );
+    expect(fetchingProgressCall).toBeTruthy();
+  });
+
   it('should handle empty pull request data', async () => {
-    mockGitHubClient.paginate.iterator.mockReturnValue(createAsyncIterator([]));
+    mockGitHubClient.paginate.iterator.mockReturnValue(
+      createMockAsyncIterator([]),
+    );
     mockGitHubClient.request.mockResolvedValue({ data: { total_count: 0 } });
 
     const result = await githubService.fetchData();
@@ -127,7 +300,7 @@ describe('GitHubService', () => {
     ];
 
     mockGitHubClient.paginate.iterator.mockReturnValue(
-      createAsyncIterator([{ data: mockPullRequests }]),
+      createMockAsyncIterator([{ data: mockPullRequests }]),
     );
 
     // Mock getTotalPRCount
@@ -219,19 +392,3 @@ describe('GitHubService', () => {
     expect(mockGitHubClient.request).not.toHaveBeenCalled();
   });
 });
-
-function createAsyncIterator<T>(items: T[]): AsyncIterableIterator<T> {
-  let index = 0;
-  return {
-    async next() {
-      if (index < items.length) {
-        return { value: items[index++], done: false };
-      } else {
-        return { value: undefined as any, done: true };
-      }
-    },
-    [Symbol.asyncIterator]() {
-      return this;
-    },
-  };
-}

@@ -38,6 +38,7 @@ export class GitHubService extends BaseService implements IGitHubService {
   private owner: string;
   private repo: string;
   private timeout: number = 300000; // 5 minutes timeout
+  private startTime: number;
 
   constructor(
     @inject(TYPES.GitHubClient) private client: IGitHubClient,
@@ -54,6 +55,7 @@ export class GitHubService extends BaseService implements IGitHubService {
     if (this.repo.includes('/')) {
       [this.owner, this.repo] = this.repo.split('/');
     }
+    this.startTime = Date.now();
   }
 
   protected getCacheKey(timePeriod: number): string {
@@ -135,6 +137,8 @@ export class GitHubService extends BaseService implements IGitHubService {
       progressCallback?.(10, `Total PRs to fetch: ${totalPRs}`);
     }
 
+    this.startTime = Date.now(); // Add this line
+
     try {
       const pullRequests = await this.streamPullRequests(
         progressCallback,
@@ -161,7 +165,7 @@ export class GitHubService extends BaseService implements IGitHubService {
       this.cacheService.set(this.getProgressCacheKey(timePeriod), {
         metrics,
         lastProcessedPage,
-        lastProcessedPR,
+        lastProcessedPR: fetchedPRs,
         totalPRs,
         fetchedPRs,
       });
@@ -185,18 +189,15 @@ export class GitHubService extends BaseService implements IGitHubService {
     timePeriod: number,
     totalPRs: number,
   ) {
-    const since = new Date(
-      Date.now() - timePeriod * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    const { since, until } = this.getDateRange(timePeriod);
     const params = {
       owner: this.owner,
       repo: this.repo,
       state: 'all',
-      sort: 'updated',
+      sort: 'created',
       direction: 'desc',
       per_page: 100,
       page: startPage + 1,
-      since,
     };
 
     let pageCount = startPage;
@@ -209,34 +210,80 @@ export class GitHubService extends BaseService implements IGitHubService {
         params,
       )) {
         pageCount++;
-        processedPRs += response.data.length;
-        this.logger.info(
-          `Fetched page ${pageCount} with ${response.data.length} PRs. Total: ${processedPRs}/${totalPRs}`,
-        );
-        progressCallback?.(
-          40 + (processedPRs / totalPRs) * 60,
-          `Fetching page ${pageCount} of pull requests. Progress: ${processedPRs}/${totalPRs}`,
-          { currentPage: pageCount, processedPRs, totalPRs },
-        );
+        let validPRsInPage = 0;
+        let collectedPRs = [];
 
         for (const pr of response.data) {
           if (Date.now() - startTime > this.timeout) {
             this.logger.warn('Operation timed out, saving progress');
+            yield* collectedPRs;
             return;
           }
 
-          try {
-            const detailedPR = await this.fetchDetailedPR(pr.number);
-            yield detailedPR;
-          } catch (error) {
-            this.logger.error(
-              `Error fetching detailed PR #${pr.number}: ${error}`,
+          const createdAt = new Date(pr.created_at);
+          if (createdAt >= new Date(since) && createdAt <= new Date(until)) {
+            validPRsInPage++;
+            processedPRs++;
+
+            try {
+              const detailedPR = await this.fetchDetailedPR(pr.number);
+              collectedPRs.push(detailedPR);
+            } catch (error) {
+              this.logger.error(
+                `Error fetching detailed PR #${pr.number}: ${error}`,
+              );
+            }
+
+            // Update progress after each PR
+            const progress = Math.min(
+              (processedPRs / Math.max(totalPRs, processedPRs)) * 100,
+              100,
             );
+            progressCallback?.(
+              progress,
+              `Fetching page ${pageCount} of pull requests. Progress: ${processedPRs}/${Math.max(
+                totalPRs,
+                processedPRs,
+              )}`,
+              {
+                currentPage: pageCount,
+                processedPRs,
+                totalPRs: Math.max(totalPRs, processedPRs),
+              },
+            );
+          } else if (createdAt < new Date(since)) {
+            // If we've gone past our date range, we can stop paginating
+            this.logger.info(
+              'Reached PRs older than the specified time period',
+            );
+            yield* collectedPRs;
+            return;
           }
         }
 
+        // Yield collected PRs for this page
+        yield* collectedPRs;
+
+        this.logger.info(
+          `Fetched page ${pageCount} with ${validPRsInPage} valid PRs. Total: ${processedPRs}/${Math.max(
+            totalPRs,
+            processedPRs,
+          )}`,
+        );
+
+        // If no valid PRs in this page, we've likely reached the end of our date range
+        if (validPRsInPage === 0) {
+          this.logger.info('No more PRs within the specified time period');
+          return;
+        }
+
         // Save progress after each page
-        this.saveProgress(pageCount, processedPRs, totalPRs, timePeriod);
+        this.saveProgress(
+          pageCount,
+          processedPRs,
+          Math.max(totalPRs, processedPRs),
+          timePeriod,
+        );
       }
     } catch (error) {
       this.logger.error(`Error in pullRequestGenerator: ${error}`);
@@ -263,28 +310,57 @@ export class GitHubService extends BaseService implements IGitHubService {
     startPage: number,
     startPR: number,
     timePeriod: number,
-    totalPRs: number,
+    initialTotalPRs: number,
   ): Promise<any[]> {
     const pullRequests: any[] = [];
+    let actualTotalPRs = initialTotalPRs;
+    let processedPRs = startPR;
+
     try {
       for await (const pr of this.pullRequestGenerator(
         progressCallback,
         startPage,
-        startPR,
+        processedPRs,
         timePeriod,
-        totalPRs,
+        actualTotalPRs,
       )) {
         pullRequests.push(pr);
-        if (pullRequests.length % 100 === 0) {
+        processedPRs++;
+
+        // Update actual total if we've exceeded the initial estimate
+        if (processedPRs > actualTotalPRs) {
+          actualTotalPRs = processedPRs;
+        }
+
+        const progress = Math.min(
+          (processedPRs / Math.max(actualTotalPRs, processedPRs)) * 100,
+          100,
+        );
+
+        if (
+          pullRequests.length % 100 === 0 ||
+          pullRequests.length === actualTotalPRs
+        ) {
           this.logger.info(
-            `Processed ${pullRequests.length}/${totalPRs} pull requests`,
+            `Processed ${processedPRs}/${actualTotalPRs} pull requests`,
           );
+          progressCallback?.(
+            progress,
+            `Fetched ${processedPRs} out of ${actualTotalPRs} pull requests`,
+          );
+        }
+
+        // Check for timeout
+        if (Date.now() - this.startTime > this.timeout) {
+          this.logger.warn('Operation timed out, returning collected PRs');
+          break;
         }
       }
     } catch (error) {
       this.logger.error(`Error in streamPullRequests: ${error}`);
       throw error;
     }
+
     return pullRequests;
   }
 
@@ -365,13 +441,22 @@ export class GitHubService extends BaseService implements IGitHubService {
   }
 
   private async getTotalPRCount(timePeriod: number): Promise<number> {
-    const since = new Date(
-      Date.now() - timePeriod * 24 * 60 * 60 * 1000,
-    ).toISOString();
+    const { since, until } = this.getDateRange(timePeriod);
+    const formattedSince = since.split('T')[0];
+    const formattedUntil = until.split('T')[0];
     const response = await this.client.request('GET /search/issues', {
-      q: `repo:${this.owner}/${this.repo} is:pr created:>=${since}`,
+      q: `repo:${this.owner}/${this.repo} is:pr created:${formattedSince}..${formattedUntil}`,
       per_page: 1,
     });
     return response.data.total_count || 0;
+  }
+
+  private getDateRange(timePeriod: number): { since: string; until: string } {
+    const now = new Date();
+    const since = new Date(now.getTime() - timePeriod * 24 * 60 * 60 * 1000);
+    return {
+      since: since.toISOString(),
+      until: now.toISOString(),
+    };
   }
 }
