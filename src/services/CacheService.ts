@@ -1,6 +1,6 @@
 // src/services/CacheService.ts
 import { injectable } from 'inversify';
-import { ICacheService } from '../interfaces/ICacheService';
+import type { ICacheService } from '../interfaces/ICacheService';
 
 @injectable()
 export class CacheService implements ICacheService {

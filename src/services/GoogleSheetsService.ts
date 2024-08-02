@@ -1,28 +1,67 @@
 // src/services/GoogleSheetsService.ts
 import { injectable, inject } from 'inversify';
 import { TYPES } from '../utils/types';
-import type { IMetric } from '../interfaces/IMetricModel';
-import type { IGoogleSheetsService } from '../interfaces/IGoogleSheetsService';
-import type { IGoogleSheetsClient } from '../interfaces/IGoogleSheetsClient';
-import { OAuth2Client } from 'google-auth-library';
-import { google } from 'googleapis';
-import type { IConfig } from '../interfaces/IConfig';
+import { BaseService } from './BaseService';
+import type {
+  IGoogleSheetsClient,
+  IGoogleSheetsService,
+  IConfig,
+  ICacheService,
+  IMetric,
+} from '../interfaces/index';
 import { Logger } from '../utils/logger';
 
+/**
+ * GoogleSheetsService
+ *
+ * This service is responsible for fetching and processing data from Google Sheets
+ * as part of the Team Health Dashboard. It extends the BaseService to leverage
+ * common functionality such as caching and logging.
+ *
+ * The service fetches data from a specified Google Sheets document, processes
+ * the rows into metrics, and caches the results for improved performance.
+ * It supports progress tracking through a callback mechanism.
+ *
+ * @extends BaseService
+ * @implements IGoogleSheetsService
+ */
 @injectable()
-export class GoogleSheetsService implements IGoogleSheetsService {
+export class GoogleSheetsService
+  extends BaseService
+  implements IGoogleSheetsService
+{
   private spreadsheetId: string;
 
   constructor(
     @inject(TYPES.GoogleSheetsClient)
     private googleSheetsClient: IGoogleSheetsClient,
     @inject(TYPES.Config) private configService: IConfig,
-    @inject(TYPES.Logger) private logger: Logger,
+    @inject(TYPES.Logger) logger: Logger,
+    @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
+    super(logger, cacheService);
     this.spreadsheetId = this.configService.GOOGLE_SHEETS_ID;
+    if (!this.spreadsheetId) {
+      this.logger.error('Google Sheets ID is not set correctly');
+    }
+  }
+
+  protected getCacheKey(): string {
+    return `googlesheets-${this.spreadsheetId}`;
   }
 
   async fetchData(
+    progressCallback?: (progress: number, message: string) => void,
+  ): Promise<IMetric[]> {
+    const cacheKey = this.getCacheKey();
+    return this.getDataWithCache(
+      cacheKey,
+      () => this.fetchGoogleSheetsData(progressCallback),
+      3600, // 1 hour cache
+    );
+  }
+
+  private async fetchGoogleSheetsData(
     progressCallback?: (progress: number, message: string) => void,
   ): Promise<IMetric[]> {
     try {
@@ -102,32 +141,5 @@ export class GoogleSheetsService implements IGoogleSheetsService {
         }`,
       );
     }
-  }
-}
-
-@injectable()
-export class GoogleSheetsAdapter implements IGoogleSheetsClient {
-  private sheets;
-
-  constructor(@inject(TYPES.Config) private config: IConfig) {
-    this.sheets = google.sheets({
-      version: 'v4',
-      auth: this.getAuth(),
-    });
-  }
-
-  private getAuth(): OAuth2Client {
-    return new google.auth.JWT({
-      email: this.config.GOOGLE_SHEETS_CLIENT_EMAIL,
-      key: this.config.GOOGLE_SHEETS_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-    });
-  }
-
-  async getValues(spreadsheetId: string, range: string): Promise<any> {
-    return this.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range,
-    });
   }
 }

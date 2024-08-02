@@ -8,7 +8,11 @@ export interface IGitHubService {
       message: string,
       details?: any,
     ) => void,
-    startDate?: Date,
-    endDate?: Date,
-  ): Promise<IMetric[]>;
+    timePeriod?: number,
+  ): Promise<{
+    metrics: IMetric[];
+    totalPRs: number;
+    fetchedPRs: number;
+    timePeriod: number;
+  }>;
 }

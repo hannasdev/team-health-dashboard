@@ -1,14 +1,19 @@
 // src/interfaces/IMetricsService.ts
-import type { IMetric } from './IMetricModel';
+import { IMetric } from './IMetricModel';
 
 export type ProgressCallback = (
   progress: number,
   message: string,
-  details?: Record<string, any> & { currentPage?: number; totalPages?: number },
+  details?: Record<string, any>,
 ) => void;
 
 export interface IMetricsService {
   getAllMetrics(
-    progressCallback: ProgressCallback,
-  ): Promise<{ metrics: IMetric[]; errors: any[] }>;
+    progressCallback?: ProgressCallback,
+    timePeriod?: number,
+  ): Promise<{
+    metrics: IMetric[];
+    errors: { source: string; message: string }[];
+    githubStats: { totalPRs: number; fetchedPRs: number; timePeriod: number };
+  }>;
 }

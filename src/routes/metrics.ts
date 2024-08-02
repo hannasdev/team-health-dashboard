@@ -22,7 +22,10 @@ router.get('/metrics', (req, res) => {
     console.log('Client closed connection');
   });
 
-  metricsController.getAllMetrics(req, res);
+  // Parse time period from query params, default to 90 days if not provided
+  const timePeriod = parseInt(req.query.timePeriod as string) || 90;
+
+  metricsController.getAllMetrics(req, res, timePeriod);
 });
 
 export default router;

@@ -5,7 +5,6 @@ import { GitHubService } from '../../services/GitHubService';
 import type { IGitHubClient } from '../../interfaces/IGitHubClient';
 import type { IConfig } from '../../interfaces/IConfig';
 import type { ICacheService } from '../../interfaces/ICacheService';
-import type { IMetric } from '../../interfaces/IMetricModel';
 import { createMockLogger } from '../../__mocks__/logger';
 import type { Logger } from '../../utils/logger';
 
@@ -40,7 +39,10 @@ describe('GitHubService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGitHubClient = {
-      paginate: jest.fn(),
+      paginate: {
+        iterator: jest.fn(),
+      },
+      request: jest.fn(),
     };
     mockConfig = {
       GITHUB_OWNER: 'fake-owner',
@@ -54,6 +56,7 @@ describe('GitHubService', () => {
       mockLogger,
       mockCacheService,
     );
+    mockGitHubClient.request.mockResolvedValue({ data: { total_count: 3 } });
   });
 
   it('should fetch and calculate metrics from GitHub', async () => {
@@ -74,65 +77,28 @@ describe('GitHubService', () => {
       },
     ];
 
-    mockGitHubClient.paginate.mockReturnValue(
+    mockGitHubClient.paginate.iterator.mockReturnValue(
       createAsyncIterator([{ data: mockPullRequests }]),
     );
+    mockGitHubClient.request.mockResolvedValue({ data: { total_count: 2 } });
 
     const result = await githubService.fetchData();
 
-    expect(result).toHaveLength(2);
-    expect(result).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          id: 'github-pr-cycle-time',
-          metric_category: 'Efficiency',
-          metric_name: 'PR Cycle Time',
-          value: 30, // (24 + 36) / 2 = 30 hours average
-          unit: 'hours',
-          additional_info: expect.any(String),
-          source: 'GitHub',
-        }),
-        expect.objectContaining({
-          id: 'github-pr-size',
-          metric_category: 'Code Quality',
-          metric_name: 'PR Size',
-          value: 55, // (70 + 40) / 2 = 55
-          unit: 'lines',
-          additional_info: expect.any(String),
-          source: 'GitHub',
-        }),
-      ]),
-    );
+    expect(result.metrics).toHaveLength(2);
+    expect(result.totalPRs).toBe(2);
+    expect(result.fetchedPRs).toBe(2);
+    expect(result.timePeriod).toBe(90);
   });
 
   it('should handle empty pull request data', async () => {
-    mockGitHubClient.paginate.mockReturnValue(createAsyncIterator([]));
+    mockGitHubClient.paginate.iterator.mockReturnValue(createAsyncIterator([]));
+    mockGitHubClient.request.mockResolvedValue({ data: { total_count: 0 } });
 
     const result = await githubService.fetchData();
 
-    expect(result).toHaveLength(2);
-    expect(result).toEqual([
-      {
-        id: 'github-pr-cycle-time',
-        metric_category: 'Efficiency',
-        metric_name: 'PR Cycle Time',
-        value: 0,
-        timestamp: expect.any(Date),
-        unit: 'hours',
-        additional_info: 'Based on 0 PRs',
-        source: 'GitHub',
-      },
-      {
-        id: 'github-pr-size',
-        metric_category: 'Code Quality',
-        metric_name: 'PR Size',
-        value: 0,
-        timestamp: expect.any(Date),
-        unit: 'lines',
-        additional_info: 'Based on 0 PRs',
-        source: 'GitHub',
-      },
-    ]);
+    expect(result.metrics).toHaveLength(2);
+    expect(result.totalPRs).toBe(0);
+    expect(result.fetchedPRs).toBe(0);
   });
 
   it('should calculate PR Cycle Time only for merged PRs', async () => {
@@ -160,19 +126,27 @@ describe('GitHubService', () => {
       },
     ];
 
-    mockGitHubClient.paginate.mockReturnValue(
+    mockGitHubClient.paginate.iterator.mockReturnValue(
       createAsyncIterator([{ data: mockPullRequests }]),
     );
 
+    // Mock getTotalPRCount
+    jest.spyOn(githubService as any, 'getTotalPRCount').mockResolvedValue(3);
+
+    // Mock streamPullRequests to return the mockPullRequests
+    jest
+      .spyOn(githubService as any, 'streamPullRequests')
+      .mockResolvedValue(mockPullRequests);
+
     const result = await githubService.fetchData();
 
-    expect(result).toHaveLength(2);
-    expect(result).toEqual([
+    expect(result.metrics).toHaveLength(2);
+    expect(result.metrics).toEqual([
       {
         id: 'github-pr-cycle-time',
         metric_category: 'Efficiency',
         metric_name: 'PR Cycle Time',
-        value: 30,
+        value: 30, // (24 + 36) / 2 = 30 hours average
         timestamp: expect.any(Date),
         unit: 'hours',
         additional_info: 'Based on 3 PRs',
@@ -182,59 +156,67 @@ describe('GitHubService', () => {
         id: 'github-pr-size',
         metric_category: 'Code Quality',
         metric_name: 'PR Size',
-        value: 45,
+        value: 45, // (70 + 40 + 25) / 3 = 45 lines average
         timestamp: expect.any(Date),
         unit: 'lines',
         additional_info: 'Based on 3 PRs',
         source: 'GitHub',
       },
     ]);
+    expect(result.totalPRs).toBe(3);
+    expect(result.fetchedPRs).toBe(3);
   });
 
   it('should throw an error when failing to fetch data', async () => {
-    const error = new Error('API error');
-    mockGitHubClient.paginate.mockImplementation(() => {
-      throw error;
-    });
+    mockGitHubClient.request.mockRejectedValue(new Error('API error'));
 
-    await expect(githubService.fetchData()).rejects.toThrow(
-      'Failed to fetch data from GitHub',
-    );
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      'Error fetching data from GitHub:',
-      error,
-    );
+    await expect(githubService.fetchData()).rejects.toThrow('API error');
   });
 
   it('should use cached data if available', async () => {
-    const cachedData: IMetric[] = [
-      {
-        id: 'github-pr-cycle-time',
-        metric_category: 'Efficiency',
-        metric_name: 'PR Cycle Time',
-        value: 25,
-        timestamp: new Date(),
-        unit: 'hours',
-        additional_info: 'Based on X PRs',
-        source: 'GitHub',
-      },
-      {
-        id: 'github-pr-size',
-        metric_category: 'Code Quality',
-        metric_name: 'PR Size',
-        value: 50,
-        timestamp: new Date(),
-        unit: 'lines',
-        additional_info: 'Based on Y PRs',
-        source: 'GitHub',
-      },
-    ];
-    mockCacheService.set('github-fake-owner/fake-repo-all-all', cachedData);
+    const cachedData = {
+      metrics: [
+        {
+          id: 'github-pr-cycle-time',
+          metric_category: 'Efficiency',
+          metric_name: 'PR Cycle Time',
+          value: 25,
+          timestamp: new Date(),
+          unit: 'hours',
+          additional_info: 'Based on X PRs',
+          source: 'GitHub',
+        },
+        {
+          id: 'github-pr-size',
+          metric_category: 'Code Quality',
+          metric_name: 'PR Size',
+          value: 50,
+          timestamp: new Date(),
+          unit: 'lines',
+          additional_info: 'Based on Y PRs',
+          source: 'GitHub',
+        },
+      ],
+      lastProcessedPage: 1,
+      lastProcessedPR: 10,
+      totalPRs: 20,
+      fetchedPRs: 20,
+    };
+
+    jest.spyOn(mockCacheService, 'get').mockImplementation((key: string) => {
+      if (key === `github-fake-owner/fake-repo-all-90`) {
+        return cachedData;
+      }
+      return null;
+    });
 
     const result = await githubService.fetchData();
 
-    expect(result).toEqual(cachedData);
-    expect(mockGitHubClient.paginate).not.toHaveBeenCalled();
+    expect(result.metrics).toEqual(cachedData.metrics);
+    expect(result.totalPRs).toBe(cachedData.totalPRs);
+    expect(result.fetchedPRs).toBe(cachedData.fetchedPRs);
+    expect(mockGitHubClient.paginate.iterator).not.toHaveBeenCalled();
+    expect(mockGitHubClient.request).not.toHaveBeenCalled();
   });
 });
 

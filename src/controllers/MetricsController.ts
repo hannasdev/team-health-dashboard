@@ -9,6 +9,22 @@ import type {
 import type { IMetric } from '../interfaces/IMetricModel';
 import { Logger } from '../utils/logger';
 
+/**
+ * MetricsController
+ *
+ * This controller handles HTTP requests related to metrics in the Team Health Dashboard.
+ * It acts as an intermediary between the HTTP layer and the MetricsService,
+ * processing requests, managing Server-Sent Events (SSE) for progress updates,
+ * and formatting the final response.
+ *
+ * Key responsibilities:
+ * - Handles the getAllMetrics endpoint
+ * - Manages SSE for real-time progress updates
+ * - Processes and formats the response from MetricsService
+ * - Handles errors and sends appropriate error responses
+ *
+ * @injectable
+ */
 @injectable()
 export class MetricsController {
   constructor(
@@ -16,59 +32,45 @@ export class MetricsController {
     @inject(TYPES.Logger) private logger: Logger,
   ) {}
 
-  public getAllMetrics = async (req: Request, res: Response): Promise<void> => {
+  /**
+   * Handles the GET request for all metrics
+   *
+   * @param req - The Express request object
+   * @param res - The Express response object
+   * @param timePeriod - The time period for which to fetch metrics
+   */
+  public getAllMetrics = async (
+    req: Request,
+    res: Response,
+    timePeriod: number,
+  ): Promise<void> => {
     const sendEvent = (event: string, data: any) => {
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
 
-    let githubPagesFetched = 0;
-    let totalGithubPages = 1; // Initial estimate, will be updated
-
-    const calculateProgress = (
-      serviceProgress: number,
-      service: 'sheets' | 'github',
-    ): number => {
-      if (service === 'sheets') {
-        return serviceProgress * 0.4; // Google Sheets accounts for 40% of total progress
-      } else {
-        // GitHub accounts for 60% of total progress
-        const githubProgress = (githubPagesFetched / totalGithubPages) * 100;
-        return 40 + githubProgress * 0.6;
-      }
+    const progressCallback: ProgressCallback = (
+      progress: number,
+      message: string,
+      details?: Record<string, any>,
+    ) => {
+      sendEvent('progress', {
+        progress: Math.min(Math.round(progress), 100),
+        message,
+        ...details,
+      });
     };
 
     try {
       const result = await this.metricsService.getAllMetrics(
-        (progress: number, message: string, details?: Record<string, any>) => {
-          let overallProgress: number;
-
-          if (message.startsWith('Google Sheets:')) {
-            overallProgress = calculateProgress(progress, 'sheets');
-          } else if (message.startsWith('GitHub:')) {
-            if (details && 'currentPage' in details) {
-              githubPagesFetched = details.currentPage;
-              totalGithubPages = Math.max(
-                totalGithubPages,
-                details.totalPages || 1,
-              );
-            }
-            overallProgress = calculateProgress(progress, 'github');
-          } else {
-            overallProgress = progress;
-          }
-
-          sendEvent('progress', {
-            progress: Math.min(Math.round(overallProgress), 100),
-            message,
-            ...details,
-          });
-        },
+        progressCallback,
+        timePeriod,
       );
 
       sendEvent('result', {
         success: true,
         data: result.metrics,
         errors: result.errors,
+        githubStats: result.githubStats,
         status: result.errors.length > 0 ? 207 : 200,
       });
     } catch (error) {
@@ -86,6 +88,8 @@ export class MetricsController {
         ],
         status: 500,
       });
+    } finally {
+      res.end();
     }
   };
 }

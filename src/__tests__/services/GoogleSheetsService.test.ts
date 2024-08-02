@@ -1,20 +1,44 @@
 // src/__tests__/services/GoogleSheetsService.test.ts
 import 'reflect-metadata';
 import { GoogleSheetsService } from '../../services/GoogleSheetsService';
-import { IGoogleSheetsService } from '../../interfaces/IGoogleSheetsService';
-import { IGoogleSheetsClient } from '../../interfaces/IGoogleSheetsClient';
-import { IConfig } from '../../interfaces/IConfig';
+import {
+  IGoogleSheetsService,
+  IGoogleSheetsClient,
+  IConfig,
+  ICacheService,
+} from '../../interfaces/index';
 import { createMockLogger, MockLogger } from '../../__mocks__/logger';
 import { Logger } from '../../utils/logger';
-import { jest } from '@jest/globals';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+
+class MockCacheService implements ICacheService {
+  private store: { [key: string]: any } = {};
+
+  get<T>(key: string): T | null {
+    return this.store[key] || null;
+  }
+
+  set<T>(key: string, value: T): void {
+    this.store[key] = value;
+  }
+
+  delete(key: string): void {
+    delete this.store[key];
+  }
+
+  clear(): void {
+    this.store = {};
+  }
+}
 
 describe('GoogleSheetsService', () => {
   let googleSheetsService: IGoogleSheetsService;
   let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
   let mockConfig: IConfig;
   let mockLogger: MockLogger;
+  let mockCacheService: ICacheService;
 
-  beforeAll(() => {
+  beforeEach(() => {
     mockGoogleSheetsClient = {
       getValues: jest.fn(),
     };
@@ -22,15 +46,13 @@ describe('GoogleSheetsService', () => {
       GOOGLE_SHEETS_ID: 'fake-sheet-id',
     } as IConfig;
     mockLogger = createMockLogger();
+    mockCacheService = new MockCacheService();
     googleSheetsService = new GoogleSheetsService(
       mockGoogleSheetsClient,
       mockConfig,
       mockLogger as Logger,
+      mockCacheService,
     );
-  });
-
-  beforeEach(() => {
-    jest.clearAllMocks();
   });
 
   it('should fetch and parse data from Google Sheets', async () => {
@@ -84,6 +106,8 @@ describe('GoogleSheetsService', () => {
   });
 
   it('should handle empty sheet data', async () => {
+    jest.spyOn(mockCacheService, 'get').mockReturnValue(null);
+    jest.spyOn(mockCacheService, 'set');
     const mockEmptySheetData = [
       [
         'Timestamp',
@@ -102,6 +126,11 @@ describe('GoogleSheetsService', () => {
     const result = await googleSheetsService.fetchData();
 
     expect(result).toHaveLength(0);
+    expect(mockCacheService.set).toHaveBeenCalledWith(
+      'googlesheets-fake-sheet-id',
+      [],
+      3600,
+    );
   });
 
   it('should handle rows with missing optional fields', async () => {
@@ -212,11 +241,14 @@ describe('GoogleSheetsService', () => {
   });
 
   it('should throw an error when failing to fetch data', async () => {
+    jest.spyOn(mockCacheService, 'get').mockReturnValue(null);
+    jest.spyOn(mockCacheService, 'set');
     mockGoogleSheetsClient.getValues.mockRejectedValue(new Error('API error'));
 
     await expect(googleSheetsService.fetchData()).rejects.toThrow(
       'Failed to fetch data from Google Sheets',
     );
+    expect(mockCacheService.set).not.toHaveBeenCalled();
   });
 
   it('should log error when failing to fetch data', async () => {
@@ -230,6 +262,78 @@ describe('GoogleSheetsService', () => {
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Error fetching data from Google Sheets:',
       error,
+    );
+  });
+
+  it('should use cached data if available', async () => {
+    const cachedData = [
+      {
+        id: 'sheet-0',
+        metric_category: 'Efficiency',
+        metric_name: 'Cycle Time',
+        value: 3,
+        timestamp: new Date('2023-07-27T10:00:00Z'),
+        unit: 'days',
+        additional_info: 'Sprint 1',
+        source: 'Google Sheets',
+      },
+    ];
+
+    jest.spyOn(mockCacheService, 'get').mockReturnValue(cachedData);
+
+    const result = await googleSheetsService.fetchData();
+
+    expect(result).toEqual(cachedData);
+    expect(mockCacheService.get).toHaveBeenCalledWith(
+      'googlesheets-fake-sheet-id',
+    );
+    expect(mockGoogleSheetsClient.getValues).not.toHaveBeenCalled();
+  });
+
+  it('should fetch and cache new data when cache is empty', async () => {
+    jest.spyOn(mockCacheService, 'get').mockReturnValue(null);
+    jest.spyOn(mockCacheService, 'set');
+
+    const mockSheetData = [
+      [
+        'Timestamp',
+        'Metric Category',
+        'Metric Name',
+        'Value',
+        'Unit',
+        'Additional Info',
+      ],
+      [
+        '2023-07-27T10:00:00Z',
+        'Efficiency',
+        'Cycle Time',
+        '3',
+        'days',
+        'Sprint 1',
+      ],
+    ];
+
+    mockGoogleSheetsClient.getValues.mockResolvedValue({
+      data: { values: mockSheetData },
+    });
+
+    const result = await googleSheetsService.fetchData();
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        metric_category: 'Efficiency',
+        metric_name: 'Cycle Time',
+        value: 3,
+        unit: 'days',
+        additional_info: 'Sprint 1',
+        source: 'Google Sheets',
+      }),
+    );
+    expect(mockCacheService.set).toHaveBeenCalledWith(
+      'googlesheets-fake-sheet-id',
+      expect.any(Array),
+      3600,
     );
   });
 });

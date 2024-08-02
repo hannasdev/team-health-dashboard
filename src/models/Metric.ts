@@ -1,11 +1,15 @@
 // src/models/Metric.ts
-import { IMetric } from "../interfaces/IMetricModel";
+import { IMetric } from '../interfaces/IMetricModel';
+
 export class Metric implements IMetric {
   constructor(
     public id: string,
-    public name: string,
+    public metric_category: string,
+    public metric_name: string,
     public value: number,
     public timestamp: Date,
-    public source: string
+    public unit: string,
+    public additional_info: string,
+    public source: string,
   ) {}
 }

@@ -1,16 +1,40 @@
 // src/services/GitHubService.ts
 import { injectable, inject } from 'inversify';
 import { TYPES } from '../utils/types';
-import { Octokit } from '@octokit/rest';
-import type { IMetric } from '../interfaces/IMetricModel';
-import type { IGitHubClient } from '../interfaces/IGitHubClient';
-import type { IGitHubService } from '../interfaces/IGitHubService';
-import type { IConfig } from '../interfaces/IConfig';
-import type { ICacheService } from '../interfaces/ICacheService';
+import { BaseService } from './BaseService';
+import type {
+  IGitHubClient,
+  IGitHubService,
+  IConfig,
+  ICacheService,
+  IMetric,
+} from '../interfaces/index';
 import { Logger } from '../utils/logger';
 
+/**
+ * GitHubService
+ *
+ * This service is responsible for fetching and processing data from GitHub
+ * as part of the Team Health Dashboard. It extends the BaseService to leverage
+ * common functionality such as caching and logging.
+ *
+ * The service fetches pull request data from a specified GitHub repository,
+ * calculates metrics such as PR cycle time and size, and caches the results
+ * for improved performance. It supports progress tracking and handles data
+ * fetching in chunks to manage large datasets efficiently.
+ *
+ * Key features:
+ * - Fetches PR data using GitHub's API
+ * - Calculates PR cycle time and size metrics
+ * - Implements caching for performance optimization
+ * - Supports progress tracking through callback mechanism
+ * - Handles timeouts and interruptions gracefully
+ *
+ * @extends BaseService
+ * @implements IGitHubService
+ */
 @injectable()
-export class GitHubService implements IGitHubService {
+export class GitHubService extends BaseService implements IGitHubService {
   private owner: string;
   private repo: string;
   private timeout: number = 300000; // 5 minutes timeout
@@ -18,9 +42,10 @@ export class GitHubService implements IGitHubService {
   constructor(
     @inject(TYPES.GitHubClient) private client: IGitHubClient,
     @inject(TYPES.Config) private configService: IConfig,
-    @inject(TYPES.Logger) private logger: Logger,
-    @inject(TYPES.CacheService) private cacheService: ICacheService,
+    @inject(TYPES.Logger) logger: Logger,
+    @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
+    super(logger, cacheService);
     this.owner = this.configService.GITHUB_OWNER;
     this.repo = this.configService.GITHUB_REPO;
     if (!this.owner || !this.repo) {
@@ -31,27 +56,83 @@ export class GitHubService implements IGitHubService {
     }
   }
 
+  protected getCacheKey(timePeriod: number): string {
+    return `github-${this.owner}/${this.repo}-all-${timePeriod}`;
+  }
+
   async fetchData(
-    progressCallback?: (progress: number, message: string) => void,
-  ): Promise<IMetric[]> {
-    const cacheKey = this.getCacheKey();
+    progressCallback?: (
+      progress: number,
+      message: string,
+      details?: any,
+    ) => void,
+    timePeriod: number = 90,
+  ): Promise<{
+    metrics: IMetric[];
+    totalPRs: number;
+    fetchedPRs: number;
+    timePeriod: number;
+  }> {
+    const cacheKey = this.getCacheKey(timePeriod);
+    return this.getDataWithCache(
+      cacheKey,
+      () => this.fetchGitHubData(progressCallback, timePeriod),
+      3600, // 1 hour cache
+    );
+  }
+
+  private async fetchGitHubData(
+    progressCallback?: (
+      progress: number,
+      message: string,
+      details?: any,
+    ) => void,
+    timePeriod: number = 90,
+  ): Promise<{
+    metrics: IMetric[];
+    totalPRs: number;
+    fetchedPRs: number;
+    timePeriod: number;
+  }> {
     const cachedData = this.cacheService.get<{
       metrics: IMetric[];
       lastProcessedPage: number;
       lastProcessedPR: number;
-    }>(cacheKey);
+      totalPRs: number;
+      fetchedPRs: number;
+    }>(this.getProgressCacheKey(timePeriod));
 
     let metrics: IMetric[] = [];
     let lastProcessedPage = 0;
     let lastProcessedPR = 0;
+    let totalPRs = 0;
+    let fetchedPRs = 0;
 
     if (cachedData) {
       metrics = cachedData.metrics;
       lastProcessedPage = cachedData.lastProcessedPage;
       lastProcessedPR = cachedData.lastProcessedPR;
-      progressCallback?.(50, `Resuming from page ${lastProcessedPage + 1}`);
+      totalPRs = cachedData.totalPRs;
+      fetchedPRs = cachedData.fetchedPRs;
+
+      if (fetchedPRs === totalPRs) {
+        progressCallback?.(
+          100,
+          `Using cached data. All ${totalPRs} PRs have been fetched.`,
+        );
+        return { metrics, totalPRs, fetchedPRs, timePeriod };
+      }
+
+      progressCallback?.(
+        50,
+        `Resuming from page ${
+          lastProcessedPage + 1
+        }. Total PRs: ${totalPRs}, Fetched: ${fetchedPRs}`,
+      );
     } else {
       progressCallback?.(0, 'Starting to fetch GitHub data');
+      totalPRs = await this.getTotalPRCount(timePeriod);
+      progressCallback?.(10, `Total PRs to fetch: ${totalPRs}`);
     }
 
     try {
@@ -59,9 +140,17 @@ export class GitHubService implements IGitHubService {
         progressCallback,
         lastProcessedPage,
         lastProcessedPR,
+        timePeriod,
+        totalPRs,
       );
-      this.logger.info(`Fetched ${pullRequests.length} pull requests`);
-      progressCallback?.(75, `Fetched ${pullRequests.length} pull requests`);
+      fetchedPRs += pullRequests.length;
+      this.logger.info(
+        `Fetched ${fetchedPRs} out of ${totalPRs} pull requests`,
+      );
+      progressCallback?.(
+        75,
+        `Fetched ${fetchedPRs} out of ${totalPRs} pull requests`,
+      );
 
       metrics = [
         ...metrics,
@@ -69,14 +158,16 @@ export class GitHubService implements IGitHubService {
         this.calculatePRSize(pullRequests),
       ];
 
-      this.cacheService.set(cacheKey, {
+      this.cacheService.set(this.getProgressCacheKey(timePeriod), {
         metrics,
         lastProcessedPage,
         lastProcessedPR,
+        totalPRs,
+        fetchedPRs,
       });
       progressCallback?.(100, 'Finished processing GitHub data');
 
-      return metrics;
+      return { metrics, totalPRs, fetchedPRs, timePeriod };
     } catch (error) {
       this.logger.error('Error fetching data from GitHub:', error as Error);
       throw new Error(
@@ -86,42 +177,46 @@ export class GitHubService implements IGitHubService {
   }
 
   private async *pullRequestGenerator(
-    progressCallback?: (
-      progress: number,
-      message: string,
-      details?: any,
-    ) => void,
-    startPage: number = 0,
-    startPR: number = 0,
+    progressCallback:
+      | ((progress: number, message: string, details?: any) => void)
+      | undefined,
+    startPage: number,
+    startPR: number,
+    timePeriod: number,
+    totalPRs: number,
   ) {
+    const since = new Date(
+      Date.now() - timePeriod * 24 * 60 * 60 * 1000,
+    ).toISOString();
     const params = {
       owner: this.owner,
       repo: this.repo,
-      state: 'closed',
+      state: 'all',
       sort: 'updated',
       direction: 'desc',
       per_page: 100,
       page: startPage + 1,
+      since,
     };
 
     let pageCount = startPage;
-    let totalPullRequests = startPR;
+    let processedPRs = startPR;
     const startTime = Date.now();
 
     try {
-      for await (const response of this.client.paginate(
+      for await (const response of this.client.paginate.iterator(
         'GET /repos/{owner}/{repo}/pulls',
         params,
       )) {
         pageCount++;
-        totalPullRequests += response.data.length;
+        processedPRs += response.data.length;
         this.logger.info(
-          `Fetched page ${pageCount} with ${response.data.length} PRs. Total: ${totalPullRequests}`,
+          `Fetched page ${pageCount} with ${response.data.length} PRs. Total: ${processedPRs}/${totalPRs}`,
         );
         progressCallback?.(
-          40 + pageCount * 2,
-          `Fetching page ${pageCount} of pull requests. Total: ${totalPullRequests}`,
-          { currentPage: pageCount, totalPullRequests },
+          40 + (processedPRs / totalPRs) * 60,
+          `Fetching page ${pageCount} of pull requests. Progress: ${processedPRs}/${totalPRs}`,
+          { currentPage: pageCount, processedPRs, totalPRs },
         );
 
         for (const pr of response.data) {
@@ -141,7 +236,7 @@ export class GitHubService implements IGitHubService {
         }
 
         // Save progress after each page
-        this.saveProgress(pageCount, totalPullRequests);
+        this.saveProgress(pageCount, processedPRs, totalPRs, timePeriod);
       }
     } catch (error) {
       this.logger.error(`Error in pullRequestGenerator: ${error}`);
@@ -150,32 +245,25 @@ export class GitHubService implements IGitHubService {
   }
 
   private async fetchDetailedPR(pullNumber: number): Promise<any> {
-    try {
-      for await (const response of this.client.paginate(
-        'GET /repos/{owner}/{repo}/pulls/{pull_number}',
-        {
-          owner: this.owner,
-          repo: this.repo,
-          pull_number: pullNumber,
-        },
-      )) {
-        return response.data;
-      }
-      throw new Error(`No data found for PR #${pullNumber}`);
-    } catch (error) {
-      this.logger.error(`Error fetching detailed PR #${pullNumber}: ${error}`);
-      throw error;
-    }
+    const response = await this.client.request(
+      'GET /repos/{owner}/{repo}/pulls/{pull_number}',
+      {
+        owner: this.owner,
+        repo: this.repo,
+        pull_number: pullNumber,
+      },
+    );
+    return response.data;
   }
 
   private async streamPullRequests(
-    progressCallback?: (
-      progress: number,
-      message: string,
-      details?: any,
-    ) => void,
-    startPage: number = 0,
-    startPR: number = 0,
+    progressCallback:
+      | ((progress: number, message: string, details?: any) => void)
+      | undefined,
+    startPage: number,
+    startPR: number,
+    timePeriod: number,
+    totalPRs: number,
   ): Promise<any[]> {
     const pullRequests: any[] = [];
     try {
@@ -183,10 +271,14 @@ export class GitHubService implements IGitHubService {
         progressCallback,
         startPage,
         startPR,
+        timePeriod,
+        totalPRs,
       )) {
         pullRequests.push(pr);
         if (pullRequests.length % 100 === 0) {
-          this.logger.info(`Processed ${pullRequests.length} pull requests`);
+          this.logger.info(
+            `Processed ${pullRequests.length}/${totalPRs} pull requests`,
+          );
         }
       }
     } catch (error) {
@@ -198,18 +290,20 @@ export class GitHubService implements IGitHubService {
 
   private saveProgress(
     lastProcessedPage: number,
-    lastProcessedPR: number,
+    processedPRs: number,
+    totalPRs: number,
+    timePeriod: number,
   ): void {
-    const cacheKey = this.getProgressCacheKey();
-    this.cacheService.set(cacheKey, { lastProcessedPage, lastProcessedPR });
+    const cacheKey = this.getProgressCacheKey(timePeriod);
+    this.cacheService.set(cacheKey, {
+      lastProcessedPage,
+      processedPRs,
+      totalPRs,
+    });
   }
 
-  private getProgressCacheKey(): string {
-    return `github-${this.owner}/${this.repo}-progress`;
-  }
-
-  private getCacheKey(): string {
-    return `github-${this.owner}/${this.repo}-all-all`;
+  private getProgressCacheKey(timePeriod: number): string {
+    return `github-${this.owner}/${this.repo}-progress-${timePeriod}`;
   }
 
   private calculatePRCycleTime(pullRequests: any[]): IMetric {
@@ -269,25 +363,15 @@ export class GitHubService implements IGitHubService {
 
     return Math.round(totalSize / pullRequests.length);
   }
-}
 
-@injectable()
-export class OctokitAdapter implements IGitHubClient {
-  private octokit: Octokit;
-
-  constructor(@inject(TYPES.Config) private config: IConfig) {
-    this.octokit = new Octokit({ auth: config.GITHUB_TOKEN });
-  }
-
-  async *paginate(
-    route: string,
-    params: any,
-  ): AsyncGenerator<any, void, unknown> {
-    for await (const response of this.octokit.paginate.iterator(
-      route,
-      params,
-    )) {
-      yield response;
-    }
+  private async getTotalPRCount(timePeriod: number): Promise<number> {
+    const since = new Date(
+      Date.now() - timePeriod * 24 * 60 * 60 * 1000,
+    ).toISOString();
+    const response = await this.client.request('GET /search/issues', {
+      q: `repo:${this.owner}/${this.repo} is:pr created:>=${since}`,
+      per_page: 1,
+    });
+    return response.data.total_count || 0;
   }
 }

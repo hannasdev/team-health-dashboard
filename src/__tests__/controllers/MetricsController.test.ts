@@ -25,9 +25,13 @@ describe('MetricsController', () => {
       mockLogger as Logger,
     );
 
-    mockRequest = {};
+    mockRequest = {
+      query: {},
+    };
     mockResponse = {
+      writeHead: jest.fn(),
       write: jest.fn(),
+      end: jest.fn(),
     } as Partial<Response>;
   });
 
@@ -47,17 +51,22 @@ describe('MetricsController', () => {
       ];
 
       mockMetricsService.getAllMetrics.mockImplementation(
-        async progressCallback => {
-          progressCallback(0, 'Starting');
-          progressCallback(50, 'Halfway');
-          progressCallback(100, 'Completed');
-          return { metrics: mockMetrics, errors: [] };
+        async (progressCallback, timePeriod) => {
+          progressCallback?.(0, 'Starting');
+          progressCallback?.(50, 'Halfway');
+          progressCallback?.(100, 'Completed');
+          return {
+            metrics: mockMetrics,
+            errors: [],
+            githubStats: { totalPRs: 10, fetchedPRs: 10, timePeriod: 90 },
+          };
         },
       );
 
       await metricsController.getAllMetrics(
         mockRequest as Request,
         mockResponse as Response,
+        90,
       );
 
       expect(mockResponse.write).toHaveBeenCalledWith(
@@ -87,6 +96,7 @@ describe('MetricsController', () => {
       await metricsController.getAllMetrics(
         mockRequest as Request,
         mockResponse as Response,
+        90,
       );
 
       expect(mockResponse.write).toHaveBeenCalledWith(

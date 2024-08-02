@@ -1,30 +1,47 @@
 /**
- * src/container.ts
+ * Dependency Injection Container
  *
- * This file manages dependencies across the application, including
- * controllers, services, and utilities.
+ * This file sets up the InversifyJS container for dependency injection
+ * across the Team Health Dashboard application. It binds interfaces to their
+ * implementations for services, controllers, and utilities.
+ *
+ * Key components:
+ * - Configuration
+ * - Logging
+ * - Error Handling
+ * - Data Services (Google Sheets, GitHub)
+ * - Metrics Service and Controller
+ * - Caching Service
+ *
+ * When adding new dependencies:
+ * 1. Import the necessary types and implementations
+ * 2. Add a new binding using container.bind<Interface>(TYPES.InterfaceType).to(Implementation)
+ *
+ * @module Container
  */
+
 import { Container } from 'inversify';
 import { TYPES } from './utils/types';
-import type { IGoogleSheetsService } from './interfaces/IGoogleSheetsService';
-import type { IGitHubService } from './interfaces/IGitHubService';
-import type { IMetricsService } from './interfaces/IMetricsService';
-import type { IErrorHandler } from './interfaces/IErrorHandler';
-import type { IGitHubClient } from './interfaces/IGitHubClient';
-import type { IGoogleSheetsClient } from './interfaces/IGoogleSheetsClient';
 import { Logger } from './utils/logger';
-import {
-  GoogleSheetsService,
-  GoogleSheetsAdapter,
-} from './services/GoogleSheetsService';
-import { GitHubService, OctokitAdapter } from './services/GitHubService';
-import { MetricsService } from './services/MetricsService';
 import { ErrorHandler } from './middleware/ErrorHandler';
-import { IConfig } from './interfaces/IConfig';
 import { config } from './config/config';
-import { MetricsController } from './controllers/MetricsController';
 import { CacheService } from './services/CacheService';
-import { ICacheService } from './interfaces/ICacheService';
+import { GoogleSheetsService } from './services/GoogleSheetsService';
+import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter';
+import { GitHubService } from './services/GitHubService';
+import { GitHubAdapter } from './adapters/GitHubAdapter';
+import { MetricsService } from './services/MetricsService';
+import { MetricsController } from './controllers/MetricsController';
+import type {
+  IConfig,
+  IErrorHandler,
+  ICacheService,
+  IGoogleSheetsService,
+  IGoogleSheetsClient,
+  IGitHubService,
+  IGitHubClient,
+  IMetricsService,
+} from './interfaces/index';
 
 const container = new Container();
 
@@ -37,6 +54,9 @@ container.bind<Logger>(TYPES.Logger).to(Logger);
 // ErrorHandler
 container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
 
+// CacheService
+container.bind<ICacheService>(TYPES.CacheService).to(CacheService);
+
 // GoogleSheets
 container
   .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
@@ -46,17 +66,13 @@ container
   .to(GoogleSheetsService);
 
 // GitHub
-container.bind<IGitHubClient>(TYPES.GitHubClient).to(OctokitAdapter);
+container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
 container.bind<IGitHubService>(TYPES.GitHubService).to(GitHubService);
 
 // Metrics
 container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService);
-
-// Controllers
 container
   .bind<MetricsController>(TYPES.MetricsController)
   .to(MetricsController);
-
-container.bind<ICacheService>(TYPES.CacheService).to(CacheService);
 
 export { container };
