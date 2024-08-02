@@ -9,7 +9,7 @@
     "start": "node --experimental-specifier-resolution=node dist/index.js",
     "build": "npx tsc",
     "prod": "webpack --config webpack.config.cjs",
-    "dev": "node --loader ts-node/esm --experimental-specifier-resolution=node src/index.ts",
+    "dev": "node --loader ts-node/esm src/index.ts",
     "test:jest": "jest",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",

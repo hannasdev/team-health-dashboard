@@ -1,7 +1,9 @@
 {
   "ts-node": {
     "transpileOnly": true,
-    "files": true
+    "files": true,
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
   },
   "compilerOptions": {
     "allowJs": true,
