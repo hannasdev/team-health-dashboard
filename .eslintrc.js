@@ -16,8 +16,31 @@ export default {
     'plugin:node/recommended',
     'plugin:prettier/recommended',
   ],
-  plugins: ['@typescript-eslint'],
+  plugins: ['@typescript-eslint', 'import'],
   rules: {
+    'import/order': [
+      'error',
+      {
+        groups: [
+          'builtin', // Node "builtin" modules (like `fs`, `path`)
+          'external', // "external" modules (npm packages like `lodash`)
+          'internal', // "internal" modules (using `paths` from `tsconfig.json`)
+          ['parent', 'sibling', 'index'], // Parent, sibling, and index
+          'object', // Object imports (like `import {foo} from 'bar'`)
+          'type', // Type imports (only types in TypeScript)
+        ],
+        pathGroups: [
+          {
+            pattern: '@/**',
+            group: 'internal',
+            position: 'before',
+          },
+        ],
+        pathGroupsExcludedImportTypes: ['builtin'],
+        alphabetize: { order: 'asc', caseInsensitive: true },
+        'newlines-between': 'always',
+      },
+    ],
     'prettier/prettier': 'error',
     '@typescript-eslint/explicit-function-return-type': 'off',
     '@typescript-eslint/no-explicit-any': 'off',
