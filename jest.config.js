@@ -1,3 +1,4 @@
+// jest.config.js
 export default {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
@@ -5,6 +6,7 @@ export default {
   maxWorkers: 4,
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
+    '^@/(.*)$': '<rootDir>/src/$1',
   },
   transform: {
     '^.+\\.tsx?$': [
@@ -17,4 +19,6 @@ export default {
   testMatch: ['**/__tests__/**/*.ts?(x)', '**/?(*.)+(spec|test).ts?(x)'],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  moduleDirectories: ['node_modules', 'src'],
+  roots: ['<rootDir>'],
 };
