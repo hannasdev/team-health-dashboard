@@ -1,7 +1,8 @@
 # Team Health Dashboard Backend Architecture
 
-## Directory Structure:
-```
+## Directory Structure
+
+```txt
 /team-dashboard-backend
 │
 ├── src/
@@ -47,7 +48,7 @@
 └── README.md
 ```
 
-## Key Components:
+## Key Components
 
 1. **Config**: Centralized configuration management.
 2. **Models**: Database schemas and models.
@@ -59,44 +60,51 @@
 8. **Tests**: Unit and integration tests.
 9. **Scripts**: Utility scripts for development and deployment.
 
-## Implementation Details:
+## Implementation Details
 
-1. **API Structure**: 
+1. **API Structure**:
+
    - Use RESTful principles for API design.
    - Implement versioning (e.g., `/api/v1/metrics`).
 
 2. **Authentication**:
+
    - Implement JWT for stateless authentication.
    - Use middleware to protect routes.
 
 3. **Database**:
+
    - Use MongoDB with Mongoose for ORM.
    - Implement data validation at the model level.
 
 4. **Error Handling**:
+
    - Centralized error handling middleware.
    - Consistent error responses across the API.
 
 5. **Logging**:
+
    - Implement structured logging for easier parsing and analysis.
 
 6. **Testing**:
+
    - Unit tests for individual functions and components.
    - Integration tests for API endpoints and database operations.
 
 7. **CI/CD**:
+
    - Set up GitHub Actions for automated testing and deployment.
 
 8. **Documentation**:
    - Use Swagger or similar tool for API documentation.
 
-## Scalability Considerations:
+## Scalability Considerations
 
 - Implement caching strategies (e.g., Redis) for frequently accessed data.
 - Use worker processes for long-running or CPU-intensive tasks.
 - Design with horizontal scaling in mind (stateless architecture).
 
-## Security Measures:
+## Security Measures
 
 - Implement rate limiting to prevent abuse.
 - Use HTTPS in production.

@@ -1,3 +1,5 @@
+# Features
+
 This Team Health Dashboard concept provides a comprehensive view of your team's performance across various dimensions. Here's a brief explanation of why these metrics are important and how they can be used:
 
 - Sprint Velocity and Burndown help you understand your team's capacity and how well they're meeting sprint goals.
@@ -6,4 +8,3 @@ This Team Health Dashboard concept provides a comprehensive view of your team's 
 - Bug Resolution Time and WIP Items help you manage the team's focus and responsiveness to issues.
 - Sprint Goal Achievement Rate provides a high-level view of how well the team is meeting its commitments.
 - Team Happiness Index, while more subjective, can give you early warning signs of potential issues affecting team morale.
--
