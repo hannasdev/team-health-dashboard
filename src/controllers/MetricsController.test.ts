@@ -4,7 +4,7 @@ import { MetricsController } from '@/controllers/MetricsController';
 import type { IMetricsService, IMetric, ILogger } from '@/interfaces';
 import type { Request, Response } from 'express';
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
-import { Logger } from '@/utils/logger';
+import { Logger } from '@/utils/Logger';
 import { createMockLogger } from '@/__mocks__/mockFactories';
 
 describe('MetricsController', () => {

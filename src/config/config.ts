@@ -16,6 +16,9 @@ export const config = {
   DATABASE_URL:
     process.env.DATABASE_URL ||
     'mongodb://localhost:27017/team-heath-dashboard',
+  LOG_LEVEL: process.env.LOG_LEVEL || 'info',
+  LOG_FORMAT: process.env.LOG_FORMAT || 'json',
+  LOG_FILE_PATH: process.env.LOG_FILE_PATH || './logs',
 };
 
 // Optional: Validate config

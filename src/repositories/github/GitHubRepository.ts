@@ -8,7 +8,7 @@ import type {
   IPullRequest,
   IGitHubRepository,
 } from '../../interfaces';
-import { Logger } from '../../utils/logger';
+import { Logger } from '../../utils/Logger';
 import { Cacheable, CacheableClass } from '../../utils/CacheDecorator';
 import type { ProgressCallback } from '../../types';
 

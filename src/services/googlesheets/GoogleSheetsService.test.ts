@@ -9,7 +9,7 @@ import type {
   ILogger,
 } from '@/interfaces/index';
 import { createMockLogger } from '@/__mocks__/mockFactories';
-import { Logger } from '@/utils/logger';
+import { Logger } from '@/utils/Logger';
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 class MockCacheService implements ICacheService {

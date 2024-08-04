@@ -14,6 +14,8 @@ export const TYPES = {
   GitHubService: Symbol.for('GitHubService'),
   GoogleSheetsClient: Symbol.for('GoogleSheetsClient'),
   GoogleSheetsService: Symbol.for('GoogleSheetsService'),
+  LogFormat: Symbol.for('LogFormat'),
+  LogLevel: Symbol.for('LogLevel'),
   Logger: Symbol.for('Logger'),
   MetricCalculator: Symbol.for('MetricCalculator'),
   MetricsController: Symbol.for('MetricsController'),

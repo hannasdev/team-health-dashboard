@@ -1,10 +1,12 @@
 // src/routes/metrics.ts
 import express, { Response } from 'express';
-import { container } from '../container';
+
 import { MetricsController } from '@/controllers/MetricsController';
-import { TYPES } from '../utils/types';
-import { authMiddleware } from '@/middleware/AuthMiddleware';
 import { IAuthRequest } from '@/interfaces';
+import { authMiddleware } from '@/middleware/AuthMiddleware';
+
+import { container } from '../container';
+import { TYPES } from '../utils/types';
 
 const router = express.Router();
 const metricsController = container.get<MetricsController>(

@@ -1,7 +1,8 @@
 // src/middleware/ErrorHandler.ts
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
-import { Logger } from '../utils/logger';
+
+import { Logger } from '../utils/Logger';
 import { TYPES } from '../utils/types';
 
 @injectable()

@@ -4,7 +4,7 @@ import { inject, injectable } from 'inversify';
 import type { IMetricsService } from '../interfaces';
 import { TYPES } from '../utils/types';
 import { ProgressCallback } from '../types';
-import { Logger } from '../utils/logger';
+import { Logger } from '../utils/Logger';
 
 /**
  * MetricsController

@@ -1,5 +1,5 @@
 import { createProgressCallback } from '@/services/progress/ProgressTracker';
-import { Logger } from '@/utils/logger';
+import { Logger } from '@/utils/Logger';
 import { ProgressTracker } from '@/services/progress/ProgressTracker';
 import { IProgressTracker } from '@/interfaces';
 

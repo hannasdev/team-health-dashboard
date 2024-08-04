@@ -11,7 +11,7 @@ import type {
   IMetric,
 } from '../../interfaces/index';
 import type { ProgressCallback } from '../../types';
-import { Logger } from '../../utils/logger';
+import { Logger } from '../../utils/Logger';
 
 /**
  * GitHubService

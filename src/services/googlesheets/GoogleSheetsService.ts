@@ -9,7 +9,7 @@ import type {
   ICacheService,
   IMetric,
 } from '../../interfaces';
-import { Logger } from '../../utils/logger';
+import { Logger } from '../../utils/Logger';
 
 /**
  * GoogleSheetsService

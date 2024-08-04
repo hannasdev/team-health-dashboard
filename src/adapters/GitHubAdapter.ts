@@ -1,8 +1,10 @@
 // GitHubAdapter.ts
-import { injectable, inject } from 'inversify';
-import { Octokit } from '@octokit/rest';
 import { graphql } from '@octokit/graphql';
+import { Octokit } from '@octokit/rest';
+import { injectable, inject } from 'inversify';
+
 import { TYPES } from '../utils/types';
+
 import type { IGitHubClient, IConfig } from '../interfaces';
 
 /**

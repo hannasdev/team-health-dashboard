@@ -2,7 +2,7 @@
 // Abstract Class
 import { injectable, inject } from 'inversify';
 import { TYPES } from '../utils/types';
-import { Logger } from '../utils/logger';
+import { Logger } from '../utils/Logger';
 import type { ICacheService } from '../interfaces/index';
 
 @injectable()

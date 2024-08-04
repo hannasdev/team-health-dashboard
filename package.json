@@ -29,7 +29,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.8.0",
     "reflect-metadata": "^0.2.2",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "winston": "^3.13.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",

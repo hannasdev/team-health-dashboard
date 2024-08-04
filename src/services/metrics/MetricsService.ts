@@ -1,14 +1,16 @@
 // src/services/MetricsService.ts
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../../utils/types';
+
 import { ProgressCallback } from '../../types';
+import { Logger } from '../../utils/Logger';
+import { TYPES } from '../../utils/types';
+
 import type {
   IMetricsService,
   IMetric,
   IGoogleSheetsService,
   IGitHubService,
 } from '../../interfaces/index';
-import { Logger } from '../../utils/logger';
 
 /**
  * MetricsService

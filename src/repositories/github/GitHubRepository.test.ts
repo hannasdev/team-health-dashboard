@@ -1,5 +1,4 @@
 // src/__tests__/repositories/GitHubRepository.test.ts
-import { GitHubRepository } from '@/repositories/github/GitHubRepository';
 import type {
   IGitHubClient,
   IConfig,
@@ -7,8 +6,9 @@ import type {
   IPullRequest,
   IGraphQLResponse,
 } from '@/interfaces';
-import { Logger } from '@/utils/logger';
+import { GitHubRepository } from '@/repositories/github/GitHubRepository';
 import { ProgressCallback } from '@/types';
+import { Logger } from '@/utils/Logger';
 
 describe('GitHubRepository', () => {
   let repository: GitHubRepository;

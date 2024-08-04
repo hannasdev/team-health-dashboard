@@ -21,22 +21,26 @@
  */
 
 import { Container } from 'inversify';
-import { AuthController } from './controllers/AuthController';
-import { CacheService } from './services/cache/CacheService';
-import { ErrorHandler } from './middleware/ErrorHandler';
+
+import { ILogger } from '@/interfaces';
+
 import { GitHubAdapter } from './adapters/GitHubAdapter';
-import { GitHubRepository } from './repositories/github/GitHubRepository';
-import { GitHubService } from './services/github/GitHubService';
 import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter';
-import { GoogleSheetsService } from './services/googlesheets/GoogleSheetsService';
-import { Logger } from './utils/logger';
-import { MetricCalculator } from './services/metrics/MetricsCalculator';
+import { config } from './config/config';
+import { AuthController } from './controllers/AuthController';
 import { MetricsController } from './controllers/MetricsController';
+import { ErrorHandler } from './middleware/ErrorHandler';
+import { GitHubRepository } from './repositories/github/GitHubRepository';
+import { UserRepository } from './repositories/user/UserRepository';
+import { CacheService } from './services/cache/CacheService';
+import { GitHubService } from './services/github/GitHubService';
+import { GoogleSheetsService } from './services/googlesheets/GoogleSheetsService';
+import { MetricCalculator } from './services/metrics/MetricsCalculator';
 import { MetricsService } from './services/metrics/MetricsService';
 import { ProgressTracker } from './services/progress/ProgressTracker';
-import { UserRepository } from './repositories/user/UserRepository';
+import { Logger } from './utils/Logger';
 import { TYPES } from './utils/types';
-import { config } from './config/config';
+
 import type {
   ICacheService,
   IConfig,
@@ -57,7 +61,9 @@ const container = new Container();
 container.bind<IConfig>(TYPES.Config).toConstantValue(config);
 
 // Logger
-container.bind<Logger>(TYPES.Logger).to(Logger);
+container.bind<ILogger>(TYPES.Logger).to(Logger);
+container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
+container.bind<string>(TYPES.LogFormat).toConstantValue(config.LOG_FORMAT);
 
 // ErrorHandler
 container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
