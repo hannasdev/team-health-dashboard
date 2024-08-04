@@ -13,6 +13,9 @@ export const config = {
   PORT: process.env.PORT || 3000,
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*', // Default to all origins if not set
   JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key',
+  DATABASE_URL:
+    process.env.DATABASE_URL ||
+    'mongodb://localhost:27017/team-heath-dashboard',
 };
 
 // Optional: Validate config

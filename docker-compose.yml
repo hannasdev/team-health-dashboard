@@ -1,0 +1,21 @@
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=mongodb://db:27017/myapp
+      - NODE_ENV=production
+      - JWT_SECRET=your_jwt_secret_here
+
+  db:
+    image: mongo:4.4
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts:/docker-entrypoint-initdb.d
+    command: mongod --bind_ip_all
+
+volumes:
+  mongodb_data:

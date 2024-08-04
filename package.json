@@ -27,6 +27,7 @@
     "googleapis": "^140.0.1",
     "inversify": "^6.0.2",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.8.0",
     "reflect-metadata": "^0.2.2",
     "uuid": "^10.0.0"
   },
