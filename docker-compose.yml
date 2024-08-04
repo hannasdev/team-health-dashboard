@@ -14,7 +14,7 @@ services:
     image: mongo:4.4
     volumes:
       - mongodb_data:/data/db
-      - ./scripts:/docker-entrypoint-initdb.d
+      - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js
     command: mongod --bind_ip_all
 
 volumes:
