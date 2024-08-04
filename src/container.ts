@@ -21,6 +21,7 @@
  */
 
 import { Container } from 'inversify';
+import { AuthController } from './controllers/AuthController';
 import { CacheService } from './services/cache/CacheService';
 import { ErrorHandler } from './middleware/ErrorHandler';
 import { GitHubAdapter } from './adapters/GitHubAdapter';
@@ -33,6 +34,7 @@ import { MetricCalculator } from './services/metrics/MetricsCalculator';
 import { MetricsController } from './controllers/MetricsController';
 import { MetricsService } from './services/metrics/MetricsService';
 import { ProgressTracker } from './services/progress/ProgressTracker';
+import { UserRepository } from './repositories/user/UserRepository';
 import { TYPES } from './utils/types';
 import { config } from './config/config';
 import type {
@@ -85,5 +87,8 @@ container
 
 // Progress Tracking
 container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
+
+container.bind<UserRepository>(TYPES.UserRepository).to(UserRepository);
+container.bind<AuthController>(TYPES.AuthController).to(AuthController);
 
 export { container };

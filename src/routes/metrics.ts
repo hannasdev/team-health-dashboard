@@ -1,15 +1,17 @@
 // src/routes/metrics.ts
-import express from 'express';
+import express, { Response } from 'express';
 import { container } from '../container';
 import { MetricsController } from '@/controllers/MetricsController';
 import { TYPES } from '../utils/types';
+import { authMiddleware } from '@/middleware/AuthMiddleware';
+import { IAuthRequest } from '@/interfaces';
 
 const router = express.Router();
 const metricsController = container.get<MetricsController>(
   TYPES.MetricsController,
 );
 
-router.get('/metrics', (req, res) => {
+router.get('/metrics', authMiddleware, (req: IAuthRequest, res: Response) => {
   // Set necessary headers for SSE
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',

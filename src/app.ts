@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import metricsRouter from './routes/metrics';
+import authRouter from './routes/auth';
 import { container } from './container';
 import { config } from './config/config';
 
@@ -35,5 +36,8 @@ app.get('/', (req: Request, res: Response) => {
 
 // Use the metrics router
 app.use('/api', metricsRouter);
+
+// Use the auth router
+app.use('/api/auth', authRouter);
 
 export default app;

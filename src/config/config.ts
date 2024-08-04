@@ -12,6 +12,7 @@ export const config = {
   GITHUB_REPO: process.env.GITHUB_REPO!,
   PORT: process.env.PORT || 3000,
   CORS_ORIGIN: process.env.CORS_ORIGIN || '*', // Default to all origins if not set
+  JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key',
 };
 
 // Optional: Validate config

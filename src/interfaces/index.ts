@@ -1,3 +1,4 @@
+export type { IAuthRequest } from './IAuthRequest';
 export type { ICacheService } from './ICacheService';
 export type { IConfig } from './IConfig';
 export type { IDataService } from './IDataService';

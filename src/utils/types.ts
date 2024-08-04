@@ -4,6 +4,7 @@
  * Provides unique symbols that we use to identify our injectable dependencies.
  */
 export const TYPES = {
+  AuthController: Symbol.for('AuthController'),
   AuthMiddleware: Symbol.for('AuthMiddleware'),
   CacheService: Symbol.for('CacheService'),
   Config: Symbol.for('Config'),
@@ -18,4 +19,5 @@ export const TYPES = {
   MetricsController: Symbol.for('MetricsController'),
   MetricsService: Symbol.for('MetricsService'),
   ProgressTracker: Symbol.for('ProgressTracker'),
+  UserRepository: Symbol.for('UserRepository'),
 };

@@ -1,4 +1,7 @@
 // @/__mocks__/mockFactories.ts
+import { IncomingHttpHeaders } from 'http';
+
+import { Request, Response } from 'express';
 
 import {
   IGitHubRepository,
@@ -12,7 +15,9 @@ import {
   IMetric,
   ILogger,
   IFetchDataResult,
+  IAuthRequest,
 } from '@/interfaces';
+import { UserRepository } from '@/repositories/user/UserRepository';
 
 export function createMockGitHubRepository(): jest.Mocked<IGitHubRepository> {
   return {
@@ -126,3 +131,90 @@ export function createMockGitHubService(): jest.Mocked<IGitHubService> {
     >(),
   };
 }
+
+export function createMockRequest(
+  overrides: Partial<IAuthRequest> = {},
+): IAuthRequest {
+  const req: Partial<IAuthRequest> = {
+    headers: {} as IncomingHttpHeaders,
+    ...overrides,
+  };
+  return req as IAuthRequest;
+}
+
+export const createMockResponse = () => {
+  const res: Partial<Response> = {
+    type: jest.fn().mockReturnThis(),
+    header: jest.fn().mockReturnThis(),
+    clearCookie: jest.fn().mockReturnThis(),
+    cookie: jest.fn().mockReturnThis(),
+    format: jest.fn(),
+    get: jest.fn(),
+    links: jest.fn().mockReturnThis(),
+    location: jest.fn().mockReturnThis(),
+    redirect: jest.fn().mockReturnThis(),
+    render: jest.fn(),
+    set: jest.fn().mockReturnThis(),
+    vary: jest.fn().mockReturnThis(),
+    append: jest.fn().mockReturnThis(),
+    attachment: jest.fn().mockReturnThis(),
+    contentType: jest.fn().mockReturnThis(),
+    download: jest.fn(),
+    headersSent: false,
+    locals: {},
+    charset: '',
+  };
+
+  res.status = jest.fn().mockReturnValue(res);
+  res.json = jest.fn().mockReturnValue(res);
+  res.send = jest.fn().mockReturnValue(res);
+  res.sendStatus = jest.fn().mockReturnValue(res);
+  res.end = jest.fn().mockReturnValue(res);
+  return res as Response;
+};
+
+export function createMockUserRepository(): jest.Mocked<UserRepository> {
+  return {
+    findByEmail: jest.fn(),
+    create: jest.fn(),
+  } as unknown as jest.Mocked<UserRepository>;
+}
+
+export function createMockAuthRequest(
+  overrides: Partial<IAuthRequest> = {},
+): IAuthRequest {
+  const req: Partial<IAuthRequest> = {
+    headers: {} as IncomingHttpHeaders,
+    ...overrides,
+  };
+  return req as IAuthRequest;
+}
+
+export function createMockExpressRequest(
+  overrides: Partial<Request> = {},
+): Request {
+  const req: Partial<Request> = {
+    headers: {} as IncomingHttpHeaders,
+    ...overrides,
+  };
+  return req as Request;
+}
+
+export const createMockAuthControllerResponse = () => {
+  const json = jest.fn();
+  const status = jest.fn().mockReturnThis();
+  const res: Partial<Response> = {
+    status,
+    json,
+  };
+  return res as Response;
+};
+
+export const createMockAuthMiddlewareResponse = () => {
+  const json = jest.fn().mockReturnThis();
+  const res: Partial<Response> = {
+    status: jest.fn().mockReturnValue({ json }),
+    json,
+  };
+  return res as Response;
+};

@@ -1,4 +1,4 @@
-// src/__tests__/controllers/MetricsController.test.ts
+// src/controllers/MetricsController.test.ts
 import 'reflect-metadata';
 import { MetricsController } from '@/controllers/MetricsController';
 import type { IMetricsService, IMetric, ILogger } from '@/interfaces';
