@@ -1,27 +1,24 @@
-import { GitHubService } from '@/services/github/GitHubService';
 import {
   createMockGitHubRepository,
   createMockMetricCalculator,
-  createMockProgressTracker,
-  createMockConfig,
   createMockLogger,
   createMockPullRequest,
-  createMockMetric,
 } from '@/__mocks__/mockFactories';
 import type {
   IGitHubRepository,
   IGitHubService,
   IMetricCalculator,
   IProgressTracker,
-  ILogger,
 } from '@/interfaces';
+import { GitHubService } from '@/services/github/GitHubService';
+import { Logger } from '@/utils/Logger';
 
 describe('GitHubService', () => {
   let service: IGitHubService;
   let mockGitHubRepository: jest.Mocked<IGitHubRepository>;
   let mockMetricCalculator: jest.Mocked<IMetricCalculator>;
   let mockProgressTracker: jest.Mocked<IProgressTracker>;
-  let mockLogger: jest.Mocked<ILogger>;
+  let mockLogger: jest.Mocked<Logger>;
 
   beforeEach(() => {
     mockGitHubRepository = createMockGitHubRepository();
@@ -30,7 +27,7 @@ describe('GitHubService', () => {
       setReportInterval: jest.fn(),
       trackProgress: jest.fn(),
     };
-    mockLogger = createMockLogger();
+    mockLogger = createMockLogger() as unknown as jest.Mocked<Logger>;
 
     service = new GitHubService(
       mockGitHubRepository,

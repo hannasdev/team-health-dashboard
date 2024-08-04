@@ -1,5 +1,6 @@
 // src/services/metrics/MetricCalculator.ts
 import { injectable } from 'inversify';
+
 import type {
   IMetric,
   IMetricCalculator,

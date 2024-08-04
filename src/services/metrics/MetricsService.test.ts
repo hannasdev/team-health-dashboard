@@ -1,26 +1,28 @@
 // src/__tests__/services/metrics/MetricsService.test.ts
 import 'reflect-metadata';
-import { MetricsService } from '@/services/metrics/MetricsService';
-import type { IMetricsService, IMetric, ILogger } from '@/interfaces';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+
 import {
   createMockLogger,
   createMockGoogleSheetsService,
   createMockGitHubService,
   createMockMetric,
 } from '@/__mocks__/mockFactories';
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import type { IMetricsService, IMetric } from '@/interfaces';
+import { MetricsService } from '@/services/metrics/MetricsService';
+import { Logger } from '@/utils/Logger';
 
 describe('MetricsService', () => {
   let metricsService: IMetricsService;
   let mockGoogleSheetsService: ReturnType<typeof createMockGoogleSheetsService>;
   let mockGitHubService: ReturnType<typeof createMockGitHubService>;
-  let mockLogger: ILogger;
+  let mockLogger: jest.Mocked<Logger>;
 
   beforeEach(() => {
     jest.resetAllMocks();
     mockGoogleSheetsService = createMockGoogleSheetsService();
     mockGitHubService = createMockGitHubService();
-    mockLogger = createMockLogger();
+    mockLogger = createMockLogger() as unknown as jest.Mocked<Logger>;
     metricsService = new MetricsService(
       mockGoogleSheetsService,
       mockGitHubService,

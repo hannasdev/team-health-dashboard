@@ -1,6 +1,5 @@
 // src/controllers/AuthController.test.ts
 import bcrypt from 'bcrypt';
-import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 
 import {

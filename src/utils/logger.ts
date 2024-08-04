@@ -1,13 +1,12 @@
-// src/utils/logger.ts
+// src/utils/Logger.ts
 import path from 'path';
 
 import { injectable, inject } from 'inversify';
 import winston from 'winston';
 
-import { ILogger } from '@/interfaces';
-
-import { TYPES } from './types';
 import { config } from '../config/config';
+import { ILogger } from '../interfaces/ILogger';
+import { TYPES } from '../utils/types';
 
 @injectable()
 export class Logger implements ILogger {

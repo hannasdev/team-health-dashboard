@@ -1,5 +1,5 @@
-import { MetricCalculator } from '@/services/metrics/MetricsCalculator';
 import type { IPullRequest } from '@/interfaces';
+import { MetricCalculator } from '@/services/metrics/MetricsCalculator';
 
 describe('MetricCalculator', () => {
   let calculator: MetricCalculator;

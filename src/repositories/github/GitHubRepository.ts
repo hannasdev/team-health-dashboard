@@ -1,6 +1,10 @@
 // src/repositories/github/GitHubRepository.ts
 import { injectable, inject } from 'inversify';
+
+import { Cacheable, CacheableClass } from '../../utils/CacheDecorator';
+import { Logger } from '../../utils/Logger';
 import { TYPES } from '../../utils/types';
+
 import type {
   IGitHubClient,
   IConfig,
@@ -8,8 +12,6 @@ import type {
   IPullRequest,
   IGitHubRepository,
 } from '../../interfaces';
-import { Logger } from '../../utils/Logger';
-import { Cacheable, CacheableClass } from '../../utils/CacheDecorator';
 import type { ProgressCallback } from '../../types';
 
 interface IGraphQLPullRequest {

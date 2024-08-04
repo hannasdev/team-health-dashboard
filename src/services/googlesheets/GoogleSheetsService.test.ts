@@ -1,6 +1,8 @@
 // src/__tests__/services/GoogleSheetsService.test.ts
 import 'reflect-metadata';
-import { GoogleSheetsService } from '@/services/googlesheets/GoogleSheetsService';
+import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+
+import { createMockLogger } from '@/__mocks__/mockFactories';
 import type {
   IGoogleSheetsService,
   IGoogleSheetsClient,
@@ -8,9 +10,8 @@ import type {
   ICacheService,
   ILogger,
 } from '@/interfaces/index';
-import { createMockLogger } from '@/__mocks__/mockFactories';
+import { GoogleSheetsService } from '@/services/googlesheets/GoogleSheetsService';
 import { Logger } from '@/utils/Logger';
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
 class MockCacheService implements ICacheService {
   private store: { [key: string]: any } = {};

@@ -1,7 +1,10 @@
 // src/services/googlesheets/GoogleSheetsService.ts
 import { injectable, inject } from 'inversify';
+
+import { Logger } from '../../utils/Logger';
 import { TYPES } from '../../utils/types';
 import { BaseService } from '../BaseService';
+
 import type {
   IGoogleSheetsClient,
   IGoogleSheetsService,
@@ -9,7 +12,6 @@ import type {
   ICacheService,
   IMetric,
 } from '../../interfaces';
-import { Logger } from '../../utils/Logger';
 
 /**
  * GoogleSheetsService

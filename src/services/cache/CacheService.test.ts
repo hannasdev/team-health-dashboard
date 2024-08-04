@@ -1,6 +1,7 @@
 // src/__tests__/services/CacheService.test.ts
 import 'reflect-metadata';
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
+
 import { CacheService } from '@/services/cache/CacheService';
 
 describe('CacheService', () => {

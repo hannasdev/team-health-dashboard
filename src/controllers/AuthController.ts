@@ -1,11 +1,12 @@
 // src/controllers/AuthController.ts
+import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
-import { TYPES } from '../utils/types';
-import { UserRepository } from '../repositories/user/UserRepository';
+
 import { config } from '../config/config';
+import { UserRepository } from '../repositories/user/UserRepository';
+import { TYPES } from '../utils/types';
 
 @injectable()
 export class AuthController {

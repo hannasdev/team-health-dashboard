@@ -1,8 +1,9 @@
 // src/middleware/authMiddleware.ts
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { config } from '../config/config';
+
 import { IAuthRequest } from './../interfaces/IAuthRequest';
+import { config } from '../config/config';
 
 export const authMiddleware = (
   req: IAuthRequest,
