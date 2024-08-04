@@ -30,7 +30,7 @@ app.use(
 
 // Root route
 app.get('/', (req: Request, res: Response) => {
-  res.send('Express + TypeScript Server');
+  res.send('Team Health Dashboard API');
 });
 
 // Use the metrics router
