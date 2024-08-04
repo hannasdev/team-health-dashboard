@@ -1,5 +1,5 @@
-import { Cacheable, CacheableClass } from '@/utils/CacheDecorator';
 import { ICacheService } from '@/interfaces/ICacheService';
+import { Cacheable, CacheableClass } from '@/utils/CacheDecorator';
 
 describe('CacheDecorator', () => {
   let mockCacheService: jest.Mocked<ICacheService>;
