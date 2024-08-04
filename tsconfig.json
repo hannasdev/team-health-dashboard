@@ -39,5 +39,5 @@
     }
   },
   "include": ["src/**/*", "jest.setup.ts"],
-  "exclude": ["./node_modules", "./dist", "jest.config.js"]
+  "exclude": ["node_modules", "./dist"]
 }

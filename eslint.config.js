@@ -1,14 +1,16 @@
 import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import eslintPluginImport from 'eslint-plugin-import';
 import prettierConfig from 'eslint-config-prettier';
+import eslintPluginImport from 'eslint-plugin-import';
+import tseslint from 'typescript-eslint';
 
 export default [
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.{js,ts,tsx}'],
+    ignores: ['webpack.config.cjs'],
+    files: ['**/*.{js,mjs,cjs,ts,tsx}'],
     plugins: {
+      '@typescript-eslint': tseslint.plugin,
       import: eslintPluginImport,
     },
     rules: {
@@ -38,18 +40,30 @@ export default [
       // Add other rules here
     },
     settings: {
+      'import/parsers': {
+        espree: ['.js', '.cjs', '.mjs'],
+        '@typescript-eslint/parser': ['.ts', '.tsx'],
+      },
       'import/resolver': {
         typescript: true,
         node: true,
       },
     },
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
     languageOptions: {
-      ecmaVersion: 2021,
-      sourceType: 'module',
       parser: tseslint.parser,
       parserOptions: {
-        project: './tsconfig.json',
+        project: ['./tsconfig.json'],
       },
+    },
+  },
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
     },
   },
   prettierConfig,
