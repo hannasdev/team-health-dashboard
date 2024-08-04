@@ -1,5 +1,5 @@
 // src/models/Metric.ts
-import { IMetric } from '../interfaces/IMetricModel';
+import type { IMetric } from '@/interfaces/IMetricModel';
 
 export class Metric implements IMetric {
   constructor(

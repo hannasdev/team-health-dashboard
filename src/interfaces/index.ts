@@ -1,23 +1,17 @@
-import { ICacheService } from './ICacheService';
-import { IConfig } from './IConfig';
-import { IDataService } from './IDataService';
-import { IErrorHandler } from './IErrorHandler';
-import { IGitHubClient } from './IGitHubClient';
-import { IGitHubService } from './IGitHubService';
-import { IGoogleSheetsClient } from './IGoogleSheetsClient';
-import { IGoogleSheetsService } from './IGoogleSheetsService';
-import { IMetric } from './IMetricModel';
-import { IMetricsService } from './IMetricsService';
-
-export {
-  ICacheService,
-  IConfig,
-  IDataService,
-  IErrorHandler,
-  IGitHubClient,
-  IGitHubService,
-  IGoogleSheetsClient,
-  IGoogleSheetsService,
-  IMetric,
-  IMetricsService,
-};
+export type { ICacheService } from './ICacheService';
+export type { IConfig } from './IConfig';
+export type { IDataService } from './IDataService';
+export type { IErrorHandler } from './IErrorHandler';
+export type { IFetchDataResult } from './IFetchDataResult';
+export type { IGitHubClient } from './IGitHubClient';
+export type { IGitHubRepository } from './IGitHubRepository';
+export type { IGitHubService } from './IGitHubService';
+export type { IGoogleSheetsClient } from './IGoogleSheetsClient';
+export type { IGoogleSheetsService } from './IGoogleSheetsService';
+export type { IGraphQLResponse } from './IGraphQLResponse';
+export type { ILogger } from './ILogger';
+export type { IMetric } from './IMetricModel';
+export type { IMetricCalculator } from './IMetricCalculator';
+export type { IMetricsService } from './IMetricsService';
+export type { IProgressTracker } from './IProgressTracker';
+export type { IPullRequest } from './IPullRequest';

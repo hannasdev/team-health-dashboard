@@ -1,18 +1,10 @@
 // src/interfaces/IGitHubService.ts
-import { IMetric } from './IMetricModel';
+import { ProgressCallback } from '@/types';
+import { IFetchDataResult } from './IFetchDataResult';
 
 export interface IGitHubService {
   fetchData(
-    progressCallback?: (
-      progress: number,
-      message: string,
-      details?: any,
-    ) => void,
+    progressCallback?: ProgressCallback,
     timePeriod?: number,
-  ): Promise<{
-    metrics: IMetric[];
-    totalPRs: number;
-    fetchedPRs: number;
-    timePeriod: number;
-  }>;
+  ): Promise<IFetchDataResult>;
 }

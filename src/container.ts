@@ -21,27 +21,33 @@
  */
 
 import { Container } from 'inversify';
-import { TYPES } from './utils/types';
-import { Logger } from './utils/logger';
+import { CacheService } from './services/cache/CacheService';
 import { ErrorHandler } from './middleware/ErrorHandler';
-import { config } from './config/config';
-import { CacheService } from './services/CacheService';
-import { GoogleSheetsService } from './services/GoogleSheetsService';
-import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter';
-import { GitHubService } from './services/GitHubService';
 import { GitHubAdapter } from './adapters/GitHubAdapter';
-import { MetricsService } from './services/MetricsService';
+import { GitHubRepository } from './repositories/github/GitHubRepository';
+import { GitHubService } from './services/github/GitHubService';
+import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter';
+import { GoogleSheetsService } from './services/googlesheets/GoogleSheetsService';
+import { Logger } from './utils/logger';
+import { MetricCalculator } from './services/metrics/MetricsCalculator';
 import { MetricsController } from './controllers/MetricsController';
+import { MetricsService } from './services/metrics/MetricsService';
+import { ProgressTracker } from './services/progress/ProgressTracker';
+import { TYPES } from './utils/types';
+import { config } from './config/config';
 import type {
+  ICacheService,
   IConfig,
   IErrorHandler,
-  ICacheService,
-  IGoogleSheetsService,
-  IGoogleSheetsClient,
-  IGitHubService,
   IGitHubClient,
+  IGitHubRepository,
+  IGitHubService,
+  IGoogleSheetsClient,
+  IGoogleSheetsService,
+  IMetricCalculator,
   IMetricsService,
-} from './interfaces/index';
+  IProgressTracker,
+} from './interfaces';
 
 const container = new Container();
 
@@ -68,11 +74,16 @@ container
 // GitHub
 container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
 container.bind<IGitHubService>(TYPES.GitHubService).to(GitHubService);
+container.bind<IGitHubRepository>(TYPES.GitHubRepository).to(GitHubRepository);
 
 // Metrics
+container.bind<IMetricCalculator>(TYPES.MetricCalculator).to(MetricCalculator);
 container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService);
 container
   .bind<MetricsController>(TYPES.MetricsController)
   .to(MetricsController);
+
+// Progress Tracking
+container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
 
 export { container };

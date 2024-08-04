@@ -1,7 +1,7 @@
 // src/routes/metrics.ts
 import express from 'express';
 import { container } from '../container';
-import { MetricsController } from '../controllers/MetricsController';
+import { MetricsController } from '@/controllers/MetricsController';
 import { TYPES } from '../utils/types';
 
 const router = express.Router();

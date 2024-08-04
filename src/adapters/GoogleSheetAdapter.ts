@@ -1,9 +1,9 @@
 // GoogleSheetsAdapter.ts
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../utils/types';
-import type { IGoogleSheetsClient, IConfig } from '../interfaces/index';
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
+import { TYPES } from '../utils/types';
+import type { IGoogleSheetsClient, IConfig } from '../interfaces';
 
 @injectable()
 export class GoogleSheetsAdapter implements IGoogleSheetsClient {

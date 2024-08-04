@@ -1,12 +1,9 @@
 // src/controllers/MetricsController.ts
 import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
+import type { IMetricsService } from '../interfaces';
 import { TYPES } from '../utils/types';
-import type {
-  IMetricsService,
-  ProgressCallback,
-} from '../interfaces/IMetricsService';
-import type { IMetric } from '../interfaces/IMetricModel';
+import { ProgressCallback } from '../types';
 import { Logger } from '../utils/logger';
 
 /**
@@ -33,11 +30,16 @@ export class MetricsController {
   ) {}
 
   /**
-   * Handles the GET request for all metrics
+   * Handles the GET request for all metrics.
+   * This method sets up Server-Sent Events (SSE) for progress updates and
+   * fetches metrics using the MetricsService.
    *
-   * @param req - The Express request object
-   * @param res - The Express response object
-   * @param timePeriod - The time period for which to fetch metrics
+   * @param {Request} req - The Express request object.
+   * @param {Response} res - The Express response object.
+   * @param {number} timePeriod - The time period in days for which to fetch metrics.
+   * @returns {Promise<void>}
+   *
+   * @throws Will pass any errors from MetricsService to the client via SSE.
    */
   public getAllMetrics = async (
     req: Request,
@@ -49,14 +51,13 @@ export class MetricsController {
     };
 
     const progressCallback: ProgressCallback = (
-      progress: number,
+      current: number,
+      total: number,
       message: string,
-      details?: Record<string, any>,
     ) => {
       sendEvent('progress', {
-        progress: Math.min(Math.round(progress), 100),
+        progress: Math.min(Math.round((current / total) * 100), 100),
         message,
-        ...details,
       });
     };
 

@@ -1,9 +1,9 @@
 // GitHubAdapter.ts
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../utils/types';
-import type { IGitHubClient, IConfig } from '../interfaces/index';
 import { Octokit } from '@octokit/rest';
-import { RequestParameters } from '@octokit/types';
+import { graphql } from '@octokit/graphql';
+import { TYPES } from '../utils/types';
+import type { IGitHubClient, IConfig } from '../interfaces';
 
 /**
  * GitHubAdapter
@@ -17,31 +17,22 @@ import { RequestParameters } from '@octokit/types';
 @injectable()
 export class GitHubAdapter implements IGitHubClient {
   private octokit: Octokit;
+  private graphqlWithAuth: typeof graphql;
 
   /**
    * Creates an instance of GitHubAdapter.
    * @param {IConfig} config - The configuration object containing the GitHub token
    */
   constructor(@inject(TYPES.Config) private config: IConfig) {
-    this.octokit = new Octokit({ auth: config.GITHUB_TOKEN });
+    this.octokit = new Octokit({
+      auth: this.config.GITHUB_TOKEN,
+    });
+    this.graphqlWithAuth = graphql.defaults({
+      headers: {
+        authorization: `token ${this.config.GITHUB_TOKEN}`,
+      },
+    });
   }
-
-  /**
-   * Provides an iterator for paginated GitHub API requests.
-   */
-  paginate = {
-    /**
-     * Creates an async iterator for a paginated GitHub API request.
-     * @param {string} route - The API route to request
-     * @param {RequestParameters} [params] - Additional parameters for the request
-     * @returns {AsyncIterableIterator<any>} An async iterator of the paginated results
-     */
-    iterator: (
-      route: string,
-      params?: RequestParameters,
-    ): AsyncIterableIterator<any> =>
-      this.octokit.paginate.iterator(route, params as any),
-  };
 
   /**
    * Sends a request to the GitHub API.
@@ -49,6 +40,11 @@ export class GitHubAdapter implements IGitHubClient {
    * @param {RequestParameters} [params] - Additional parameters for the request
    * @returns {Promise<any>} A promise that resolves with the API response
    */
-  request = (route: string, params?: RequestParameters): Promise<any> =>
-    this.octokit.request(route, params);
+  async request(route: string, options?: any): Promise<any> {
+    return this.octokit.request(route, options);
+  }
+
+  async graphql(query: string, variables?: any): Promise<any> {
+    return this.graphqlWithAuth(query, variables);
+  }
 }
