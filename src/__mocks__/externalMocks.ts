@@ -1,6 +1,6 @@
 // src/__mocks__/externalMocks.ts
-import { Octokit } from "@octokit/rest";
-import { jest } from "@jest/globals";
+import { jest } from '@jest/globals';
+import { Octokit } from '@octokit/rest';
 
 export const createMockOctokit = (): jest.Mocked<Octokit> => {
   return {
