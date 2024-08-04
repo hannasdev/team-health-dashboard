@@ -7,7 +7,7 @@ import { User } from '../../models/User';
 
 @injectable()
 export class UserRepository {
-  private db!: Db; // Using the definite assignment assertion
+  private db!: Db;
 
   constructor() {
     this.initializeDb();
@@ -19,7 +19,6 @@ export class UserRepository {
       this.db = client.db();
     } catch (error) {
       console.error('Failed to connect to the database', error);
-      // You might want to add more robust error handling here
     }
   }
 
