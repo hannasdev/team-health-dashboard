@@ -37,35 +37,77 @@ The Team Health Dashboard is designed to provide Engineering Managers with insig
 │       └── mockFactories.ts
 │   ├── config/
 │       └── config.ts
+│   ├── controllers/
+│       ├── AuthController.test.ts
+│       ├── AuthController.ts
+│       ├── MetricsController.test.ts
+│       └── MetricsController.ts
+│   ├── interfaces/
+│       ├── IAuthRequest.ts
+│       ├── ICacheService.ts
+│       ├── IConfig.ts
+│       ├── IDataService.ts
+│       ├── IErrorHandler.ts
+│       ├── IFetchDataResult.ts
+│       ├── IGitHubClient.ts
+│       ├── IGitHubRepository.ts
+│       ├── IGitHubService.ts
+│       ├── IGoogleSheetsClient.ts
+│       ├── IGoogleSheetsService.ts
+│       ├── IGraphQLResponse.ts
+│       ├── ILogger.ts
+│       ├── IMetricCalculator.ts
+│       ├── IMetricModel.ts
+│       ├── IMetricService.ts
+│       ├── IProgressTracker.ts
+│       ├── IPullRequest.ts
+│       └── index.ts
+│   ├── middleware/
+│       ├── AuthMiddleWare.test.ts
+│       ├── AuthMiddleWare.ts
+│       └── ErrorHandler.ts
 │   ├── models/
 │       ├── Metric.ts
 │       └── User.ts
-│   ├── services/
-│       ├── cache/
-│           └── CacheService.ts
-│       ├── github/
-│           └── GitHubService.ts
-│       ├── googlesheets/
-│           └── GoogleSheetsService.ts
-│       ├── metrics/
-│           └── MetricsCalculator.ts
-│           └── MetricsService.ts
-│       └── progress/
-│           └── ProgressTracker.ts
-│   ├── controllers/
-│       └── AuthController.ts
-│       └── MetricsController.ts
-│   ├── interfaces/
 │   ├── repositories/
 │       ├── github/
+│           ├── GitHubRepository.test.ts
 │           └── GitHubRepository.ts
 │       └── user/
+│           ├── UserRepository.integration.test.ts
 │           └── UserRepository.ts
 │   ├── routes/
 │       ├── auth.ts
 │       └── metrics.ts
-│   ├── middleware/
+│   ├── services/
+│       ├── cache/
+│           ├── CacheService.test.ts
+│           └── CacheService.ts
+│       ├── github/
+│           ├── GitHubService.test.ts
+│           └── GitHubService.ts
+│       ├── googlesheets/
+│           ├── GoogleSheetsService.test.ts
+│           └── GoogleSheetsService.ts
+│       ├── metrics/
+│           ├── MetricsCalculator.test.ts
+│           ├── MetricsCalculator.ts
+│           ├── MetricsService.test.ts
+│           └── MetricsService.ts
+│       └── progress/
+│           ├── ProgressTracker.test.ts
+│           └── ProgressTracker.ts
+│       └── BaseService.ts
+│   ├── types/
+│       └── index.ts
 │   ├── utils/
+│       ├── CacheDecorator.test.ts
+│       ├── CacheDecorator.ts
+│       ├── Logger.ts
+│       └── types.ts
+│   ├── loadEnv.ts
+│   ├── index.ts
+│   ├── container.ts
 │   └── app.ts
 │
 ├── public/
@@ -159,7 +201,7 @@ The Team Health Dashboard is designed to provide Engineering Managers with insig
 
 ## Dashboard Features
 
-- Real-time data updates
+- Daily data updates
 - Customizable date ranges for trend analysis
 - Alert system for metrics falling outside of acceptable ranges
 - Export functionality for reports
