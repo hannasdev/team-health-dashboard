@@ -1,0 +1,45 @@
+classDiagram
+    MetricsController --> MetricsService
+    MetricsService --> GoogleSheetsService
+    MetricsService --> GitHubService
+    MetricsService --> Logger
+    GoogleSheetsService --|> BaseService
+    GoogleSheetsService --> GoogleSheetsAdapter
+    GoogleSheetsService --> Config
+    GoogleSheetsService --> Logger
+    GoogleSheetsService --> CacheService
+    GitHubService --> GitHubRepository
+    GitHubService --> MetricCalculator
+    GitHubService --> ProgressTracker
+    GitHubService --> Logger
+    GitHubRepository --|> CacheableClass
+    GitHubRepository --> GitHubClient
+    GitHubRepository --> Config
+    GitHubRepository --> Logger
+    GitHubRepository --> CacheService
+    ProgressTracker --> Logger
+    
+    class MetricsService {
+        <<implements IMetricsService>>
+    }
+    class GoogleSheetsService {
+        <<implements IGoogleSheetsService>>
+    }
+    class GitHubService {
+        <<implements IGitHubService>>
+    }
+    class GitHubRepository {
+        <<implements IGitHubRepository>>
+    }
+    class ProgressTracker {
+        <<implements IProgressTracker>>
+    }
+    class MetricCalculator {
+        <<implements IMetricCalculator>>
+    }
+    class CacheService {
+        <<implements ICacheService>>
+    }
+    class GoogleSheetsAdapter {
+        <<implements IGoogleSheetsClient>>
+    }

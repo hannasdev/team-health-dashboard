@@ -1,0 +1,38 @@
+classDiagram
+    MetricsController --> MetricsService
+    MetricsService --> DataSourceFacade
+    MetricsService --> MetricCalculator
+    MetricsService --> ProgressTracker
+    MetricsService --> Logger
+    DataSourceFacade --> GoogleSheetsAdapter
+    DataSourceFacade --> GitHubAdapter
+    DataSourceFacade --> CacheService
+    GoogleSheetsAdapter --|> BaseDataAdapter
+    GitHubAdapter --|> BaseDataAdapter
+    BaseDataAdapter --> Config
+    BaseDataAdapter --> Logger
+    
+    class MetricsService {
+        <<implements IMetricsService>>
+    }
+    class DataSourceFacade {
+        <<implements IDataSourceFacade>>
+    }
+    class GoogleSheetsAdapter {
+        <<implements IDataAdapter>>
+    }
+    class GitHubAdapter {
+        <<implements IDataAdapter>>
+    }
+    class BaseDataAdapter {
+        <<abstract>>
+    }
+    class MetricCalculator {
+        <<implements IMetricCalculator>>
+    }
+    class ProgressTracker {
+        <<implements IProgressTracker>>
+    }
+    class CacheService {
+        <<implements ICacheService>>
+    }

@@ -16,3 +16,9 @@ export interface IFetchDataResult {
   /** The time period (in days) for which the data was fetched */
   timePeriod: number;
 }
+
+export interface IFetchDataResult {
+  metrics: any[]; // Raw data from the source
+  errors: IError[];
+  stats: Partial<IStats>;
+}

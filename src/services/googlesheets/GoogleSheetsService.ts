@@ -1,8 +1,9 @@
 // src/services/googlesheets/GoogleSheetsService.ts
 import { injectable, inject } from 'inversify';
 
-import { Logger } from '../../utils/Logger';
-import { TYPES } from '../../utils/types';
+import { Logger } from '@/utils/Logger';
+import { TYPES } from '@/utils/types';
+
 import { BaseService } from '../BaseService';
 
 import type {

@@ -7,6 +7,6 @@ export interface IMetric {
   value: number;
   timestamp: Date;
   unit: string;
-  additional_info: string;
+  additional_info?: string;
   source: string;
 }

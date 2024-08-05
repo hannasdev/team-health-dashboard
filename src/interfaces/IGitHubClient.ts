@@ -1,7 +1,13 @@
 // src/interfaces/IGitHubClient.ts
-import { RequestParameters } from '@octokit/types';
+import { ProgressCallback } from '@/types';
 
+import { IPullRequest } from './IPullRequest';
 export interface IGitHubClient {
-  request: (route: string, params?: RequestParameters) => Promise<any>;
-  graphql(query: string, variables?: any): Promise<any>;
+  fetchPullRequests(
+    owner: string,
+    repo: string,
+    timePeriod: number,
+    page: number,
+    progressCallback?: ProgressCallback,
+  ): Promise<IPullRequest[]>;
 }
