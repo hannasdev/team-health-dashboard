@@ -1,6 +1,7 @@
 // src/interfaces/IMetricsService.ts
-import type { IMetric } from './IMetricModel';
 import type { ProgressCallback } from '@/types';
+
+import type { IMetric } from './IMetricModel';
 
 export interface IMetricsService {
   getAllMetrics(
