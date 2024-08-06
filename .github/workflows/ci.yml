@@ -16,10 +16,10 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20.16.0'
-      - name: Clear npm cache
-        run: npm cache clean --force
-      - name: Remove node_modules
-        run: rm -rf node_modules
+      - name: Install dependencies
+        run: |
+          npm ci --legacy-peer-deps
+          npm install -D typescript  # Install TypeScript as a dev dependency
       - name: Debug TypeScript Config
         run: npx tsc --showConfig
       - name: Debug Webpack Config

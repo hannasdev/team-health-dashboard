@@ -20,7 +20,7 @@
     "lint:fix": "eslint 'src/**/*.{ts,js}' --fix",
     "prettier": "prettier --write 'src/**/*.{ts,js,json,md}'",
     "ai": "npx ai-digest",
-    "postinstall": "tsc --project tsconfig.json --noEmit"
+    "postinstall": "npx tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@octokit/graphql": "^8.1.1",
