@@ -16,12 +16,18 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20.16.0'
+      - name: Clear npm cache
+        run: npm cache clean --force
+      - name: Remove node_modules
+        run: rm -rf node_modules
+      - name: Debug TypeScript Config
+        run: npx tsc --showConfig
+      - name: Debug Webpack Config
+        run: npx webpack --config webpack.config.prod.js --display-error-details
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
       - name: Build
         run: npx webpack --config webpack.config.prod.js
-      - name: Debug Webpack Config
-        run: npx webpack --config webpack.config.prod.js --display-error-details
       - name: Run tests
         run: npm test
       - name: Lint
