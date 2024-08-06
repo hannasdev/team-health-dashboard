@@ -1,7 +1,9 @@
 // src/interfaces/IGitHubClient.ts
-import { RequestParameters } from '@octokit/types';
+import { IGraphQLResponse } from './IGraphQLResponse';
 
 export interface IGitHubClient {
-  request: (route: string, params?: RequestParameters) => Promise<any>;
-  graphql(query: string, variables?: any): Promise<any>;
+  graphql<T = IGraphQLResponse>(
+    query: string,
+    variables?: Record<string, any>,
+  ): Promise<T>;
 }

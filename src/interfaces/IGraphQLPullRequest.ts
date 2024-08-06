@@ -1,19 +1,13 @@
-// src/interfaces/IPullRequest.ts
-
-export interface IPullRequest {
+export interface IGraphQLPullRequest {
   number: number;
   title: string;
-  state: 'open' | 'closed' | 'merged';
-  author: {
-    login: string;
-  };
+  state: string;
+  author: { login: string } | null;
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
   mergedAt: string | null;
-  commits: {
-    totalCount: number;
-  };
+  commits: { totalCount: number };
   additions: number;
   deletions: number;
   changedFiles: number;

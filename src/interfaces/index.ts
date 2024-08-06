@@ -1,3 +1,4 @@
+export * from './IGoogleSheetsRepository';
 export type { IAuthRequest } from './IAuthRequest';
 export type { ICacheService } from './ICacheService';
 export type { IConfig } from './IConfig';
@@ -9,6 +10,7 @@ export type { IGitHubRepository } from './IGitHubRepository';
 export type { IGitHubService } from './IGitHubService';
 export type { IGoogleSheetsClient } from './IGoogleSheetsClient';
 export type { IGoogleSheetsService } from './IGoogleSheetsService';
+export type { IGraphQLPullRequest } from './IGraphQLPullRequest';
 export type { IGraphQLResponse } from './IGraphQLResponse';
 export type { ILogger } from './ILogger';
 export type { IMetric } from './IMetricModel';

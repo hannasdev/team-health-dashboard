@@ -1,59 +1,26 @@
 // src/services/MetricsService.ts
-import { ProgressCallback } from '@interfaces/types';
 import { injectable, inject } from 'inversify';
 
 import type {
   IMetricsService,
   IMetric,
-  IGoogleSheetsService,
-  IGitHubService,
-} from '@/interfaces/index';
+  IGoogleSheetsRepository,
+  IGitHubRepository,
+  IPullRequest,
+} from '@/interfaces';
+import { ProgressCallback } from '@/types';
 import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
 
-/**
- * MetricsService
- *
- * This service acts as the main orchestrator for collecting and aggregating
- * metrics data for the Team Health Dashboard. It coordinates data retrieval
- * from various sources, primarily GitHub and Google Sheets, through their
- * respective services.
- *
- * The service is responsible for:
- * - Initiating data collection from multiple sources
- * - Aggregating metrics from different services
- * - Handling errors and partial data retrieval gracefully
- * - Providing a unified interface for accessing all metrics
- * - Supporting progress tracking across all data collection processes
- *
- * It uses the GitHubService and GoogleSheetsService to fetch specific metrics,
- * combines their results, and handles any errors that occur during the process.
- * The service also manages the overall progress reporting, giving clients
- * a clear view of the data collection status.
- *
- * @implements {IMetricsService}
- */
 @injectable()
 export class MetricsService implements IMetricsService {
   constructor(
-    @inject(TYPES.GoogleSheetsService)
-    private googleSheetsService: IGoogleSheetsService,
-    @inject(TYPES.GitHubService) private gitHubService: IGitHubService,
+    @inject(TYPES.GoogleSheetsRepository)
+    private googleSheetsRepository: IGoogleSheetsRepository,
+    @inject(TYPES.GitHubRepository) private gitHubRepository: IGitHubRepository,
     @inject(TYPES.Logger) private logger: Logger,
   ) {}
 
-  /**
-   * Fetches all metrics from various sources and aggregates them.
-   *
-   * @param {ProgressCallback} [progressCallback] - Optional callback for reporting progress.
-   * @param {number} [timePeriod=90] - Time period in days for which to fetch metrics (default is 90 days).
-   * @returns {Promise<{metrics: IMetric[]; errors: {source: string; message: string}[]; githubStats: {totalPRs: number; fetchedPRs: number; timePeriod: number}}>}
-   *          A promise that resolves to an object containing:
-   *          - metrics: An array of deduplicated metrics from all sources.
-   *          - errors: An array of errors encountered during data fetching, if any.
-   *          - githubStats: Statistics about the GitHub data fetch, including total PRs, fetched PRs, and the time period.
-   * @throws Will throw an error if both data sources fail to fetch data.
-   */
   async getAllMetrics(
     progressCallback?: ProgressCallback,
     timePeriod: number = 90,
@@ -66,33 +33,11 @@ export class MetricsService implements IMetricsService {
     let allMetrics: IMetric[] = [];
     let githubStats = { totalPRs: 0, fetchedPRs: 0, timePeriod };
 
-    const createGoogleSheetsProgressCallback = (
-      source: string,
-      offset: number,
-    ) => {
-      return (progress: number, message: string) => {
-        const adjustedProgress = offset + (progress / 100) * 50;
-        progressCallback?.(adjustedProgress, 100, `${source}: ${message}`);
-      };
-    };
-
-    const createGitHubProgressCallback = (
-      source: string,
-      offset: number,
-    ): ProgressCallback => {
-      return (current: number, total: number, message: string) => {
-        const adjustedProgress = offset + (current / total) * 50;
-        progressCallback?.(adjustedProgress, 100, `${source}: ${message}`);
-      };
-    };
-
     try {
-      progressCallback?.(0, 100, 'Google Sheets: Starting to fetch data');
-      const googleSheetsData = await this.googleSheetsService.fetchData(
-        createGoogleSheetsProgressCallback('Google Sheets', 0),
+      const googleSheetsData = await this.googleSheetsRepository.fetchMetrics(
+        this.createProgressCallback('Google Sheets', 0, progressCallback),
       );
       allMetrics = [...allMetrics, ...googleSheetsData];
-      progressCallback?.(50, 100, 'Google Sheets: Finished fetching data');
     } catch (error) {
       this.logger.error('Error fetching Google Sheets data:', error as Error);
       errors.push({
@@ -102,18 +47,19 @@ export class MetricsService implements IMetricsService {
     }
 
     try {
-      progressCallback?.(50, 100, 'GitHub: Starting to fetch data');
-      const githubData = await this.gitHubService.fetchData(
-        createGitHubProgressCallback('GitHub', 50),
+      const githubData = await this.gitHubRepository.fetchPullRequests(
         timePeriod,
+        this.createProgressCallback('GitHub', 50, progressCallback),
       );
-      allMetrics = [...allMetrics, ...githubData.metrics];
+      allMetrics = [
+        ...allMetrics,
+        ...this.convertPullRequestsToMetrics(githubData.pullRequests),
+      ];
       githubStats = {
         totalPRs: githubData.totalPRs,
         fetchedPRs: githubData.fetchedPRs,
         timePeriod: githubData.timePeriod,
       };
-      progressCallback?.(100, 100, 'GitHub: Finished fetching data');
     } catch (error) {
       this.logger.error('Error fetching GitHub data:', error as Error);
       errors.push({
@@ -127,14 +73,17 @@ export class MetricsService implements IMetricsService {
     return { metrics: uniqueMetrics, errors, githubStats };
   }
 
-  /**
-   * Deduplicates an array of metrics based on their IDs.
-   * If there are multiple metrics with the same ID, the one with the latest timestamp is kept.
-   *
-   * @private
-   * @param {IMetric[]} metrics - The array of metrics to deduplicate.
-   * @returns {IMetric[]} An array of deduplicated metrics.
-   */
+  private createProgressCallback(
+    source: string,
+    offset: number,
+    mainCallback?: ProgressCallback,
+  ): ProgressCallback {
+    return (current: number, total: number, message: string) => {
+      const adjustedProgress = offset + (current / total) * 50;
+      mainCallback?.(adjustedProgress, 100, `${source}: ${message}`);
+    };
+  }
+
   private deduplicateMetrics(metrics: IMetric[]): IMetric[] {
     const metricMap = new Map<string, IMetric>();
 
@@ -146,5 +95,66 @@ export class MetricsService implements IMetricsService {
     }
 
     return Array.from(metricMap.values());
+  }
+
+  private convertPullRequestsToMetrics(
+    pullRequests: IPullRequest[],
+  ): IMetric[] {
+    const metrics: IMetric[] = [];
+
+    // PR Count Metric
+    metrics.push({
+      id: 'github-pr-count',
+      metric_category: 'GitHub',
+      metric_name: 'Pull Request Count',
+      value: pullRequests.length,
+      timestamp: new Date(),
+      unit: 'count',
+      additional_info: '',
+      source: 'GitHub',
+    });
+
+    // Average PR Size Metric
+    const totalChanges = pullRequests.reduce(
+      (sum, pr) => sum + pr.additions + pr.deletions,
+      0,
+    );
+    const avgPRSize =
+      pullRequests.length > 0 ? totalChanges / pullRequests.length : 0;
+
+    metrics.push({
+      id: 'github-avg-pr-size',
+      metric_category: 'GitHub',
+      metric_name: 'Average PR Size',
+      value: avgPRSize,
+      timestamp: new Date(),
+      unit: 'lines',
+      additional_info: '',
+      source: 'GitHub',
+    });
+
+    // Average Time to Merge Metric
+    const mergedPRs = pullRequests.filter(pr => pr.mergedAt);
+    const totalMergeTime = mergedPRs.reduce((sum, pr) => {
+      const createDate = new Date(pr.createdAt);
+      const mergeDate = new Date(pr.mergedAt!);
+      return sum + (mergeDate.getTime() - createDate.getTime());
+    }, 0);
+    const avgMergeTime =
+      mergedPRs.length > 0
+        ? totalMergeTime / mergedPRs.length / (1000 * 60 * 60)
+        : 0; // in hours
+    metrics.push({
+      id: 'github-avg-merge-time',
+      metric_category: 'GitHub',
+      metric_name: 'Average Time to Merge',
+      value: avgMergeTime,
+      timestamp: new Date(),
+      unit: 'hours',
+      additional_info: '',
+      source: 'GitHub',
+    });
+
+    return metrics;
   }
 }

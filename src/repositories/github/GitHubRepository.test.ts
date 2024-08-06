@@ -1,9 +1,9 @@
 // src/__tests__/repositories/GitHubRepository.test.ts
+import { createMockPullRequest } from '@/__mocks__/mockFactories';
 import type {
   IGitHubClient,
   IConfig,
   ICacheService,
-  IPullRequest,
   IGraphQLResponse,
 } from '@/interfaces';
 import { GitHubRepository } from '@/repositories/github/GitHubRepository';
@@ -102,7 +102,27 @@ describe('GitHubRepository', () => {
 
       const result = await repository.fetchPullRequests(7);
 
-      expect(result).toHaveLength(2);
+      // CHANGED: Check the structure of the result
+      expect(result).toEqual({
+        pullRequests: expect.arrayContaining([
+          expect.objectContaining({
+            number: 1,
+            title: 'Test PR 1',
+            // ... other properties
+          }),
+          expect.objectContaining({
+            number: 2,
+            title: 'Test PR 2',
+            // ... other properties
+          }),
+        ]),
+        totalPRs: 2,
+        fetchedPRs: 2,
+        timePeriod: 7,
+      });
+
+      expect(result.pullRequests).toHaveLength(2);
+
       expect(mockClient.graphql).toHaveBeenCalledWith(
         expect.stringContaining(
           'query($owner: String!, $repo: String!, $cursor: String)',
@@ -181,7 +201,21 @@ describe('GitHubRepository', () => {
 
       const result = await repository.fetchPullRequests(7);
 
-      expect(result).toHaveLength(150);
+      // CHANGED: Check the structure of the result
+      expect(result).toEqual({
+        pullRequests: expect.arrayContaining([
+          expect.objectContaining({
+            number: expect.any(Number),
+            title: expect.any(String),
+            // ... other properties
+          }),
+        ]),
+        totalPRs: 150,
+        fetchedPRs: 150,
+        timePeriod: 7,
+      });
+
+      expect(result.pullRequests).toHaveLength(150);
       expect(mockClient.graphql).toHaveBeenCalledTimes(2);
     });
 
@@ -243,13 +277,15 @@ describe('GitHubRepository', () => {
     });
 
     it('should use cache when available', async () => {
-      const cachedPRs = [
-        { id: 1, created_at: new Date().toISOString() },
-      ] as IPullRequest[];
+      const cachedPRs = {
+        pullRequests: [createMockPullRequest()],
+        totalPRs: 1,
+        fetchedPRs: 1,
+        timePeriod: 7,
+      };
 
-      // Simulate cache hit
       (
-        mockCacheService.get as jest.Mock<Promise<IPullRequest[]>>
+        mockCacheService.get as jest.Mock<Promise<typeof cachedPRs>>
       ).mockResolvedValueOnce(cachedPRs);
 
       const result = await repository.fetchPullRequests(7);

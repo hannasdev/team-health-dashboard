@@ -31,10 +31,9 @@ import { AuthController } from './controllers/AuthController';
 import { MetricsController } from './controllers/MetricsController';
 import { ErrorHandler } from './middleware/ErrorHandler';
 import { GitHubRepository } from './repositories/github/GitHubRepository';
+import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository';
 import { UserRepository } from './repositories/user/UserRepository';
 import { CacheService } from './services/cache/CacheService';
-import { GitHubService } from './services/github/GitHubService';
-import { GoogleSheetsService } from './services/googlesheets/GoogleSheetsService';
 import { MetricCalculator } from './services/metrics/MetricsCalculator';
 import { MetricsService } from './services/metrics/MetricsService';
 import { ProgressTracker } from './services/progress/ProgressTracker';
@@ -47,9 +46,8 @@ import type {
   IErrorHandler,
   IGitHubClient,
   IGitHubRepository,
-  IGitHubService,
   IGoogleSheetsClient,
-  IGoogleSheetsService,
+  IGoogleSheetsRepository,
   IMetricCalculator,
   IMetricsService,
   IProgressTracker,
@@ -76,12 +74,11 @@ container
   .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
   .to(GoogleSheetsAdapter);
 container
-  .bind<IGoogleSheetsService>(TYPES.GoogleSheetsService)
-  .to(GoogleSheetsService);
+  .bind<IGoogleSheetsRepository>(TYPES.GoogleSheetsRepository)
+  .to(GoogleSheetsRepository);
 
 // GitHub
 container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
-container.bind<IGitHubService>(TYPES.GitHubService).to(GitHubService);
 container.bind<IGitHubRepository>(TYPES.GitHubRepository).to(GitHubRepository);
 
 // Metrics

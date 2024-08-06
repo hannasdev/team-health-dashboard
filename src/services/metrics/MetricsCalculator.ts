@@ -40,24 +40,27 @@ export class MetricCalculator implements IMetricCalculator {
    * @returns {IMetric} The PR cycle time metric.
    */
   private calculatePRCycleTime(pullRequests: IPullRequest[]): IMetric {
-    const mergedPRs = pullRequests.filter(pr => pr.merged_at);
+    const mergedPRs = pullRequests.filter(pr => pr.mergedAt);
+
     const averageCycleTime =
       mergedPRs.length > 0
         ? mergedPRs.reduce((sum, pr) => {
-            const createdAt = new Date(pr.created_at);
-            const mergedAt = new Date(pr.merged_at!);
-            return (
-              sum +
-              (mergedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60)
-            );
+            const totalMergeTime = mergedPRs.reduce((sum, pr) => {
+              const createdAt = new Date(pr.createdAt);
+              const mergedAt = new Date(pr.mergedAt!);
+              return sum + (mergedAt.getTime() - createdAt.getTime());
+            }, 0);
+            return totalMergeTime;
           }, 0) / mergedPRs.length
         : 0;
+
+    const averageCycleTimeInHours = averageCycleTime / (1000 * 60 * 60);
 
     return {
       id: 'github-pr-cycle-time',
       metric_category: 'Efficiency',
       metric_name: 'PR Cycle Time',
-      value: Math.round(averageCycleTime),
+      value: Math.round(averageCycleTimeInHours),
       timestamp: new Date(),
       unit: 'hours',
       additional_info: `Based on ${mergedPRs.length} merged PRs`,
@@ -74,13 +77,12 @@ export class MetricCalculator implements IMetricCalculator {
    * @returns {IMetric} The PR size metric.
    */
   private calculatePRSize(pullRequests: IPullRequest[]): IMetric {
+    const totalSize = pullRequests.reduce(
+      (sum, pr) => sum + (pr.additions || 0) + (pr.deletions || 0),
+      0,
+    );
     const averageSize =
-      pullRequests.length > 0
-        ? pullRequests.reduce(
-            (sum, pr) => sum + (pr.additions || 0) + (pr.deletions || 0),
-            0,
-          ) / pullRequests.length
-        : 0;
+      pullRequests.length > 0 ? totalSize / pullRequests.length : 0;
 
     return {
       id: 'github-pr-size',

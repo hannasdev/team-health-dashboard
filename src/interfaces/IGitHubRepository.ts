@@ -1,11 +1,17 @@
 // src/interfaces/IGitHubRepository.ts
+
 import { ProgressCallback } from '@/types';
 
 import { IPullRequest } from './IPullRequest';
 
 export interface IGitHubRepository {
-  fetchPullRequests: (
+  fetchPullRequests(
     timePeriod: number,
     progressCallback?: ProgressCallback,
-  ) => Promise<IPullRequest[]>;
+  ): Promise<{
+    pullRequests: IPullRequest[];
+    totalPRs: number;
+    fetchedPRs: number;
+    timePeriod: number;
+  }>;
 }

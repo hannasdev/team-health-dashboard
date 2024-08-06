@@ -27,9 +27,15 @@ export class GoogleSheetsAdapter implements IGoogleSheetsClient {
   }
 
   async getValues(spreadsheetId: string, range: string): Promise<any> {
-    return this.sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range,
-    });
+    try {
+      return await this.sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range,
+      });
+    } catch (error) {
+      throw new Error(
+        `Failed to fetch Google Sheets data: ${(error as Error).message}`,
+      );
+    }
   }
 }

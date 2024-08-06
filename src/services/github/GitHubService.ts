@@ -27,138 +27,54 @@ import type { ProgressCallback } from '../../types';
 @injectable()
 export class GitHubService implements IGitHubService {
   private readonly MAX_PAGES = 100;
-  /**
-   * Creates an instance of GitHubService.
-   *
-   * @param {IGitHubRepository} repository - The repository for fetching GitHub data.
-   * @param {IMetricCalculator} metricCalculator - The calculator for computing metrics.
-   * @param {IProgressTracker} progressTracker - The tracker for reporting progress.
-   * @param {Logger} logger - The logger for recording operations and errors.
-   */
+
   constructor(
     @inject(TYPES.GitHubRepository) private repository: IGitHubRepository,
-    @inject(TYPES.MetricCalculator) private metricCalculator: IMetricCalculator,
+    @inject(TYPES.MetricCalculator)
+    private metricCalculator: IMetricCalculator,
     @inject(TYPES.ProgressTracker) private progressTracker: IProgressTracker,
     @inject(TYPES.Logger) private logger: Logger,
   ) {}
 
-  /**
-   * Fetches GitHub data and calculates metrics.
-   *
-   * @param {ProgressCallback} [progressCallback] - Optional callback for tracking progress.
-   * @param {number} [timePeriod=90] - Time period in days for which to fetch data.
-   * @returns {Promise<IFetchDataResult>} The fetched data and calculated metrics.
-   * @throws {Error} If data fetching fails.
-   */
   async fetchData(
     progressCallback?: ProgressCallback,
     timePeriod: number = 90,
   ): Promise<IFetchDataResult> {
-    this.progressTracker.setReportInterval(1000); // Set report interval to 1 second
-
-    if (progressCallback) {
-      this.progressTracker.trackProgress = progressCallback;
-    }
-
     try {
-      const pullRequests = await this.repository.fetchPullRequests(timePeriod);
-
-      this.progressTracker.trackProgress(50, 100, 'Fetched pull requests');
-
-      const metrics = this.metricCalculator.calculateMetrics(pullRequests);
-
-      this.progressTracker.trackProgress(100, 100, 'Calculated metrics');
+      const pullRequestsData = await this.fetchAllPullRequests(
+        timePeriod,
+        (current, total, message) => {
+          // Directly use the progress tracker and callback
+          this.progressTracker.trackProgress(current, total, message);
+          progressCallback?.(current, total, message);
+        },
+      );
+      const metrics = this.calculateMetrics(pullRequestsData.pullRequests);
 
       return {
         metrics,
-        totalPRs: pullRequests.length,
-        fetchedPRs: pullRequests.length,
-        timePeriod,
+        totalPRs: pullRequestsData.totalPRs,
+        fetchedPRs: pullRequestsData.fetchedPRs,
+        timePeriod: pullRequestsData.timePeriod,
       };
     } catch (error) {
-      this.logger.error('Error fetching GitHub data:', error as Error);
-      throw error;
+      this.handleFetchError(error);
     }
   }
 
-  /**
-   * Fetches all pull requests for the given time period.
-   *
-   * @private
-   * @param {number} timePeriod - Time period in days for which to fetch data.
-   * @param {ProgressCallback} [progressCallback] - Optional callback for tracking progress.
-   * @returns {Promise<IPullRequest[]>} Array of fetched pull requests.
-   */
   private async fetchAllPullRequests(
     timePeriod: number,
-    progressCallback?: ProgressCallback,
-  ): Promise<IPullRequest[]> {
-    const allPullRequests: IPullRequest[] = [];
-    let page = 1;
-
-    while (page <= this.MAX_PAGES) {
-      const fetchedPRs = await this.repository.fetchPullRequests(
-        timePeriod,
-        (current, total, message) => {
-          this.trackPageProgress(
-            page,
-            current,
-            total,
-            message,
-            progressCallback,
-          );
-        },
-      );
-
-      if (!fetchedPRs || fetchedPRs.length === 0) break;
-      allPullRequests.push(...fetchedPRs);
-      page++;
-    }
-
-    return allPullRequests;
-  }
-
-  // /**
-  //  * Fetches a single page of pull requests.
-  //  *
-  //  * @private
-  //  * @param {number} page - The page number to fetch.
-  //  * @param {number} timePeriod - Time period in days for which to fetch data.
-  //  * @param {ProgressCallback} [progressCallback] - Optional callback for tracking progress.
-  //  * @returns {Promise<IPullRequest[]>} Array of fetched pull requests for the page.
-  //  */
-  // private async fetchPageOfPullRequests(
-  //   page: number,
-  //   timePeriod: number,
-  //   progressCallback?: ProgressCallback,
-  // ): Promise<IPullRequest[]> {
-  //   this.logger.info(`Fetching page ${page}`);
-  //   return this.repository.fetchPullRequests(timePeriod, (current, total) =>
-  //     this.trackPageProgress(page, current, total, progressCallback),
-  //   );
-  // }
-
-  /**
-   * Tracks progress for a single page of pull requests.
-   *
-   * @private
-   * @param {number} page - The current page number.
-   * @param {number} current - The current progress within the page.
-   * @param {number} total - The total items in the page.
-   * @param {ProgressCallback} [progressCallback] - Optional callback for tracking progress.
-   */
-  private trackPageProgress(
-    page: number,
-    current: number,
-    total: number,
-    message: string,
-    progressCallback?: ProgressCallback,
-  ): void {
-    const overallCurrent = (page - 1) * 100 + current;
-    const overallTotal = page * 100;
-
-    this.progressTracker.trackProgress(overallCurrent, overallTotal, message);
-    progressCallback?.(overallCurrent, overallTotal, message);
+    progressCallback?: ProgressCallback, // Make this parameter optional
+  ): Promise<{
+    pullRequests: IPullRequest[];
+    totalPRs: number;
+    fetchedPRs: number;
+    timePeriod: number;
+  }> {
+    return this.repository.fetchPullRequests(
+      timePeriod,
+      progressCallback ? progressCallback : undefined,
+    );
   }
 
   /**
@@ -173,19 +89,6 @@ export class GitHubService implements IGitHubService {
       `Calculating metrics for ${pullRequests.length} pull requests`,
     );
     return this.metricCalculator.calculateMetrics(pullRequests);
-  }
-
-  private createFetchDataResult(
-    pullRequests: IPullRequest[],
-    metrics: IMetric[],
-    timePeriod: number,
-  ): IFetchDataResult {
-    return {
-      metrics,
-      totalPRs: pullRequests.length,
-      fetchedPRs: pullRequests.length,
-      timePeriod,
-    };
   }
 
   /**

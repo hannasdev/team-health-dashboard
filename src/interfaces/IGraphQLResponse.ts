@@ -1,4 +1,6 @@
 // src/interfaces/IGraphQLResponse.ts
+import { IGraphQLPullRequest } from './IGraphQLPullRequest';
+
 export interface IGraphQLResponse {
   repository: {
     pullRequests: {
@@ -6,24 +8,7 @@ export interface IGraphQLResponse {
         hasNextPage: boolean;
         endCursor: string | null;
       };
-      nodes: Array<{
-        number: number;
-        title: string;
-        state: string;
-        author: { login: string } | null;
-        createdAt: string;
-        updatedAt: string;
-        closedAt: string | null;
-        mergedAt: string | null;
-        commits: { totalCount: number };
-        additions: number;
-        deletions: number;
-        changedFiles: number;
-        baseRefName: string;
-        baseRefOid: string;
-        headRefName: string;
-        headRefOid: string;
-      }>;
+      nodes: IGraphQLPullRequest[];
     };
   };
 }

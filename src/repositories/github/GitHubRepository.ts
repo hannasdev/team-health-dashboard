@@ -1,49 +1,19 @@
 // src/repositories/github/GitHubRepository.ts
 import { injectable, inject } from 'inversify';
 
-import { Cacheable, CacheableClass } from '../../utils/CacheDecorator';
-import { Logger } from '../../utils/Logger';
-import { TYPES } from '../../utils/types';
-
 import type {
   IGitHubClient,
   IConfig,
   ICacheService,
   IPullRequest,
   IGitHubRepository,
-} from '../../interfaces';
-import type { ProgressCallback } from '../../types';
-
-interface IGraphQLPullRequest {
-  number: number;
-  title: string;
-  state: string;
-  author: { login: string } | null;
-  createdAt: string;
-  updatedAt: string;
-  closedAt: string | null;
-  mergedAt: string | null;
-  commits: { totalCount: number };
-  additions: number;
-  deletions: number;
-  changedFiles: number;
-  baseRefName: string;
-  baseRefOid: string;
-  headRefName: string;
-  headRefOid: string;
-}
-
-interface IGraphQLResponse {
-  repository: {
-    pullRequests: {
-      pageInfo: {
-        hasNextPage: boolean;
-        endCursor: string | null;
-      };
-      nodes: IGraphQLPullRequest[];
-    };
-  };
-}
+  IGraphQLResponse,
+  IGraphQLPullRequest,
+} from '@/interfaces';
+import type { ProgressCallback } from '@/types';
+import { Cacheable, CacheableClass } from '@/utils/CacheDecorator';
+import { Logger } from '@/utils/Logger';
+import { TYPES } from '@/utils/types';
 
 @injectable()
 export class GitHubRepository
@@ -52,7 +22,7 @@ export class GitHubRepository
 {
   private owner: string;
   private repo: string;
-  private timeout: number = 300000; // 5 minutes timeout
+  private readonly timeout: number = 300000; // 5 minutes timeout
 
   constructor(
     @inject(TYPES.GitHubClient) private client: IGitHubClient,
@@ -72,7 +42,12 @@ export class GitHubRepository
   async fetchPullRequests(
     timePeriod: number,
     progressCallback?: ProgressCallback,
-  ): Promise<IPullRequest[]> {
+  ): Promise<{
+    pullRequests: IPullRequest[];
+    totalPRs: number;
+    fetchedPRs: number;
+    timePeriod: number;
+  }> {
     const { since } = this.getDateRange(timePeriod);
     let pullRequests: IPullRequest[] = [];
     let hasNextPage = true;
@@ -109,18 +84,24 @@ export class GitHubRepository
           `Fetched ${pullRequests.length} pull requests`,
         );
 
-        // Break if we've gone past the 'since' date
         if (
           newPRs.length > 0 &&
-          new Date(newPRs[newPRs.length - 1].created_at) < new Date(since)
+          new Date(newPRs[newPRs.length - 1].createdAt) < new Date(since)
         ) {
           break;
         }
       }
 
-      return pullRequests.filter(
-        pr => new Date(pr.created_at) >= new Date(since),
+      const filteredPullRequests = pullRequests.filter(
+        pr => new Date(pr.createdAt) >= new Date(since),
       );
+
+      return {
+        pullRequests: filteredPullRequests,
+        totalPRs: filteredPullRequests.length,
+        fetchedPRs: filteredPullRequests.length,
+        timePeriod,
+      };
     } catch (error) {
       this.logger.error('Error fetching pull requests:', error as Error);
       throw new Error(
@@ -133,29 +114,24 @@ export class GitHubRepository
 
   private mapToPullRequest(node: IGraphQLPullRequest): IPullRequest {
     return {
-      id: node.number,
       number: node.number,
       title: node.title,
       state: this.mapState(node.state),
-      user: {
+      author: {
         login: node.author?.login || 'unknown',
       },
-      created_at: node.createdAt,
-      updated_at: node.updatedAt,
-      closed_at: node.closedAt,
-      merged_at: node.mergedAt,
-      commits: node.commits.totalCount,
+      createdAt: node.createdAt,
+      updatedAt: node.updatedAt,
+      closedAt: node.closedAt,
+      mergedAt: node.mergedAt,
+      commits: node.commits,
       additions: node.additions,
       deletions: node.deletions,
-      changed_files: node.changedFiles,
-      base: {
-        ref: node.baseRefName,
-        sha: node.baseRefOid,
-      },
-      head: {
-        ref: node.headRefName,
-        sha: node.headRefOid,
-      },
+      changedFiles: node.changedFiles,
+      baseRefName: node.baseRefName,
+      baseRefOid: node.baseRefOid,
+      headRefName: node.headRefName,
+      headRefOid: node.headRefOid,
     };
   }
 

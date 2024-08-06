@@ -1,36 +1,21 @@
-// src/services/googlesheets/GoogleSheetsService.ts
 import { injectable, inject } from 'inversify';
-
-import { Logger } from '../../utils/Logger';
-import { TYPES } from '../../utils/types';
-import { BaseService } from '../BaseService';
 
 import type {
   IGoogleSheetsClient,
-  IGoogleSheetsService,
+  IGoogleSheetsRepository,
   IConfig,
   ICacheService,
   IMetric,
-} from '../../interfaces';
+} from '@/interfaces';
+import type { ProgressCallback } from '@/types';
+import { Cacheable, CacheableClass } from '@/utils/CacheDecorator';
+import { Logger } from '@/utils/Logger';
+import { TYPES } from '@/utils/types';
 
-/**
- * GoogleSheetsService
- *
- * This service is responsible for fetching and processing data from Google Sheets
- * as part of the Team Health Dashboard. It extends the BaseService to leverage
- * common functionality such as caching and logging.
- *
- * The service fetches data from a specified Google Sheets document, processes
- * the rows into metrics, and caches the results for improved performance.
- * It supports progress tracking through a callback mechanism.
- *
- * @extends BaseService
- * @implements IGoogleSheetsService
- */
 @injectable()
-export class GoogleSheetsService
-  extends BaseService
-  implements IGoogleSheetsService
+export class GoogleSheetsRepository
+  extends CacheableClass
+  implements IGoogleSheetsRepository
 {
   private spreadsheetId: string;
 
@@ -38,36 +23,20 @@ export class GoogleSheetsService
     @inject(TYPES.GoogleSheetsClient)
     private googleSheetsClient: IGoogleSheetsClient,
     @inject(TYPES.Config) private configService: IConfig,
-    @inject(TYPES.Logger) logger: Logger,
+    @inject(TYPES.Logger) private logger: Logger,
     @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
-    super(logger, cacheService);
+    super(cacheService);
     this.spreadsheetId = this.configService.GOOGLE_SHEETS_ID;
     if (!this.spreadsheetId) {
       this.logger.error('Google Sheets ID is not set correctly');
     }
   }
 
-  protected getCacheKey(): string {
-    return `googlesheets-${this.spreadsheetId}`;
-  }
-
-  async fetchData(
-    progressCallback?: (progress: number, message: string) => void,
-  ): Promise<IMetric[]> {
-    const cacheKey = this.getCacheKey();
-    return this.getDataWithCache(
-      cacheKey,
-      () => this.fetchGoogleSheetsData(progressCallback),
-      3600, // 1 hour cache
-    );
-  }
-
-  private async fetchGoogleSheetsData(
-    progressCallback?: (progress: number, message: string) => void,
-  ): Promise<IMetric[]> {
+  @Cacheable('googlesheets-metrics', 3600) // Cache for 1 hour
+  async fetchMetrics(progressCallback?: ProgressCallback): Promise<IMetric[]> {
     try {
-      progressCallback?.(0, 'Starting to fetch data from Google Sheets');
+      progressCallback?.(0, 100, 'Starting to fetch data from Google Sheets');
 
       const response = await this.googleSheetsClient.getValues(
         this.spreadsheetId,
@@ -76,13 +45,14 @@ export class GoogleSheetsService
 
       progressCallback?.(
         50,
+        100,
         'Data fetched from Google Sheets, processing rows',
       );
 
       const rows = response.data.values;
 
       if (!rows || rows.length <= 1) {
-        progressCallback?.(100, 'No data found in Google Sheets');
+        progressCallback?.(100, 100, 'No data found in Google Sheets');
         return [];
       }
 
@@ -129,14 +99,14 @@ export class GoogleSheetsService
         })
         .filter((metric: IMetric | null): metric is IMetric => metric !== null);
 
-      progressCallback?.(100, 'Finished processing Google Sheets data');
+      progressCallback?.(100, 100, 'Finished processing Google Sheets data');
       return metrics;
     } catch (error) {
       this.logger.error(
         'Error fetching data from Google Sheets:',
         error as Error,
       );
-      progressCallback?.(100, 'Error fetching data from Google Sheets');
+      progressCallback?.(100, 100, 'Error fetching data from Google Sheets');
       throw new Error(
         `Failed to fetch data from Google Sheets: ${
           error instanceof Error ? error.message : 'Unknown error'

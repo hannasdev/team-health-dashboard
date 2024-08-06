@@ -13,7 +13,7 @@ export const TYPES = {
   GitHubRepository: Symbol.for('GitHubRepository'),
   GitHubService: Symbol.for('GitHubService'),
   GoogleSheetsClient: Symbol.for('GoogleSheetsClient'),
-  GoogleSheetsService: Symbol.for('GoogleSheetsService'),
+  GoogleSheetsRepository: Symbol.for('GoogleSheetsRepository'),
   LogFormat: Symbol.for('LogFormat'),
   LogLevel: Symbol.for('LogLevel'),
   Logger: Symbol.for('Logger'),

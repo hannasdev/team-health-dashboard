@@ -4,26 +4,22 @@ import { IncomingHttpHeaders } from 'http';
 import { Request, Response } from 'express';
 
 import {
+  IAuthRequest,
+  ICacheService,
+  IConfig,
+  IFetchDataResult,
   IGitHubRepository,
   IGitHubService,
-  IMetricCalculator,
+  IGoogleSheetsRepository,
   IGoogleSheetsService,
+  ILogger,
+  IMetric,
+  IMetricCalculator,
   IMetricsService,
   IProgressTracker,
-  IConfig,
   IPullRequest,
-  IMetric,
-  ILogger,
-  IFetchDataResult,
-  IAuthRequest,
 } from '@/interfaces';
 import { UserRepository } from '@/repositories/user/UserRepository';
-
-export function createMockGitHubRepository(): jest.Mocked<IGitHubRepository> {
-  return {
-    fetchPullRequests: jest.fn().mockResolvedValue([]),
-  };
-}
 
 export function createMockMetricCalculator(): jest.Mocked<IMetricCalculator> {
   return {
@@ -60,28 +56,27 @@ export function createMockLogger(): jest.Mocked<ILogger> {
 }
 
 // Helper function to create mock pull requests
-export function createMockPullRequest(
+export const createMockPullRequest = (
   overrides: Partial<IPullRequest> = {},
-): IPullRequest {
-  return {
-    id: 1,
-    number: 1,
-    title: 'Test PR',
-    state: 'closed',
-    user: { login: 'testuser' },
-    created_at: '2023-01-01T00:00:00Z',
-    updated_at: '2023-01-02T00:00:00Z',
-    closed_at: '2023-01-03T00:00:00Z',
-    merged_at: '2023-01-03T00:00:00Z',
-    commits: 1,
-    additions: 10,
-    deletions: 5,
-    changed_files: 2,
-    base: { ref: 'main', sha: 'base-sha' },
-    head: { ref: 'feature', sha: 'head-sha' },
-    ...overrides,
-  };
-}
+): IPullRequest => ({
+  number: 1,
+  title: 'Test PR',
+  state: 'open',
+  author: { login: 'testuser' },
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  closedAt: null,
+  mergedAt: null,
+  commits: { totalCount: 1 },
+  additions: 10,
+  deletions: 5,
+  changedFiles: 2,
+  baseRefName: 'main',
+  baseRefOid: 'base-sha',
+  headRefName: 'feature',
+  headRefOid: 'head-sha',
+  ...overrides,
+});
 
 // Helper function to create mock metrics
 export function createMockMetric(overrides: Partial<IMetric> = {}): IMetric {
@@ -219,3 +214,25 @@ export const createMockAuthMiddlewareResponse = () => {
   };
   return res as Response;
 };
+
+export const createMockGitHubRepository =
+  (): jest.Mocked<IGitHubRepository> => ({
+    fetchPullRequests: jest.fn().mockResolvedValue({
+      pullRequests: [createMockPullRequest()],
+      totalPRs: 1,
+      fetchedPRs: 1,
+      timePeriod: 90,
+    }),
+  });
+
+export const createMockCacheService = (): jest.Mocked<ICacheService> => ({
+  get: jest.fn(),
+  set: jest.fn(),
+  delete: jest.fn(),
+  clear: jest.fn(),
+});
+
+export const createMockGoogleSheetsRepository =
+  (): jest.Mocked<IGoogleSheetsRepository> => ({
+    fetchMetrics: jest.fn(),
+  });

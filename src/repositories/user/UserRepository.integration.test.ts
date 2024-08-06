@@ -24,7 +24,7 @@ describe('UserRepository Integration Tests', () => {
       warn: jest.fn(),
       debug: jest.fn(),
     } as unknown as jest.Mocked<Logger>;
-  });
+  }, 30000);
 
   afterAll(async () => {
     await mongoClient.close();
@@ -36,12 +36,13 @@ describe('UserRepository Integration Tests', () => {
     await db.collection('users').deleteMany({});
     jest.clearAllMocks();
     userRepository = new UserRepository(mockLogger);
-    // Wait for the database connection to be established
-    await new Promise(resolve => setTimeout(resolve, 100));
-  });
+    await userRepository.waitForConnection();
+  }, 10000);
 
   afterEach(async () => {
-    await userRepository.close();
+    if (userRepository) {
+      await userRepository.close();
+    }
   });
 
   it('should log successful database connection', async () => {
@@ -52,10 +53,15 @@ describe('UserRepository Integration Tests', () => {
 
   it('should log database connection failure', async () => {
     const originalUrl = config.DATABASE_URL;
-    config.DATABASE_URL = 'mongodb://invalid:27017';
+    config.DATABASE_URL = 'mongodb://localhost:12345'; // Use a non-existent port instead of an invalid hostname
 
     const errorRepository = new UserRepository(mockLogger);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Increase wait time
+
+    try {
+      await errorRepository.waitForConnection();
+    } catch (error) {
+      // Expected error, do nothing
+    }
 
     expect(mockLogger.error).toHaveBeenCalledWith(
       'Failed to connect to the database',
@@ -64,7 +70,7 @@ describe('UserRepository Integration Tests', () => {
 
     config.DATABASE_URL = originalUrl;
     await errorRepository.close();
-  });
+  }, 10000); // Increase timeout to 10 seconds
 
   it('should create a new user', async () => {
     const email = 'test@example.com';

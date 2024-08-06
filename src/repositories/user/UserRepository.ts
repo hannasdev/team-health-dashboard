@@ -11,19 +11,28 @@ import { TYPES } from '@/utils/types';
 export class UserRepository {
   private db!: Db;
   private client!: MongoClient;
+  private connectionPromise: Promise<void>;
 
   constructor(@inject(TYPES.Logger) private logger: Logger) {
-    this.initializeDb();
+    this.connectionPromise = this.initializeDb();
   }
 
   private async initializeDb() {
     try {
-      this.client = await MongoClient.connect(config.DATABASE_URL);
+      this.client = await MongoClient.connect(config.DATABASE_URL, {
+        connectTimeoutMS: config.MONGO_CONNECT_TIMEOUT_MS,
+        serverSelectionTimeoutMS: config.MONGO_SERVER_SELECTION_TIMEOUT_MS,
+      });
       this.db = this.client.db();
       this.logger.info('Successfully connected to the database');
     } catch (error) {
       this.logger.error('Failed to connect to the database', error as Error);
+      throw error;
     }
+  }
+
+  async waitForConnection(): Promise<void> {
+    await this.connectionPromise;
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
@@ -71,7 +80,6 @@ export class UserRepository {
     }
   }
 
-  // Add a method to close the database connection
   async close() {
     if (this.client) {
       await this.client.close();
