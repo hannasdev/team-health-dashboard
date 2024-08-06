@@ -9,7 +9,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    env:
+      GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+      GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
+      GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
+      GITHUB_TOKEN: ''
+      GITHUB_OWNER: ''
+      GITHUB_REPO: ''
+      PORT: ${{ secrets.PORT }}
+      CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+      LOG_FILE_PATH: './logs'
     steps:
       - uses: actions/checkout@v3
       - name: Use Node.js
@@ -28,5 +40,18 @@ jobs:
         run: npx webpack --config webpack.config.prod.js
       - name: Run tests
         run: npm test
+        env:
+          GOOGLE_SHEETS_ID: 'test-id'
+          GOOGLE_SHEETS_CLIENT_EMAIL: 'test-user'
+          GOOGLE_SHEETS_PRIVATE_KEY: 'test-key'
+          GITHUB_TOKEN: 'github_pat_test'
+          GITHUB_OWNER: 'test-user'
+          GITHUB_REPO: 'test-org/test-repo'
+          PORT: 3000
+          CORS_ORIGIN: http://localhost:3000,null
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          LOG_LEVEL: info
+          LOG_FORMAT: json
+          LOG_FILE_PATH: './logs'
       - name: Lint
         run: npm run lint
