@@ -1,25 +1,45 @@
-# Use an official Node runtime as the parent image
-FROM node:14
+# Build stage
+FROM node:18 AS builder
 
-# Set the working directory in the container to /app
+# Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json to the working directory
+# Copy package files
 COPY package*.json ./
 
-# Install any needed packages specified in package.json
-RUN npm install
+# Install dependencies
+RUN npm ci
 
-RUN npm install mongodb
-
-# Bundle app source inside the docker image
+# Copy source files
 COPY . .
 
-# Build the app
+# Build the application
 RUN npm run build
 
-# Make port 3000 available to the world outside this container
+# Production stage
+FROM node:18-alpine
+
+# Add labels
+LABEL Name="team-health-dashboard"
+LABEL Version="1.0.0"
+
+# Install MongoDB tools
+RUN apk add --no-cache mongodb-tools
+
+# Set working directory
+WORKDIR /app
+
+# Copy built assets from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Copy package files
+COPY package*.json ./
+
+# Install production dependencies
+RUN npm ci --only=production
+
+# Expose port
 EXPOSE 3000
 
-# Define the command to run your app using CMD which defines your runtime
-CMD [ "npm", "start" ]
+# Set start command
+CMD ["node", "dist/index.js"]
