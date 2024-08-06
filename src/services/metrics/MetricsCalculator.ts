@@ -1,11 +1,7 @@
 // src/services/metrics/MetricCalculator.ts
 import { injectable } from 'inversify';
 
-import type {
-  IMetric,
-  IMetricCalculator,
-  IPullRequest,
-} from '@/interfaces/index';
+import type { IMetric, IMetricCalculator, IPullRequest } from '@/interfaces';
 
 /**
  * MetricCalculator

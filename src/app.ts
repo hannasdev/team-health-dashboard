@@ -3,11 +3,11 @@ import 'reflect-metadata';
 import cors from 'cors';
 import express, { Express, Request, Response } from 'express';
 
-import { config } from './config/config';
-import { container } from './container';
-import authRouter from './routes/auth';
-import healthCheckRouter from './routes/healthCheck';
-import metricsRouter from './routes/metrics';
+import { config } from '@/config/config';
+import { container } from '@/container';
+import authRouter from '@/routes/auth';
+import healthCheckRouter from '@/routes/healthCheck';
+import metricsRouter from '@/routes/metrics';
 
 const app: Express = express();
 

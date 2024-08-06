@@ -22,25 +22,13 @@
 
 import { Container } from 'inversify';
 
+import { GitHubAdapter } from '@/adapters/GitHubAdapter';
+import { GoogleSheetsAdapter } from '@/adapters/GoogleSheetAdapter';
+import { config } from '@/config/config';
+import { AuthController } from '@/controllers/AuthController';
+import { HealthCheckController } from '@/controllers/HealthCheckController';
+import { MetricsController } from '@/controllers/MetricsController';
 import { ILogger } from '@/interfaces';
-
-import { GitHubAdapter } from './adapters/GitHubAdapter';
-import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter';
-import { config } from './config/config';
-import { AuthController } from './controllers/AuthController';
-import { HealthCheckController } from './controllers/HealthCheckController';
-import { MetricsController } from './controllers/MetricsController';
-import { ErrorHandler } from './middleware/ErrorHandler';
-import { GitHubRepository } from './repositories/github/GitHubRepository';
-import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository';
-import { UserRepository } from './repositories/user/UserRepository';
-import { CacheService } from './services/cache/CacheService';
-import { MetricCalculator } from './services/metrics/MetricsCalculator';
-import { MetricsService } from './services/metrics/MetricsService';
-import { ProgressTracker } from './services/progress/ProgressTracker';
-import { Logger } from './utils/Logger';
-import { TYPES } from './utils/types';
-
 import type {
   ICacheService,
   IConfig,
@@ -52,7 +40,17 @@ import type {
   IMetricCalculator,
   IMetricsService,
   IProgressTracker,
-} from './interfaces';
+} from '@/interfaces';
+import { ErrorHandler } from '@/middleware/ErrorHandler';
+import { GitHubRepository } from '@/repositories/github/GitHubRepository';
+import { GoogleSheetsRepository } from '@/repositories/googlesheets/GoogleSheetsRepository';
+import { UserRepository } from '@/repositories/user/UserRepository';
+import { CacheService } from '@/services/cache/CacheService';
+import { MetricCalculator } from '@/services/metrics/MetricsCalculator';
+import { MetricsService } from '@/services/metrics/MetricsService';
+import { ProgressTracker } from '@/services/progress/ProgressTracker';
+import { Logger } from '@/utils/Logger';
+import { TYPES } from '@/utils/types';
 
 const container = new Container();
 

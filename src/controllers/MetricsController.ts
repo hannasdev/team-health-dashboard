@@ -2,11 +2,10 @@
 import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
+import type { IMetricsService } from '@/interfaces';
 import { ProgressCallback } from '@/types';
 import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
-
-import type { IMetricsService } from '../interfaces';
 
 /**
  * MetricsController

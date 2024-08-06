@@ -2,8 +2,7 @@
 import { inject, injectable } from 'inversify';
 
 import type { ICacheService } from '@/interfaces/ICacheService';
-
-import { TYPES } from './types';
+import { TYPES } from '@/utils/types';
 
 export function Cacheable(cacheKey: string, duration: number) {
   return function (

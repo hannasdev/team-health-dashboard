@@ -2,8 +2,8 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-import { IAuthRequest } from './../interfaces/IAuthRequest';
-import { config } from '../config/config';
+import { config } from '@/config/config';
+import { IAuthRequest } from '@/interfaces';
 
 export const authMiddleware = (
   req: IAuthRequest,

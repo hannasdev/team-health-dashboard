@@ -4,9 +4,9 @@ import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 import jwt from 'jsonwebtoken';
 
-import { config } from '../config/config';
-import { UserRepository } from '../repositories/user/UserRepository';
-import { TYPES } from '../utils/types';
+import { config } from '@/config/config';
+import { UserRepository } from '@/repositories/user/UserRepository';
+import { TYPES } from '@/utils/types';
 
 @injectable()
 export class AuthController {

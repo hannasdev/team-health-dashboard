@@ -4,9 +4,9 @@ import path from 'path';
 import { injectable, inject } from 'inversify';
 import winston from 'winston';
 
-import { config } from '../config/config';
-import { ILogger } from '../interfaces/ILogger';
-import { TYPES } from '../utils/types';
+import { config } from '@/config/config';
+import { ILogger } from '@/interfaces/ILogger';
+import { TYPES } from '@/utils/types';
 
 @injectable()
 export class Logger implements ILogger {
