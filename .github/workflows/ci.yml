@@ -15,11 +15,13 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20.16.0'
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
       - name: Build
-        run: npm run build
+        run: npx webpack --config webpack.config.prod.js
+      - name: Debug Webpack Config
+        run: npx webpack --config webpack.config.prod.js --display-error-details
       - name: Run tests
         run: npm test
       - name: Lint

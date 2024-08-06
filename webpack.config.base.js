@@ -18,6 +18,7 @@ export default {
         use: {
           loader: 'ts-loader',
           options: {
+            configFile: path.resolve(__dirname, 'tsconfig.json'),
             compilerOptions: {
               module: 'ESNext',
               target: 'ES2022',
@@ -33,6 +34,7 @@ export default {
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
+    modules: [path.resolve(__dirname, 'src'), 'node_modules'],
   },
   output: {
     filename: '[name].js',
