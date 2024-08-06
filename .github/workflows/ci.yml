@@ -20,13 +20,10 @@ jobs:
         run: |
           rm -rf node_modules
           npm ci --legacy-peer-deps
-          npm install -D typescript@4.9.5 eslint@8.57.0 @typescript-eslint/eslint-plugin@6.21.0 @typescript-eslint/parser@6.21.0 --legacy-peer-deps
       - name: Debug TypeScript Config
         run: npx tsc --showConfig
       - name: Debug Webpack Config
-        run: npx webpack --config webpack.config.prod.js --display-error-details
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npx webpack --config webpack.config.prod.js --stats-error-details
       - name: Build
         run: npx webpack --config webpack.config.prod.js
       - name: Run tests
