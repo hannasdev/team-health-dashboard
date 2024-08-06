@@ -1,17 +1,40 @@
-import eslint from '@eslint/js';
+import { fileURLToPath } from 'node:url';
+import path from 'path';
+
+import { fixupPluginRules } from '@eslint/compat';
+import { FlatCompat } from '@eslint/eslintrc';
+import eslintJs from '@eslint/js';
 import prettierConfig from 'eslint-config-prettier';
-import eslintPluginImport from 'eslint-plugin-import';
 import tseslint from 'typescript-eslint';
 
+const project = './tsconfig.json';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const compat = new FlatCompat({
+  baseDirectory: __dirname,
+  recommendedConfig: eslintJs.configs.recommended,
+});
+
+function legacyPlugin(name, alias = name) {
+  const plugin = compat.plugins(name)[0]?.plugins?.[alias];
+
+  if (!plugin) {
+    throw new Error(`Unable to resolve plugin ${name} and/or alias ${alias}`);
+  }
+
+  return fixupPluginRules(plugin);
+}
+
 export default [
-  eslint.configs.recommended,
+  eslintJs.configs.recommended,
   ...tseslint.configs.recommended,
+  ...compat.extends('plugin:import/typescript'),
   {
-    ignores: ['webpack.config.cjs'],
+    ignores: [],
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
     plugins: {
+      import: legacyPlugin('eslint-plugin-import', 'import'),
       '@typescript-eslint': tseslint.plugin,
-      import: eslintPluginImport,
     },
     rules: {
       'import/order': [
@@ -45,8 +68,13 @@ export default [
         '@typescript-eslint/parser': ['.ts', '.tsx'],
       },
       'import/resolver': {
-        typescript: true,
-        node: true,
+        typescript: {
+          alwaysTryTypes: true,
+          project,
+        },
+        node: {
+          extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        },
       },
     },
   },
@@ -55,7 +83,8 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: ['./tsconfig.json'],
+        tsconfigRootDir: import.meta.dirname,
+        project,
       },
     },
   },
