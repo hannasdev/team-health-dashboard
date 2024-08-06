@@ -34,77 +34,80 @@ The Team Health Dashboard is designed to provide Engineering Managers with insig
 │
 ├── src/
 │   ├── __mocks__/
-│       └── mockFactories.ts
+│   │   └── mockFactories.ts
 │   ├── config/
-│       └── config.ts
+│   │   └── config.ts
 │   ├── controllers/
-│       ├── AuthController.test.ts
-│       ├── AuthController.ts
-│       ├── MetricsController.test.ts
-│       └── MetricsController.ts
+│   │   ├── AuthController.test.ts
+│   │   ├── AuthController.ts
+│   │   ├── MetricsController.test.ts
+│   │   └── MetricsController.ts
 │   ├── interfaces/
-│       ├── IAuthRequest.ts
-│       ├── ICacheService.ts
-│       ├── IConfig.ts
-│       ├── IDataService.ts
-│       ├── IErrorHandler.ts
-│       ├── IFetchDataResult.ts
-│       ├── IGitHubClient.ts
-│       ├── IGitHubRepository.ts
-│       ├── IGitHubService.ts
-│       ├── IGoogleSheetsClient.ts
-│       ├── IGoogleSheetsService.ts
-│       ├── IGraphQLResponse.ts
-│       ├── ILogger.ts
-│       ├── IMetricCalculator.ts
-│       ├── IMetricModel.ts
-│       ├── IMetricService.ts
-│       ├── IProgressTracker.ts
-│       ├── IPullRequest.ts
-│       └── index.ts
+│   │   ├── IAuthRequest.ts
+│   │   ├── ICacheService.ts
+│   │   ├── IConfig.ts
+│   │   ├── IDataService.ts
+│   │   ├── IErrorHandler.ts
+│   │   ├── IFetchDataResult.ts
+│   │   ├── IGitHubClient.ts
+│   │   ├── IGitHubRepository.ts
+│   │   ├── IGitHubService.ts
+│   │   ├── IGoogleSheetsClient.ts
+│   │   ├── IGoogleSheetsService.ts
+│   │   ├── IGraphQLResponse.ts
+│   │   ├── ILogger.ts
+│   │   ├── IMetricCalculator.ts
+│   │   ├── IMetricModel.ts
+│   │   ├── IMetricService.ts
+│   │   ├── IProgressTracker.ts
+│   │   ├── IPullRequest.ts
+│   │   └── index.ts
 │   ├── middleware/
-│       ├── AuthMiddleWare.test.ts
-│       ├── AuthMiddleWare.ts
-│       └── ErrorHandler.ts
+│   │   ├── AuthMiddleWare.test.ts
+│   │   ├── AuthMiddleWare.ts
+│   │   └── ErrorHandler.ts
 │   ├── models/
-│       ├── Metric.ts
-│       └── User.ts
+│   │   ├── Metric.ts
+│   │   └── User.ts
 │   ├── repositories/
-│       ├── github/
-│           ├── GitHubRepository.test.ts
-│           └── GitHubRepository.ts
-│       └── user/
-│           ├── UserRepository.integration.test.ts
-│           └── UserRepository.ts
+│   │   ├── github/
+│   │   │   ├── GitHubRepository.test.ts
+│   │   │   └── GitHubRepository.ts
+│   │   └── user/
+│   │       ├── UserRepository.integration.test.ts
+│   │       └── UserRepository.ts
+│   ├── adapters/
+│   │   ├── GitHubAdapter.ts
+│   │   └── GoogleSheetAdapter.ts
 │   ├── routes/
-│       ├── auth.ts
-│       └── metrics.ts
+│   │   ├── auth.ts
+│   │   └── metrics.ts
 │   ├── services/
-│       ├── cache/
-│           ├── CacheService.test.ts
-│           └── CacheService.ts
-│       ├── github/
-│           ├── GitHubService.test.ts
-│           └── GitHubService.ts
-│       ├── googlesheets/
-│           ├── GoogleSheetsService.test.ts
-│           └── GoogleSheetsService.ts
-│       ├── metrics/
-│           ├── MetricsCalculator.test.ts
-│           ├── MetricsCalculator.ts
-│           ├── MetricsService.test.ts
-│           └── MetricsService.ts
-│       └── progress/
-│           ├── ProgressTracker.test.ts
-│           └── ProgressTracker.ts
-│       └── BaseService.ts
+│   │   ├── cache/
+│   │   │   ├── CacheService.test.ts
+│   │   │   └── CacheService.ts
+│   │   ├── github/
+│   │   │   ├── GitHubService.test.ts
+│   │   │   └── GitHubService.ts
+│   │   ├── googlesheets/
+│   │   │   ├── GoogleSheetsService.test.ts
+│   │   │   └── GoogleSheetsService.ts
+│   │   ├── metrics/
+│   │   │   ├── MetricsCalculator.test.ts
+│   │   │   ├── MetricsCalculator.ts
+│   │   │   ├── MetricsService.test.ts
+│   │   │   └── MetricsService.ts
+│   │   └── progress/
+│   │   │   ├── ProgressTracker.test.ts
+│   │   │   └── ProgressTracker.ts
+│   │   └── BaseService.ts
 │   ├── types/
-│       └── index.ts
+│   │   └── index.ts
 │   ├── utils/
-│       ├── CacheDecorator.test.ts
-│       ├── CacheDecorator.ts
-│       ├── Logger.ts
-│       └── types.ts
+│   │   ├── CacheDecorator.test.ts
+│   │   ├── CacheDecorator.ts
+│   │   ├── Logger.ts
+│   │   └── types.ts
 │   ├── loadEnv.ts
 │   ├── index.ts
 │   ├── container.ts
@@ -133,91 +136,119 @@ The Team Health Dashboard is designed to provide Engineering Managers with insig
 
 ## Metrics to Collect
 
-1. **Sprint Velocity**
+### Repository Pattern Implementation
 
-   - **Purpose**: Track team's productivity and capacity over time
-   - **Data Source**: Shortcut via Google Sheets
-   - **Calculation**: Sum of story points completed per sprint
+We've implemented the Repository pattern for data access abstraction:
 
-2. **Sprint Burndown**
+```typescript
+interface IRepository<T> {
+  findAll(): Promise<T[]>;
+  findById(id: string): Promise<T | null>;
+  create(item: T): Promise<T>;
+  update(id: string, item: T): Promise<T | null>;
+  delete(id: string): Promise<boolean>;
+}
 
-   - **Purpose**: Monitor sprint progress and identify potential delays
-   - **Data Source**: Shortcut via Google Sheets
-   - **Visualization**: Daily remaining work vs ideal burndown line
+class GitHubRepository implements IRepository<GitHubData> {
+  // GitHub-specific implementation
+}
 
-3. **Cycle Time**
+class GoogleSheetRepository implements IRepository<GoogleSheetData> {
+  // Google Sheets-specific implementation
+}
 
-   - **Purpose**: Measure efficiency in completing tasks
-   - **Data Source**: Shortcut via Google Sheets
-   - **Calculation**: Average time from "In Progress" to "Done"
+class UserRepository implements IRepository<User> {
+  // User-specific implementation
+}
+```
 
-4. **Code Review Time**
+### Adapter Pattern Implementation
 
-   - **Purpose**: Ensure timely feedback and prevent bottlenecks
-   - **Data Source**: GitHub API
-   - **Calculation**: Average time between PR creation and merge
+We've implemented the Adapter pattern to standardize data from different sources:
 
-5. **Pull Request Size**
+```typescript
+interface IAdapter<T, U> {
+  adapt(data: T): U;
+}
 
-   - **Purpose**: Encourage smaller, more manageable changes
-   - **Data Source**: GitHub API
-   - **Calculation**: Average lines of code per PR
+class GitHubAdapter implements IAdapter<GitHubData, Metric> {
+  adapt(data: GitHubData): Metric {
+    // Convert GitHub data to Metric
+  }
+}
 
-6. **Build Success Rate**
+class GoogleSheetAdapter implements IAdapter<GoogleSheetData, Metric> {
+  adapt(data: GoogleSheetData): Metric {
+    // Convert Google Sheet data to Metric
+  }
+}
+```
 
-   - **Purpose**: Monitor code quality and integration issues
-   - **Data Source**: GitHub Actions or your CI/CD tool
-   - **Calculation**: Percentage of successful builds
+### Metrics Service
 
-7. **Bug Resolution Time**
+The MetricsService uses repositories and adapters to fetch and process data:
 
-   - **Purpose**: Track team's responsiveness to issues
-   - **Data Source**: Shortcut via Google Sheets
-   - **Calculation**: Average time from bug report to resolution
+```typescript
+class MetricsService {
+  constructor(
+    private githubRepo: GitHubRepository,
+    private googleSheetRepo: GoogleSheetRepository,
+    private githubAdapter: GitHubAdapter,
+    private googleSheetAdapter: GoogleSheetAdapter,
+  ) {}
 
-8. **Work in Progress (WIP) Items**
+  async getAllMetrics(): Promise<Metric[]> {
+    const githubData = await this.githubRepo.findAll();
+    const googleSheetData = await this.googleSheetRepo.findAll();
 
-   - **Purpose**: Prevent overcommitment and context switching
-   - **Data Source**: Shortcut via Google Sheets
-   - **Calculation**: Number of items in "In Progress" status
+    const githubMetrics = githubData.map(this.githubAdapter.adapt);
+    const googleSheetMetrics = googleSheetData.map(
+      this.googleSheetAdapter.adapt,
+    );
 
-9. **Sprint Goal Achievement Rate**
+    return [...githubMetrics, ...googleSheetMetrics];
+  }
+}
+```
 
-   - **Purpose**: Measure team's ability to meet sprint commitments
-   - **Data Source**: Manual input or Shortcut via Google Sheets
-   - **Calculation**: Percentage of sprints where all committed items were completed
+## Metrics Collected
 
-10. **Team Happiness Index**
-    - **Purpose**: Gauge team morale and satisfaction
-    - **Data Source**: Regular anonymous surveys (could be integrated into the dashboard)
-    - **Calculation**: Average score from 1-10 on team satisfaction questions
+1. **Sprint Velocity** (Google Sheets)
+2. **Sprint Burndown** (Google Sheets)
+3. **Cycle Time** (Google Sheets)
+4. **Code Review Time** (GitHub)
+5. **Pull Request Size** (GitHub)
+6. **Build Success Rate** (GitHub)
+7. **Bug Resolution Time** (Google Sheets)
+8. **Work in Progress (WIP) Items** (Google Sheets)
+9. **Sprint Goal Achievement Rate** (Google Sheets)
+10. **Team Happiness Index** (Google Sheets)
 
 ## Data Integration
 
-- **Primary data sources**: GitHub API, Shortcut via Google Sheets
-- Consider using Google Apps Script to automate data pulling from Google Sheets
-- Use a backend service (e.g., Node.js) to fetch data from GitHub API and process it
-- Store processed data in a database for quick retrieval and historical tracking
+- GitHub data is fetched using the GitHub GraphQL API
+- Google Sheets data is fetched using the Google Sheets API
+- Data is processed and standardized using the Adapter pattern
+- Processed data is stored in MongoDB for quick retrieval and historical tracking
 
-## Dashboard Features
+## Testing Strategy
 
-- Daily data updates
-- Customizable date ranges for trend analysis
-- Alert system for metrics falling outside of acceptable ranges
-- Export functionality for reports
-- User-specific views (e.g., manager view, team member view)
+- Unit tests for individual components (repositories, adapters, services)
+- Integration tests for database operations and API integrations
+- End-to-end tests for critical workflows
+- Use of Jest for testing framework
+- Implementation of test doubles (mocks, stubs) for external dependencies
+- Continuous Integration (CI) to run tests on each commit
 
 ## Future Considerations
 
-- Add more data sources (e.g., Jira, Slack)
-- Implement real-time updates
-- Develop customizable dashboards for different roles
-- Implement alerting system for metric thresholds
-- Develop trend analysis and forecasting features
+1. Implement real-time updates for certain metrics
+2. Develop customizable dashboards for different roles
+3. Implement an alerting system for metric thresholds
+4. Develop trend analysis and forecasting features
+5. Add more data sources (e.g., Jira, Slack)
+6. Implement caching strategies for improved performance
 
-## Additional Considerations
+## Conclusion
 
-- Automate data collection where possible (GitHub API, Shortcut integration)
-- Use existing tools and integrations to minimize manual data entry
-- Regularly review the usefulness of each metric with the team
-- Adjust processes based on team feedback to ensure they remain lightweight
+The Team Health Dashboard now has a solid foundation with the implementation of the Repository and Adapter patterns. This architecture provides a clear separation of concerns, making it easier to maintain and extend the system. The next steps involve implementing the frontend dashboard and setting up the deployment pipeline.
