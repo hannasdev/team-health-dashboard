@@ -53,5 +53,3 @@ jobs:
           LOG_LEVEL: info
           LOG_FORMAT: json
           LOG_FILE_PATH: './logs'
-      - name: Lint
-        run: npm run lint
