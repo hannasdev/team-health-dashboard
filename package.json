@@ -58,6 +58,7 @@
     "nodemon": "^3.1.4",
     "terser-webpack-plugin": "^5.3.10",
     "ts-jest": "^29.2.4",
+    "ts-loader": "^9.5.1",
     "tsx": "^4.16.5",
     "typescript": "^5.5.4",
     "webpack": "^5.93.0",

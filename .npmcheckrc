@@ -8,7 +8,8 @@
       "@eslint/eslintrc",
       "eslint-import-resolver-typescript",
       "@typescript-eslint/eslint-plugin",
-      "@typescript-eslint/parser"
+      "@typescript-eslint/parser",
+      "ts-loader"
     ]
   }
 }
