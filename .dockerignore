@@ -1,0 +1,31 @@
+# Ignore node_modules in the host, we'll install dependencies in the container
+node_modules
+
+# Ignore logs
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Ignore version control files
+.git
+.gitignore
+
+# Ignore editor directories
+.vscode
+.idea
+
+# Ignore test and coverage files
+*.test.ts
+*.spec.ts
+coverage
+.nyc_output
+
+# Ignore the dist directory, we'll build it in the container
+dist
+
+# Ignore markdown files except README.md
+*.md
+!README.md
+
+# Ignore the solar-imprint.json file
+solar-imprint.json

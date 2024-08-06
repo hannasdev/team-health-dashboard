@@ -6,10 +6,13 @@
   "type": "module",
   "sideEffects": false,
   "scripts": {
-    "start": "node --experimental-specifier-resolution=node dist/index.js",
-    "build": "npx tsc",
-    "prod": "webpack --config webpack.config.cjs",
-    "dev": "node --loader ts-node/esm src/index.ts",
+    "start": "node dist/main.js",
+    "dev": "nodemon --exec 'npm run build:dev && npm start'",
+    "dev:tsnode": "node --loader ts-node/esm src/index.ts",
+    "dev:fe": "python3 -m http.server 8080",
+    "build": "npx webpack --config webpack.config.prod.js",
+    "build:dev": "node --experimental-json-modules node_modules/.bin/webpack --config webpack.config.dev.js",
+    "build:tsc": "npx tsc",
     "test:inband": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --testTimeout=30000 src/__tests__/services/GitHubService.test.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --verbose --detectOpenHandles",
@@ -66,6 +69,7 @@
     "webpack": "^5.93.0",
     "webpack-bundle-analyzer": "^4.10.2",
     "webpack-cli": "^5.1.4",
+    "webpack-merge": "^6.0.1",
     "webpack-node-externals": "^3.0.0"
   }
 }
