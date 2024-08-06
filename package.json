@@ -15,7 +15,8 @@
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch --verbose --detectOpenHandles",
     "lint": "eslint 'src/**/*.{ts,js}'",
     "lint:fix": "eslint 'src/**/*.{ts,js}' --fix",
-    "prettier": "prettier --write 'src/**/*.{ts,js,json,md}'"
+    "prettier": "prettier --write 'src/**/*.{ts,js,json,md}'",
+    "ai": "npx ai-digest"
   },
   "dependencies": {
     "@octokit/graphql": "^8.1.1",

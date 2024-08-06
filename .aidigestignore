@@ -1,0 +1,5 @@
+solar-imprint.json
+package-lock.json
+docs/
+dist/
+node_modules/
