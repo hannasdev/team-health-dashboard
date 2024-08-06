@@ -3,7 +3,10 @@
     "ignoreMatches": [
       "ts-jest",
       "webpack-cli",
-      "@types/eslint__js",
+      "@typescript-eslint/eslint-plugin",
+      "@typescript-eslint/parser",
+      "@eslint/eslintrc",
+      "eslint-import-resolver-typescript",
       "@typescript-eslint/eslint-plugin",
       "@typescript-eslint/parser"
     ]
