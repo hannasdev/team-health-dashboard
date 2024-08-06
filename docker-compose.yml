@@ -1,6 +1,10 @@
+version: '3.8'
+
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - '3000:3000'
     depends_on:
@@ -8,7 +12,12 @@ services:
     environment:
       - DATABASE_URL=mongodb://db:27017/myapp
       - NODE_ENV=production
-      - JWT_SECRET=your_jwt_secret_here
+      - JWT_SECRET=${JWT_SECRET}
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   db:
     image: mongo:4.4
@@ -16,6 +25,11 @@ services:
       - mongodb_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js
     command: mongod --bind_ip_all
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 volumes:
   mongodb_data:

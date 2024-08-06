@@ -1,11 +1,13 @@
 // src/app.ts
 import 'reflect-metadata';
-import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
-import metricsRouter from './routes/metrics';
-import authRouter from './routes/auth';
-import { container } from './container';
+import express, { Express, Request, Response } from 'express';
+
 import { config } from './config/config';
+import { container } from './container';
+import authRouter from './routes/auth';
+import healthCheckRouter from './routes/healthCheck';
+import metricsRouter from './routes/metrics';
 
 const app: Express = express();
 
@@ -33,6 +35,9 @@ app.use(
 app.get('/', (req: Request, res: Response) => {
   res.send('Team Health Dashboard API');
 });
+
+// Use the health check router
+app.use('/health', healthCheckRouter);
 
 // Use the metrics router
 app.use('/api', metricsRouter);

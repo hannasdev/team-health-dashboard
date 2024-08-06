@@ -28,6 +28,7 @@ import { GitHubAdapter } from './adapters/GitHubAdapter';
 import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter';
 import { config } from './config/config';
 import { AuthController } from './controllers/AuthController';
+import { HealthCheckController } from './controllers/HealthCheckController';
 import { MetricsController } from './controllers/MetricsController';
 import { ErrorHandler } from './middleware/ErrorHandler';
 import { GitHubRepository } from './repositories/github/GitHubRepository';
@@ -57,6 +58,11 @@ const container = new Container();
 
 // Config
 container.bind<IConfig>(TYPES.Config).toConstantValue(config);
+
+// Health Check
+container
+  .bind<HealthCheckController>(TYPES.HealthCheckController)
+  .to(HealthCheckController);
 
 // Logger
 container.bind<ILogger>(TYPES.Logger).to(Logger);
