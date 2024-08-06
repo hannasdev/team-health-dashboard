@@ -6,7 +6,9 @@
       "baseUrl": ".",
       "paths": {
         "@/*": ["src/*"]
-      }
+      },
+      "moduleResolution": "node",
+      "esModuleInterop": true
     },
     "transpileOnly": true,
     "files": true,
@@ -19,11 +21,9 @@
     "checkJs": true,
     "declaration": true,
     "emitDecoratorMetadata": true,
-    "esModuleInterop": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
-    "moduleResolution": "node",
     "noImplicitAny": true,
     "outDir": "./dist",
     "resolveJsonModule": true,
@@ -36,7 +36,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "moduleResolution": "node",
+    "esModuleInterop": true
   },
   "include": ["src/**/*", "jest.setup.ts"],
   "exclude": ["node_modules", "./dist"]
