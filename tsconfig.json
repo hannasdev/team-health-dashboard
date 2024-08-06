@@ -1,44 +1,28 @@
 {
-  "ts-node": {
-    "compilerOptions": {
-      "rootDir": "./",
-      "module": "ESNext",
-      "baseUrl": ".",
-      "paths": {
-        "@/*": ["src/*"]
-      },
-      "moduleResolution": "node",
-      "esModuleInterop": true
-    },
-    "transpileOnly": true,
-    "files": true,
-    "esm": true,
-    "experimentalSpecifierResolution": "node"
-  },
   "compilerOptions": {
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
     "checkJs": true,
     "declaration": true,
     "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
     "experimentalDecorators": true,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
+    "moduleResolution": "node",
     "noImplicitAny": true,
     "outDir": "./dist",
+    "paths": {
+      "@/*": ["src/*"]
+    },
     "resolveJsonModule": true,
     "rootDir": "./",
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "target": "ES2022",
-    "types": ["reflect-metadata", "jest", "node"],
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    "moduleResolution": "node",
-    "esModuleInterop": true
+    "target": "ESNext",
+    "types": ["reflect-metadata", "jest", "node"]
   },
   "include": ["src/**/*", "jest.setup.ts"],
   "exclude": ["node_modules", "./dist"]
