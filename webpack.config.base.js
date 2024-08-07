@@ -22,6 +22,7 @@ export default {
             compilerOptions: {
               module: 'ESNext',
               target: 'ES2022',
+              declaration: false,
             },
           },
         },

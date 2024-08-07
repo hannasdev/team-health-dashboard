@@ -4,7 +4,8 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "checkJs": true,
-    "declaration": true,
+    "declaration": false,
+    "emitDeclarationOnly": false,
     "emitDecoratorMetadata": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
@@ -22,8 +23,22 @@
     "sourceMap": true,
     "strict": true,
     "target": "ESNext",
-    "types": ["reflect-metadata", "jest", "node"]
+    "types": ["reflect-metadata", "jest", "node"],
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true
   },
-  "include": ["src/**/*", "jest.setup.ts"],
+  "include": [
+    "src/**/*",
+    "jest.setup.ts",
+    "e2e-setup.ts",
+    "jest.config.js",
+    "webpack.config.base.js",
+    "webpack.config.dev.js",
+    "webpack.config.prod.js"
+  ],
   "exclude": ["node_modules", "./dist"]
 }
