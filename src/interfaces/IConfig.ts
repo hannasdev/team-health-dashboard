@@ -6,5 +6,13 @@ export interface IConfig {
   GITHUB_TOKEN: string;
   GITHUB_OWNER: string;
   GITHUB_REPO: string;
-  PORT: number | string;
+  PORT: number;
+  CORS_ORIGIN: string;
+  JWT_SECRET: string;
+  DATABASE_URL: string;
+  MONGO_CONNECT_TIMEOUT_MS: number;
+  MONGO_SERVER_SELECTION_TIMEOUT_MS: number;
+  LOG_LEVEL: string;
+  LOG_FORMAT: string;
+  LOG_FILE_PATH: string;
 }
