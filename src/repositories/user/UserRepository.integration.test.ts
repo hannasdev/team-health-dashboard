@@ -1,6 +1,13 @@
+const mockConfig = createMockConfig();
+
+jest.mock('@/config/config', () => ({
+  config: mockConfig,
+}));
+
 import { MongoClient } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
+import { createMockConfig } from '@/__mocks__/mockFactories';
 import { config } from '@/config/config';
 import { User } from '@/models/User';
 import { UserRepository } from '@/repositories/user/UserRepository';
@@ -16,7 +23,7 @@ describe('UserRepository Integration Tests', () => {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
     mongoClient = await MongoClient.connect(mongoUri);
-    config.DATABASE_URL = mongoUri;
+    mockConfig.DATABASE_URL = mongoUri;
 
     mockLogger = {
       info: jest.fn(),
@@ -52,8 +59,8 @@ describe('UserRepository Integration Tests', () => {
   });
 
   it('should log database connection failure', async () => {
-    const originalUrl = config.DATABASE_URL;
-    config.DATABASE_URL = 'mongodb://localhost:12345'; // Use a non-existent port instead of an invalid hostname
+    const originalUrl = mockConfig.DATABASE_URL;
+    mockConfig.DATABASE_URL = 'mongodb://localhost:12345';
 
     const errorRepository = new UserRepository(mockLogger);
 
@@ -68,7 +75,7 @@ describe('UserRepository Integration Tests', () => {
       expect.any(Error),
     );
 
-    config.DATABASE_URL = originalUrl;
+    mockConfig.DATABASE_URL = originalUrl;
     await errorRepository.close();
   }, 10000); // Increase timeout to 10 seconds
 
