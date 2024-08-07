@@ -2,13 +2,13 @@
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 
-import dotenv from 'dotenv';
+import { config } from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load environment variables
-dotenv.config({ path: resolve(__dirname, '../.env') });
+config({ path: resolve(__dirname, '../.env') });
 
 // Log environment variables (for debugging, remove in production)
 console.log('Environment variables:');

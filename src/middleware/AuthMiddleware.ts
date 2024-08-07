@@ -1,6 +1,6 @@
 // src/middleware/authMiddleware.ts
 import { Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { verify } from 'jsonwebtoken';
 
 import { config } from '@/config/config';
 import { IAuthRequest } from '@/interfaces';
@@ -21,7 +21,7 @@ export const authMiddleware = (
   }
 
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET) as {
+    const decoded = verify(token, config.JWT_SECRET) as {
       id: string;
       email: string;
     };

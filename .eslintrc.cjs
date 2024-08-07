@@ -9,8 +9,11 @@ module.exports = {
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:import-x/typescript',
+    'plugin:import-x/errors',
+    'plugin:import-x/warnings',
     'prettier',
   ],
+  ignorePatterns: ['dist', '.eslintrc.cjs'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 'latest',

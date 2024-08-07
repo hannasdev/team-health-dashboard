@@ -1,6 +1,6 @@
 // src/controllers/AuthController.test.ts
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+import bcrypt, { compare } from 'bcrypt';
+import jwt, { sign } from 'jsonwebtoken';
 
 import {
   createMockUserRepository,
@@ -50,7 +50,7 @@ describe('AuthController', () => {
         'test@example.com',
         'hashedPassword',
       );
-      expect(jwt.sign).toHaveBeenCalledWith(
+      expect(sign).toHaveBeenCalledWith(
         { id: '1', email: 'test@example.com' },
         config.JWT_SECRET,
         {
@@ -105,11 +105,8 @@ describe('AuthController', () => {
       expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
         'test@example.com',
       );
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        'password123',
-        'hashedPassword',
-      );
-      expect(jwt.sign).toHaveBeenCalledWith(
+      expect(compare).toHaveBeenCalledWith('password123', 'hashedPassword');
+      expect(sign).toHaveBeenCalledWith(
         { id: '1', email: 'test@example.com' },
         config.JWT_SECRET,
         { expiresIn: '1h' },
@@ -135,10 +132,7 @@ describe('AuthController', () => {
       expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
         'test@example.com',
       );
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        'wrongpassword',
-        'hashedPassword',
-      );
+      expect(compare).toHaveBeenCalledWith('wrongpassword', 'hashedPassword');
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({
         message: 'Invalid credentials',

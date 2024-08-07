@@ -1,11 +1,11 @@
 // src/routes/healthCheck.ts
-import express from 'express';
+import { Router } from 'express';
 
 import { container } from '@/container';
 import { HealthCheckController } from '@/controllers/HealthCheckController';
 import { TYPES } from '@/utils/types';
 
-const router = express.Router();
+const router = Router();
 
 const healthCheckController = container.get<HealthCheckController>(
   TYPES.HealthCheckController,

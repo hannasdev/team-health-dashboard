@@ -1,8 +1,8 @@
 // src/controllers/AuthController.ts
-import bcrypt from 'bcrypt';
+import bcrypt, { compare, hash } from 'bcrypt';
 import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
-import jwt from 'jsonwebtoken';
+import jwt, { sign } from 'jsonwebtoken';
 
 import { config } from '@/config/config';
 import { UserRepository } from '@/repositories/user/UserRepository';
@@ -18,11 +18,11 @@ export class AuthController {
     const { email, password } = req.body;
     try {
       const user = await this.userRepository.findByEmail(email);
-      if (!user || !(await bcrypt.compare(password, user.password))) {
+      if (!user || !(await compare(password, user.password))) {
         res.status(401).json({ message: 'Invalid credentials' });
         return;
       }
-      const token = jwt.sign(
+      const token = sign(
         { id: user.id, email: user.email },
         config.JWT_SECRET,
         { expiresIn: '1h' },
@@ -41,9 +41,9 @@ export class AuthController {
         res.status(400).json({ message: 'User already exists' });
         return;
       }
-      const hashedPassword = await bcrypt.hash(password, 10);
+      const hashedPassword = await hash(password, 10);
       const user = await this.userRepository.create(email, hashedPassword);
-      const token = jwt.sign(
+      const token = sign(
         { id: user.id, email: user.email },
         config.JWT_SECRET,
         { expiresIn: '1h' },
