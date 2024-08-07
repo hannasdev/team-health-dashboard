@@ -1,7 +1,7 @@
 // src/utils/CacheDecorator.ts
 import { inject, injectable } from 'inversify';
 
-import type { ICacheService } from '@/interfaces/ICacheService';
+import type { ICacheService } from '@/interfaces';
 import { TYPES } from '@/utils/types';
 
 export function Cacheable(cacheKey: string, duration: number) {

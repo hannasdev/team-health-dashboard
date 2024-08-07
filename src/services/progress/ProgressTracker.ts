@@ -2,7 +2,7 @@
 import { inject, injectable } from 'inversify';
 
 import { IProgressTracker } from '@/interfaces/IProgressTracker';
-import { Logger } from '@/utils/Logger';
+import type { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
 
 @injectable()

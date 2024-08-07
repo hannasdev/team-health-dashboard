@@ -1,7 +1,9 @@
 import { IProgressTracker } from '@/interfaces';
-import { createProgressCallback } from '@/services/progress/ProgressTracker';
-import { ProgressTracker } from '@/services/progress/ProgressTracker';
-import { Logger } from '@/utils/Logger';
+import {
+  createProgressCallback,
+  ProgressTracker,
+} from '@/services/progress/ProgressTracker';
+import type { Logger } from '@/utils/Logger';
 
 describe('ProgressTracker', () => {
   let progressTracker: ProgressTracker;
