@@ -6,9 +6,9 @@ import {
   createMockGitHubRepository,
   createMockPullRequest,
 } from '@/__mocks__/mockFactories';
-import type { IMetricsService, IMetric } from '@/interfaces';
+import type { IMetricsService, IMetric, ILogger } from '@/interfaces';
 import { MetricsService } from '@/services/metrics/MetricsService';
-import { Logger } from '@/utils/Logger';
+import {} from '@/utils/Logger';
 
 describe('MetricsService', () => {
   let metricsService: IMetricsService;
@@ -16,13 +16,13 @@ describe('MetricsService', () => {
     typeof createMockGoogleSheetsRepository
   >;
   let mockGitHubRepository: ReturnType<typeof createMockGitHubRepository>;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockLogger: ILogger;
 
   beforeEach(() => {
     jest.resetAllMocks();
     mockGoogleSheetsRepository = createMockGoogleSheetsRepository();
     mockGitHubRepository = createMockGitHubRepository();
-    mockLogger = createMockLogger() as jest.Mocked<Logger>;
+    mockLogger = createMockLogger(); // No need for casting
     metricsService = new MetricsService(
       mockGoogleSheetsRepository,
       mockGitHubRepository,
@@ -237,29 +237,12 @@ describe('MetricsService', () => {
       [new Date(2023, 0, 2), new Date(2023, 0, 1)],
     ])(
       'should not deduplicate metrics with different timestamps',
-      async (date1, date2) => {
+      async date1 => {
         const sheetMetric = createMockMetric({
           id: 'metric-1',
           source: 'Google Sheets',
           timestamp: date1,
         });
-        const githubMetrics = [
-          createMockMetric({
-            id: 'github-pr-count',
-            source: 'GitHub',
-            timestamp: date2,
-          }),
-          createMockMetric({
-            id: 'github-avg-pr-size',
-            source: 'GitHub',
-            timestamp: date2,
-          }),
-          createMockMetric({
-            id: 'github-avg-merge-time',
-            source: 'GitHub',
-            timestamp: date2,
-          }),
-        ];
 
         mockGoogleSheetsRepository.fetchMetrics.mockResolvedValue([
           sheetMetric,

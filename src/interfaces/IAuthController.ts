@@ -1,3 +1,4 @@
+// src/interfaces/IAuthController.ts
 import { Request, Response } from 'express';
 
 export interface IAuthController {

@@ -8,7 +8,7 @@ export interface IMetricsService {
     progressCallback?: ProgressCallback,
     timePeriod?: number,
   ): Promise<{
-    metrics: IMetric[];
+    metrics: IMetric[]; // Make sure IMetric is defined correctly
     errors: { source: string; message: string }[];
     githubStats: { totalPRs: number; fetchedPRs: number; timePeriod: number };
   }>;

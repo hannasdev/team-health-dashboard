@@ -2,6 +2,7 @@
 import { IncomingHttpHeaders } from 'http';
 
 import { Request, Response } from 'express';
+import { MockedObject } from 'jest-mock';
 
 import {
   IAuthRequest,
@@ -20,6 +21,7 @@ import {
   IPullRequest,
 } from '@/interfaces';
 import { UserRepository } from '@/repositories/user/UserRepository';
+import { ProgressCallback } from '@/types';
 
 export function createMockMetricCalculator(): jest.Mocked<IMetricCalculator> {
   return {
@@ -140,8 +142,14 @@ export function createMockMetric(overrides: Partial<IMetric> = {}): IMetric {
   };
 }
 
-export const createMockMetricsService = (): jest.Mocked<IMetricsService> => ({
-  getAllMetrics: jest.fn().mockResolvedValue({ metrics: [], errors: [] }),
+export const createMockMetricsService = (): IMetricsService => ({
+  getAllMetrics: jest.fn(() =>
+    Promise.resolve({
+      metrics: [],
+      errors: [],
+      githubStats: { totalPRs: 0, fetchedPRs: 0, timePeriod: 90 },
+    }),
+  ),
 });
 
 export const createCacheDecoratorMock = () => {

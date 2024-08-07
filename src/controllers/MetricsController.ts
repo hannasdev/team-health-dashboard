@@ -6,9 +6,9 @@ import type {
   IMetricsService,
   IMetricsController,
   ILogger,
+  IMetric,
 } from '@/interfaces';
 import { ProgressCallback } from '@/types';
-import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
 
 /**
@@ -72,13 +72,26 @@ export class MetricsController implements IMetricsController {
         timePeriod,
       );
 
-      sendEvent('result', {
+      // Add type annotation if needed:
+      const responseData: {
+        success: true;
+        data: IMetric[];
+        errors: { source: string; message: string }[];
+        githubStats: {
+          totalPRs: number;
+          fetchedPRs: number;
+          timePeriod: number;
+        };
+        status: number;
+      } = {
         success: true,
         data: result.metrics,
         errors: result.errors,
         githubStats: result.githubStats,
         status: result.errors.length > 0 ? 207 : 200,
-      });
+      };
+
+      sendEvent('result', responseData);
     } catch (error) {
       this.logger.error('Error in MetricsController:', error as Error);
       sendEvent('error', {

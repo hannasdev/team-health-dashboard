@@ -7,9 +7,9 @@ import type {
   IGoogleSheetsRepository,
   IGitHubRepository,
   IPullRequest,
+  ILogger,
 } from '@/interfaces';
 import { ProgressCallback } from '@/types';
-import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
 
 @injectable()
@@ -18,7 +18,7 @@ export class MetricsService implements IMetricsService {
     @inject(TYPES.GoogleSheetsRepository)
     private googleSheetsRepository: IGoogleSheetsRepository,
     @inject(TYPES.GitHubRepository) private gitHubRepository: IGitHubRepository,
-    @inject(TYPES.Logger) private logger: Logger,
+    @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
   async getAllMetrics(
