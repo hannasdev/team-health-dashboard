@@ -2,28 +2,34 @@ import 'reflect-metadata';
 import {
   createMockLogger,
   createMockCacheService,
+  createMockConfig,
+  createMockGoogleSheetsClient,
 } from '@/__mocks__/mockFactories';
-import type { IGoogleSheetsClient, IConfig, IMetric } from '@/interfaces';
-import { Logger } from '@/utils/Logger';
+import type {
+  IGoogleSheetsClient,
+  IConfig,
+  IMetric,
+  ILogger,
+} from '@/interfaces';
 
 import { GoogleSheetsRepository } from './GoogleSheetsRepository';
+
+jest.mock('@/config/config', () => ({
+  config: createMockConfig(),
+}));
 
 describe('GoogleSheetsRepository', () => {
   let repository: GoogleSheetsRepository;
   let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
-  let mockConfig: jest.Mocked<IConfig>;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockConfig: IConfig;
+  let mockLogger: ILogger;
   let mockCacheService: ReturnType<typeof createMockCacheService>;
 
   beforeEach(() => {
     jest.resetAllMocks();
-    mockGoogleSheetsClient = {
-      getValues: jest.fn(),
-    } as unknown as jest.Mocked<IGoogleSheetsClient>;
-    mockConfig = {
-      GOOGLE_SHEETS_ID: 'test-sheet-id',
-    } as unknown as jest.Mocked<IConfig>;
-    mockLogger = createMockLogger() as unknown as jest.Mocked<Logger>;
+    mockGoogleSheetsClient = createMockGoogleSheetsClient();
+    mockConfig = createMockConfig();
+    mockLogger = createMockLogger();
     mockCacheService = createMockCacheService();
 
     repository = new GoogleSheetsRepository(
@@ -200,6 +206,19 @@ describe('GoogleSheetsRepository', () => {
 
       expect(result).toEqual(cachedMetrics);
       expect(mockGoogleSheetsClient.getValues).not.toHaveBeenCalled();
+    });
+
+    it('should log errors when fetching fails', async () => {
+      const error = new Error('API Error');
+      mockGoogleSheetsClient.getValues.mockRejectedValue(error);
+
+      await expect(repository.fetchMetrics()).rejects.toThrow(
+        'Failed to fetch data from Google Sheets: API Error',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching data from Google Sheets:',
+        error,
+      );
     });
   });
 });

@@ -2,26 +2,29 @@
 import { injectable, inject } from 'inversify';
 import { MongoClient, Db } from 'mongodb';
 
-import { config } from '@/config/config';
+import { IConfig, ILogger } from '@/interfaces';
+import { IUserRepository } from '@/interfaces/IUserRepository';
 import { User } from '@/models/User';
-import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
 
 @injectable()
-export class UserRepository {
+export class UserRepository implements IUserRepository {
   private db!: Db;
   private client!: MongoClient;
   private connectionPromise: Promise<void>;
 
-  constructor(@inject(TYPES.Logger) private logger: Logger) {
+  constructor(
+    @inject(TYPES.Logger) private logger: ILogger,
+    @inject(TYPES.Config) private config: IConfig,
+  ) {
     this.connectionPromise = this.initializeDb();
   }
 
-  private async initializeDb() {
+  private async initializeDb(): Promise<void> {
     try {
-      this.client = await MongoClient.connect(config.DATABASE_URL, {
-        connectTimeoutMS: config.MONGO_CONNECT_TIMEOUT_MS,
-        serverSelectionTimeoutMS: config.MONGO_SERVER_SELECTION_TIMEOUT_MS,
+      this.client = await MongoClient.connect(this.config.DATABASE_URL, {
+        connectTimeoutMS: this.config.MONGO_CONNECT_TIMEOUT_MS,
+        serverSelectionTimeoutMS: this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS,
       });
       this.db = this.client.db();
       this.logger.info('Successfully connected to the database');
@@ -71,7 +74,7 @@ export class UserRepository {
     }
   }
 
-  private async ensureDbConnection() {
+  private async ensureDbConnection(): Promise<void> {
     if (!this.db) {
       this.logger.warn(
         'Database connection not initialized, attempting to connect',
@@ -80,7 +83,7 @@ export class UserRepository {
     }
   }
 
-  async close() {
+  async close(): Promise<void> {
     if (this.client) {
       await this.client.close();
       this.logger.info('Database connection closed');

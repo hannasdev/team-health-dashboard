@@ -2,7 +2,11 @@
 import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
-import type { IMetricsService } from '@/interfaces';
+import type {
+  IMetricsService,
+  IMetricsController,
+  ILogger,
+} from '@/interfaces';
 import { ProgressCallback } from '@/types';
 import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
@@ -24,10 +28,10 @@ import { TYPES } from '@/utils/types';
  * @injectable
  */
 @injectable()
-export class MetricsController {
+export class MetricsController implements IMetricsController {
   constructor(
     @inject(TYPES.MetricsService) private metricsService: IMetricsService,
-    @inject(TYPES.Logger) private logger: Logger,
+    @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
   /**

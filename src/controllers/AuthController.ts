@@ -1,17 +1,19 @@
 // src/controllers/AuthController.ts
-import bcrypt, { compare, hash } from 'bcrypt';
+import { compare, hash } from 'bcrypt';
 import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
-import jwt, { sign } from 'jsonwebtoken';
+import { sign } from 'jsonwebtoken';
 
-import { config } from '@/config/config';
-import { UserRepository } from '@/repositories/user/UserRepository';
+import { IConfig, ILogger, IUserRepository } from '@/interfaces';
+import { IAuthController } from '@/interfaces/IAuthController';
 import { TYPES } from '@/utils/types';
 
 @injectable()
-export class AuthController {
+export class AuthController implements IAuthController {
   constructor(
-    @inject(TYPES.UserRepository) private userRepository: UserRepository,
+    @inject(TYPES.UserRepository) private userRepository: IUserRepository,
+    @inject(TYPES.Config) private config: IConfig,
+    @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
   public async login(req: Request, res: Response): Promise<void> {
@@ -22,13 +24,10 @@ export class AuthController {
         res.status(401).json({ message: 'Invalid credentials' });
         return;
       }
-      const token = sign(
-        { id: user.id, email: user.email },
-        config.JWT_SECRET,
-        { expiresIn: '1h' },
-      );
+      const token = this.generateToken(user.id, user.email);
       res.json({ token });
     } catch (error) {
+      this.logger.error('Error in login:', error as Error);
       res.status(500).json({ message: 'Internal server error' });
     }
   }
@@ -43,14 +42,17 @@ export class AuthController {
       }
       const hashedPassword = await hash(password, 10);
       const user = await this.userRepository.create(email, hashedPassword);
-      const token = sign(
-        { id: user.id, email: user.email },
-        config.JWT_SECRET,
-        { expiresIn: '1h' },
-      );
+      const token = this.generateToken(user.id, user.email);
       res.status(201).json({ token });
     } catch (error) {
+      this.logger.error('Error in register:', error as Error);
       res.status(500).json({ message: 'Internal server error' });
     }
+  }
+
+  private generateToken(userId: string, email: string): string {
+    return sign({ id: userId, email }, this.config.JWT_SECRET, {
+      expiresIn: '1h',
+    });
   }
 }

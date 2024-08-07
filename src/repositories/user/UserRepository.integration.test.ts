@@ -42,7 +42,7 @@ describe('UserRepository Integration Tests', () => {
     const db = mongoClient.db();
     await db.collection('users').deleteMany({});
     jest.clearAllMocks();
-    userRepository = new UserRepository(mockLogger);
+    userRepository = new UserRepository(mockLogger, mockConfig);
     await userRepository.waitForConnection();
   }, 10000);
 
@@ -62,7 +62,7 @@ describe('UserRepository Integration Tests', () => {
     const originalUrl = mockConfig.DATABASE_URL;
     mockConfig.DATABASE_URL = 'mongodb://localhost:12345';
 
-    const errorRepository = new UserRepository(mockLogger);
+    const errorRepository = new UserRepository(mockLogger, mockConfig);
 
     try {
       await errorRepository.waitForConnection();

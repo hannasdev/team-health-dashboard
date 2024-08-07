@@ -16,8 +16,8 @@ import { config } from '@/config/config';
 import { AuthController } from '@/controllers/AuthController';
 import { HealthCheckController } from '@/controllers/HealthCheckController';
 import { MetricsController } from '@/controllers/MetricsController';
-import { ILogger } from '@/interfaces';
-import type {
+import {
+  ILogger,
   ICacheService,
   IConfig,
   IErrorHandler,
@@ -28,6 +28,10 @@ import type {
   IMetricCalculator,
   IMetricsService,
   IProgressTracker,
+  IAuthController,
+  IHealthCheckController,
+  IMetricsController,
+  IUserRepository,
 } from '@/interfaces';
 import { ErrorHandler } from '@/middleware/ErrorHandler';
 import { GitHubRepository } from '@/repositories/github/GitHubRepository';
@@ -47,7 +51,7 @@ container.bind<IConfig>(TYPES.Config).toConstantValue(config);
 
 // Health Check
 container
-  .bind<HealthCheckController>(TYPES.HealthCheckController)
+  .bind<IHealthCheckController>(TYPES.HealthCheckController)
   .to(HealthCheckController);
 
 // Logger
@@ -77,16 +81,16 @@ container.bind<IGitHubRepository>(TYPES.GitHubRepository).to(GitHubRepository);
 container.bind<IMetricCalculator>(TYPES.MetricCalculator).to(MetricCalculator);
 container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService);
 container
-  .bind<MetricsController>(TYPES.MetricsController)
+  .bind<IMetricsController>(TYPES.MetricsController)
   .to(MetricsController);
 
 // Progress Tracking
 container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
 
 // User Repository
-container.bind<UserRepository>(TYPES.UserRepository).to(UserRepository);
+container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
 
 // Auth Controller
-container.bind<AuthController>(TYPES.AuthController).to(AuthController);
+container.bind<IAuthController>(TYPES.AuthController).to(AuthController);
 
 export { container };

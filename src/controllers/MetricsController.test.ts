@@ -2,12 +2,19 @@
 import 'reflect-metadata';
 import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 
-import { createMockLogger } from '@/__mocks__/mockFactories';
+import {
+  createMockLogger,
+  createMockConfig,
+  createMockMetricsService,
+} from '@/__mocks__/mockFactories';
 import { MetricsController } from '@/controllers/MetricsController';
 import type { IMetricsService, IMetric, ILogger } from '@/interfaces';
-import { Logger } from '@/utils/Logger';
 
 import type { Request, Response } from 'express';
+
+jest.mock('@/config/config', () => ({
+  config: createMockConfig(),
+}));
 
 describe('MetricsController', () => {
   let metricsController: MetricsController;
@@ -19,13 +26,8 @@ describe('MetricsController', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     mockLogger = createMockLogger();
-    mockMetricsService = {
-      getAllMetrics: jest.fn(),
-    };
-    metricsController = new MetricsController(
-      mockMetricsService,
-      mockLogger as Logger,
-    );
+    mockMetricsService = createMockMetricsService();
+    metricsController = new MetricsController(mockMetricsService, mockLogger);
     mockRequest = {
       query: {},
     };
@@ -33,7 +35,7 @@ describe('MetricsController', () => {
       writeHead: jest.fn(),
       write: jest.fn(),
       end: jest.fn(),
-    } as Partial<Response>;
+    };
   });
 
   describe('getAllMetrics', () => {
