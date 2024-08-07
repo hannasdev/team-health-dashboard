@@ -2,13 +2,12 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import nodeExternals from 'webpack-node-externals';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default {
+const config = {
   target: 'node',
   externals: [nodeExternals()],
   module: {
@@ -40,10 +39,7 @@ export default {
   output: {
     filename: '[name].js',
     path: path.resolve(__dirname, 'dist'),
-    chunkFormat: 'module',
   },
-  experiments: {
-    outputModule: true,
-  },
-  plugins: [new CleanWebpackPlugin()],
 };
+
+export default config;

@@ -6,64 +6,48 @@ import { CleanWebpackPlugin } from 'clean-webpack-plugin';
 import TerserPlugin from 'terser-webpack-plugin';
 import webpack from 'webpack';
 import { merge } from 'webpack-merge';
-import nodeExternals from 'webpack-node-externals';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import baseConfig from './webpack.config.base.js';
 
-export default merge(baseConfig, {
+const config = {
   mode: 'production',
   devtool: 'source-map',
   optimization: {
     minimize: true,
     minimizer: [
       new TerserPlugin({
+        terserOptions: {
+          format: {
+            comments: false,
+          },
+        },
+        extractComments: false,
         parallel: true,
       }),
     ],
     usedExports: true,
-    splitChunks: {
-      chunks: 'all',
-      maxSize: 244000,
-    },
-    concatenateModules: true,
+    sideEffects: true,
   },
   plugins: [
-    new CleanWebpackPlugin({}),
+    new CleanWebpackPlugin(),
     new webpack.DefinePlugin({
       'process.env.NODE_ENV': JSON.stringify('production'),
     }),
-    new webpack.optimize.AggressiveMergingPlugin({}),
+    new webpack.optimize.AggressiveMergingPlugin(),
+    new webpack.ids.HashedModuleIdsPlugin(),
   ],
   performance: {
-    hints: false,
+    hints: 'warning',
+    maxEntrypointSize: 512000,
+    maxAssetSize: 512000,
   },
-  target: 'node',
   output: {
-    filename: 'main.js',
-    path: path.resolve(__dirname, 'dist'),
-    chunkFormat: '',
+    ...baseConfig.output,
+    libraryTarget: 'commonjs2',
   },
-  experiments: {
-    outputModule: true,
-  },
-  externals: [nodeExternals()],
-  module: {
-    rules: [
-      {
-        test: /\.ts$/,
-        use: 'ts-loader',
-        exclude: /node_modules/,
-      },
-    ],
-  },
-  resolve: {
-    extensions: ['.ts', '.js'],
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
-    modules: [],
-  },
-});
+};
+
+export default merge(baseConfig, config);

@@ -3,7 +3,7 @@ import { merge } from 'webpack-merge';
 
 import baseConfig from './webpack.config.base.js';
 
-export default merge(baseConfig, {
+const config = {
   mode: 'development',
   devtool: 'inline-source-map',
   cache: {
@@ -12,4 +12,6 @@ export default merge(baseConfig, {
       config: [import.meta.url],
     },
   },
-});
+};
+
+export default merge(baseConfig, config);
