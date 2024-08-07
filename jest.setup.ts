@@ -1,6 +1,10 @@
 // jest.setup.ts
 import 'reflect-metadata';
 import { jest } from '@jest/globals';
+import { TextEncoder, TextDecoder } from 'util';
+
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder as any;
 
 process.env.NODE_ENV = 'test';
 process.env.GOOGLE_SHEETS_ID = 'test-id';

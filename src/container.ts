@@ -5,18 +5,6 @@
  * across the Team Health Dashboard application. It binds interfaces to their
  * implementations for services, controllers, and utilities.
  *
- * Key components:
- * - Configuration
- * - Logging
- * - Error Handling
- * - Data Services (Google Sheets, GitHub)
- * - Metrics Service and Controller
- * - Caching Service
- *
- * When adding new dependencies:
- * 1. Import the necessary types and implementations
- * 2. Add a new binding using container.bind<Interface>(TYPES.InterfaceType).to(Implementation)
- *
  * @module Container
  */
 
@@ -95,7 +83,10 @@ container
 // Progress Tracking
 container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
 
+// User Repository
 container.bind<UserRepository>(TYPES.UserRepository).to(UserRepository);
+
+// Auth Controller
 container.bind<AuthController>(TYPES.AuthController).to(AuthController);
 
 export { container };

@@ -1,10 +1,10 @@
-// src/app.ts
+//src/app.ts
 import 'reflect-metadata';
 import cors from 'cors';
 import express, { Express, Request, Response } from 'express';
 
 import { config } from '@/config/config';
-import { container } from '@/container';
+import '@/container';
 import authRouter from '@/routes/auth';
 import healthCheckRouter from '@/routes/healthCheck';
 import metricsRouter from '@/routes/metrics';
