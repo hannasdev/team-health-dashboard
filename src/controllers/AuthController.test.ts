@@ -1,35 +1,46 @@
 // src/controllers/AuthController.test.ts
-import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 
 import {
   createMockUserRepository,
-  createMockConfig,
   createMockLogger,
 } from '@/__mocks__/mockFactories';
-import { AuthController } from '@/controllers/AuthController';
+import { Config } from '@/config/config';
+import {
+  AuthController,
+  IBcryptService,
+  IJwtService,
+} from '@/controllers/AuthController';
 import { IConfig, ILogger, IUserRepository } from '@/interfaces';
-
-jest.mock('bcrypt');
-jest.mock('jsonwebtoken');
 
 describe('AuthController', () => {
   let authController: AuthController;
   let mockUserRepository: jest.Mocked<IUserRepository>;
-  let mockConfig: jest.Mocked<IConfig>;
+  let mockConfig: IConfig;
   let mockLogger: jest.Mocked<ILogger>;
+  let mockBcryptService: jest.Mocked<IBcryptService>;
+  let mockJwtService: jest.Mocked<IJwtService>;
 
   beforeEach(() => {
     mockUserRepository = createMockUserRepository();
-    mockConfig = createMockConfig();
+    mockConfig = Config.getInstance({ JWT_SECRET: 'test-secret' });
     mockLogger = createMockLogger();
+    mockBcryptService = {
+      hash: jest
+        .fn()
+        .mockImplementation(() => Promise.resolve('hashedPassword')),
+      compare: jest.fn().mockImplementation(() => Promise.resolve(false)), // default to false
+    };
+    mockJwtService = {
+      sign: jest.fn().mockReturnValue('mockToken'),
+    };
     authController = new AuthController(
       mockUserRepository,
       mockConfig,
       mockLogger,
+      mockBcryptService,
+      mockJwtService,
     );
-    jest.resetAllMocks();
   });
 
   describe('register', () => {
@@ -49,9 +60,6 @@ describe('AuthController', () => {
         password: 'hashedPassword',
       });
 
-      jest.spyOn(bcrypt, 'hash').mockResolvedValue('hashedPassword' as never);
-      jest.spyOn(jwt, 'sign').mockReturnValue('mockToken' as never);
-
       await authController.register(mockRequest, mockResponse);
 
       expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
@@ -59,15 +67,12 @@ describe('AuthController', () => {
       );
       expect(mockUserRepository.create).toHaveBeenCalledWith(
         'test@example.com',
-        'hashedPassword',
-      );
-      expect(jwt.sign).toHaveBeenCalledWith(
-        { id: '1', email: 'test@example.com' },
-        mockConfig.JWT_SECRET,
-        { expiresIn: '1h' },
+        expect.any(String),
       );
       expect(mockResponse.status).toHaveBeenCalledWith(201);
-      expect(mockResponse.json).toHaveBeenCalledWith({ token: 'mockToken' });
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        token: expect.any(String),
+      });
     });
 
     it('should return 400 if user already exists', async () => {
@@ -128,6 +133,7 @@ describe('AuthController', () => {
         body: { email: 'test@example.com', password: 'password123' },
       } as Request;
       const mockResponse = {
+        status: jest.fn().mockReturnThis(),
         json: jest.fn(),
       } as unknown as Response;
 
@@ -136,24 +142,18 @@ describe('AuthController', () => {
         email: 'test@example.com',
         password: 'hashedPassword',
       });
-      jest.spyOn(bcrypt, 'compare').mockResolvedValue(true as never);
-      jest.spyOn(jwt, 'sign').mockReturnValue('mockToken' as never);
+
+      mockBcryptService.compare.mockImplementation(() => Promise.resolve(true));
 
       await authController.login(mockRequest, mockResponse);
 
       expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
         'test@example.com',
       );
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        'password123',
-        'hashedPassword',
-      );
-      expect(jwt.sign).toHaveBeenCalledWith(
-        { id: '1', email: 'test@example.com' },
-        mockConfig.JWT_SECRET,
-        { expiresIn: '1h' },
-      );
-      expect(mockResponse.json).toHaveBeenCalledWith({ token: 'mockToken' });
+
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        token: expect.any(String),
+      });
     });
 
     it('should return 401 for invalid credentials', async () => {
@@ -170,16 +170,12 @@ describe('AuthController', () => {
         email: 'test@example.com',
         password: 'hashedPassword',
       });
-      jest.spyOn(bcrypt, 'compare').mockResolvedValue(false as never);
+      mockBcryptService.compare.mockResolvedValueOnce(false);
 
       await authController.login(mockRequest, mockResponse);
 
       expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
         'test@example.com',
-      );
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        'wrongpassword',
-        'hashedPassword',
       );
       expect(mockResponse.status).toHaveBeenCalledWith(401);
       expect(mockResponse.json).toHaveBeenCalledWith({

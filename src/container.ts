@@ -8,12 +8,18 @@
  * @module Container
  */
 
+import bcrypt from 'bcrypt';
 import { Container } from 'inversify';
+import jwt from 'jsonwebtoken';
 
 import { GitHubAdapter } from '@/adapters/GitHubAdapter';
 import { GoogleSheetsAdapter } from '@/adapters/GoogleSheetAdapter';
 import { Config } from '@/config/config';
-import { AuthController } from '@/controllers/AuthController';
+import {
+  AuthController,
+  IBcryptService,
+  IJwtService,
+} from '@/controllers/AuthController';
 import { HealthCheckController } from '@/controllers/HealthCheckController';
 import { MetricsController } from '@/controllers/MetricsController';
 import {
@@ -43,6 +49,24 @@ import { MetricsService } from '@/services/metrics/MetricsService';
 import { ProgressTracker } from '@/services/progress/ProgressTracker';
 import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
+
+// Implement BcryptService
+class BcryptService implements IBcryptService {
+  async hash(data: string, saltOrRounds: string | number): Promise<string> {
+    return bcrypt.hash(data, saltOrRounds);
+  }
+
+  async compare(data: string, encrypted: string): Promise<boolean> {
+    return bcrypt.compare(data, encrypted);
+  }
+}
+
+// Implement JwtService
+class JwtService implements IJwtService {
+  sign(payload: object, secretOrPrivateKey: string, options?: object): string {
+    return jwt.sign(payload, secretOrPrivateKey, options);
+  }
+}
 
 const container = new Container();
 const config = Config.getInstance();
@@ -93,5 +117,9 @@ container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
 
 // Auth Controller
 container.bind<IAuthController>(TYPES.AuthController).to(AuthController);
+
+// BcryptService and JwtService
+container.bind<IBcryptService>(TYPES.BcryptService).to(BcryptService);
+container.bind<IJwtService>(TYPES.JwtService).to(JwtService);
 
 export { container };

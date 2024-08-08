@@ -6,6 +6,7 @@
 export const TYPES = {
   AuthController: Symbol.for('IAuthController'),
   AuthMiddleware: Symbol.for('IAuthMiddleware'),
+  BcryptService: Symbol.for('IBcryptService'),
   CacheService: Symbol.for('ICacheService'),
   Config: Symbol.for('IConfig'),
   ErrorHandler: Symbol.for('IErrorHandler'),
@@ -15,6 +16,7 @@ export const TYPES = {
   GoogleSheetsClient: Symbol.for('IGoogleSheetsClient'),
   GoogleSheetsRepository: Symbol.for('IGoogleSheetsRepository'),
   HealthCheckController: Symbol.for('IHealthCheckController'),
+  JwtService: Symbol.for('IJwtService'),
   LogFormat: Symbol.for('LogFormat'),
   LogLevel: Symbol.for('LogLevel'),
   Logger: Symbol.for('ILogger'),
