@@ -1,19 +1,27 @@
-// src/middleware/authMiddleware.ts
+// src/middleware/AuthMiddleware.ts
 import { Response, NextFunction } from 'express';
+import { inject, injectable } from 'inversify';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 
-import { IAuthRequest, IConfig } from '@/interfaces';
+import { IAuthRequest, IConfig, IAuthMiddleware } from '@/interfaces';
+import { TYPES } from '@/utils/types';
 
 interface IJwtService {
   verify(token: string, secret: string): string | JwtPayload;
 }
 
-export const authMiddleware =
-  (
-    config: IConfig,
-    jwtService: IJwtService = jwt, // Inject jwt service, defaulting to the real one
-  ) =>
-  (req: IAuthRequest, res: Response, next: NextFunction) => {
+@injectable()
+export class AuthMiddleware implements IAuthMiddleware {
+  constructor(
+    @inject(TYPES.Config) private config: IConfig,
+    @inject(TYPES.JwtService) private jwtService: typeof jwt,
+  ) {}
+
+  public handle = (
+    req: IAuthRequest,
+    res: Response,
+    next: NextFunction,
+  ): void | Response => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       return res.status(401).json({ message: 'No token provided' });
@@ -25,7 +33,7 @@ export const authMiddleware =
     }
 
     try {
-      const decoded = jwtService.verify(token, config.JWT_SECRET) as {
+      const decoded = this.jwtService.verify(token, this.config.JWT_SECRET) as {
         id: string;
         email: string;
       };
@@ -35,3 +43,4 @@ export const authMiddleware =
       return res.status(401).json({ message: 'Invalid token' });
     }
   };
+}

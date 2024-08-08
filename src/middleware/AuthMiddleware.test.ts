@@ -2,26 +2,47 @@
 import { IncomingHttpHeaders } from 'http';
 
 import { NextFunction, Response } from 'express';
+import { Container } from 'inversify';
+import jwt from 'jsonwebtoken'; // Add this import
 
 import {
   createMockAuthRequest,
   createMockAuthMiddlewareResponse,
 } from '@/__mocks__/mockFactories';
 import { Config } from '@/config/config';
-import { IAuthRequest, IConfig } from '@/interfaces';
-import { authMiddleware } from '@/middleware/AuthMiddleware';
+import { IAuthRequest, IConfig, IAuthMiddleware } from '@/interfaces';
+import { AuthMiddleware } from '@/middleware/AuthMiddleware';
+import { TYPES } from '@/utils/types';
 
 describe('AuthMiddleware', () => {
   let mockRequest: IAuthRequest;
   let mockResponse: Response;
   let nextFunction: NextFunction;
   let mockConfig: IConfig;
+  let container: Container;
+  let authMiddleware: IAuthMiddleware;
+  let mockJwtService: typeof jwt;
 
   beforeEach(() => {
     mockRequest = createMockAuthRequest();
     mockResponse = createMockAuthMiddlewareResponse();
     mockConfig = Config.getInstance({ JWT_SECRET: 'test-secret' });
     nextFunction = jest.fn();
+
+    mockJwtService = {
+      verify: jest.fn(),
+    } as unknown as typeof jwt;
+
+    container = new Container();
+    container.bind<IConfig>(TYPES.Config).toConstantValue(mockConfig);
+    // ADDED: Bind the mock JwtService
+    container
+      .bind<typeof jwt>(TYPES.JwtService)
+      .toConstantValue(mockJwtService);
+    container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
+
+    authMiddleware = container.get<IAuthMiddleware>(TYPES.AuthMiddleware);
+
     jest.resetAllMocks();
   });
 
@@ -31,12 +52,9 @@ describe('AuthMiddleware', () => {
       authorization: 'Bearer valid_token',
     } as IncomingHttpHeaders;
 
-    const mockJwtService = {
-      verify: jest.fn().mockReturnValue(user),
-    };
-    const middleware = authMiddleware(mockConfig, mockJwtService);
+    (mockJwtService.verify as jest.Mock).mockReturnValue(user);
 
-    middleware(mockRequest, mockResponse, nextFunction);
+    authMiddleware.handle(mockRequest, mockResponse, nextFunction);
 
     expect(mockJwtService.verify).toHaveBeenCalledWith(
       'valid_token',
@@ -50,8 +68,7 @@ describe('AuthMiddleware', () => {
     const jsonMock = jest.fn();
     mockResponse.status = jest.fn().mockReturnValue({ json: jsonMock });
 
-    const middleware = authMiddleware(mockConfig); // Use default jwtService
-    middleware(mockRequest, mockResponse, nextFunction);
+    authMiddleware.handle(mockRequest, mockResponse, nextFunction);
 
     expect(mockResponse.status).toHaveBeenCalledWith(401);
     expect(jsonMock).toHaveBeenCalledWith({
@@ -68,14 +85,11 @@ describe('AuthMiddleware', () => {
       authorization: 'Bearer invalid_token',
     } as IncomingHttpHeaders;
 
-    const mockJwtService = {
-      verify: jest.fn().mockImplementation(() => {
-        throw new Error('Invalid token');
-      }),
-    };
-    const middleware = authMiddleware(mockConfig, mockJwtService);
+    (mockJwtService.verify as jest.Mock).mockImplementation(() => {
+      throw new Error('Invalid token');
+    });
 
-    middleware(mockRequest, mockResponse, nextFunction);
+    authMiddleware.handle(mockRequest, mockResponse, nextFunction);
 
     expect(mockJwtService.verify).toHaveBeenCalledWith(
       'invalid_token',

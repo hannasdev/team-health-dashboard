@@ -38,7 +38,9 @@ import {
   IHealthCheckController,
   IMetricsController,
   IUserRepository,
+  IAuthMiddleware,
 } from '@/interfaces';
+import { AuthMiddleware } from '@/middleware/AuthMiddleware';
 import { ErrorHandler } from '@/middleware/ErrorHandler';
 import { GitHubRepository } from '@/repositories/github/GitHubRepository';
 import { GoogleSheetsRepository } from '@/repositories/googlesheets/GoogleSheetsRepository';
@@ -117,6 +119,9 @@ container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
 
 // Auth Controller
 container.bind<IAuthController>(TYPES.AuthController).to(AuthController);
+
+// Auth Middleware
+container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
 
 // BcryptService and JwtService
 container.bind<IBcryptService>(TYPES.BcryptService).to(BcryptService);

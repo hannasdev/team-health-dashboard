@@ -1,6 +1,7 @@
 export * from './IGoogleSheetsRepository';
-export type { IAuthRequest } from './IAuthRequest';
 export type { IAuthController } from './IAuthController';
+export type { IAuthMiddleware } from './IAuthMiddleware';
+export type { IAuthRequest } from './IAuthRequest';
 export type { ICacheService } from './ICacheService';
 export type { IConfig } from './IConfig';
 export type { IDataService } from './IDataService';
