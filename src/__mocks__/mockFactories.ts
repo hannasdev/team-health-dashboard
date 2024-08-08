@@ -13,6 +13,7 @@ import {
   IGitHubService,
   IGoogleSheetsRepository,
   IGoogleSheetsService,
+  IGoogleSheetsClient,
   ILogger,
   IMetric,
   IMetricCalculator,
@@ -21,7 +22,11 @@ import {
   IPullRequest,
 } from '@/interfaces';
 import { UserRepository } from '@/repositories/user/UserRepository';
-import { ProgressCallback } from '@/types';
+
+export const createMockGoogleSheetsClient =
+  (): jest.Mocked<IGoogleSheetsClient> => ({
+    getValues: jest.fn(),
+  });
 
 export function createMockMetricCalculator(): jest.Mocked<IMetricCalculator> {
   return {

@@ -73,9 +73,19 @@ describe('MetricsController', () => {
       expect(mockResponse.write).toHaveBeenCalledWith(
         expect.stringContaining('event: result'),
       );
+
+      // Correct the assertion:
       expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining(JSON.stringify(mockMetricsData)),
-      ); // Check the entire response data
+        expect.stringContaining(
+          JSON.stringify({
+            success: true,
+            data: mockMetricsData.metrics,
+            errors: mockMetricsData.errors,
+            githubStats: mockMetricsData.githubStats,
+            status: 200, // Expect status 200 for success
+          }),
+        ),
+      );
     });
 
     it('should send "error" event with details on failure', async () => {

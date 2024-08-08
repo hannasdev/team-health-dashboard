@@ -9,9 +9,9 @@ import type {
   IGitHubService,
   IPullRequest,
   IMetric,
+  ILogger,
 } from '@/interfaces';
 import type { ProgressCallback } from '@/types';
-import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
 
 /**
@@ -32,7 +32,7 @@ export class GitHubService implements IGitHubService {
     @inject(TYPES.MetricCalculator)
     private metricCalculator: IMetricCalculator,
     @inject(TYPES.ProgressTracker) private progressTracker: IProgressTracker,
-    @inject(TYPES.Logger) private logger: Logger,
+    @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
   async fetchData(

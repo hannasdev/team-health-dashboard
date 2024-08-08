@@ -1,34 +1,34 @@
 // src/__tests__/repositories/GitHubRepository.test.ts
-import { createMockPullRequest } from '@/__mocks__/mockFactories';
+import {
+  createMockPullRequest,
+  createMockConfig,
+  createMockLogger,
+} from '@/__mocks__/mockFactories';
 import type {
   IGitHubClient,
   IConfig,
   ICacheService,
   IGraphQLResponse,
+  ILogger,
 } from '@/interfaces';
 import { GitHubRepository } from '@/repositories/github/GitHubRepository';
 import { ProgressCallback } from '@/types';
-import { Logger } from '@/utils/Logger';
+
+jest.mock('@/config/config', () => ({
+  config: createMockConfig(),
+}));
 
 describe('GitHubRepository', () => {
   let repository: GitHubRepository;
   let mockClient: jest.Mocked<IGitHubClient>;
-  let mockConfig: jest.Mocked<IConfig>;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockConfig: IConfig;
+  let mockLogger: ILogger;
   let mockCacheService: jest.Mocked<ICacheService>;
 
   beforeAll(() => {
     mockClient = {
       graphql: jest.fn(),
     } as unknown as jest.Mocked<IGitHubClient>;
-    mockConfig = {
-      GITHUB_OWNER: 'testowner',
-      GITHUB_REPO: 'testrepo',
-    } as unknown as jest.Mocked<IConfig>;
-    mockLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-    } as unknown as jest.Mocked<Logger>;
     mockCacheService = {
       get: jest.fn(),
       set: jest.fn(),
@@ -37,6 +37,10 @@ describe('GitHubRepository', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    mockLogger = createMockLogger();
+    mockConfig = createMockConfig();
+
     repository = new GitHubRepository(
       mockClient,
       mockConfig,
@@ -128,8 +132,8 @@ describe('GitHubRepository', () => {
           'query($owner: String!, $repo: String!, $cursor: String)',
         ),
         expect.objectContaining({
-          owner: 'testowner',
-          repo: 'testrepo',
+          owner: 'github_owner_test',
+          repo: 'github_repo_test',
           cursor: null,
         }),
       );

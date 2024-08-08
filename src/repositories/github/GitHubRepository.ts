@@ -9,10 +9,10 @@ import type {
   IGitHubRepository,
   IGraphQLResponse,
   IGraphQLPullRequest,
+  ILogger,
 } from '@/interfaces';
 import type { ProgressCallback } from '@/types';
 import { Cacheable, CacheableClass } from '@/utils/CacheDecorator';
-import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
 
 @injectable()
@@ -27,7 +27,7 @@ export class GitHubRepository
   constructor(
     @inject(TYPES.GitHubClient) private client: IGitHubClient,
     @inject(TYPES.Config) private configService: IConfig,
-    @inject(TYPES.Logger) private logger: Logger,
+    @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
     super(cacheService);

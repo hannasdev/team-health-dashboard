@@ -8,7 +8,6 @@ import {
 } from '@/__mocks__/mockFactories';
 import type { IMetricsService, IMetric, ILogger } from '@/interfaces';
 import { MetricsService } from '@/services/metrics/MetricsService';
-import {} from '@/utils/Logger';
 
 describe('MetricsService', () => {
   let metricsService: IMetricsService;

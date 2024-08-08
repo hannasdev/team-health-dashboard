@@ -7,30 +7,28 @@ jest.mock('@/config/config', () => ({
 import { MongoClient } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
-import { createMockConfig } from '@/__mocks__/mockFactories';
+import { createMockConfig, createMockLogger } from '@/__mocks__/mockFactories';
 import { config } from '@/config/config';
+import { ILogger } from '@/interfaces';
 import { User } from '@/models/User';
 import { UserRepository } from '@/repositories/user/UserRepository';
-import { Logger } from '@/utils/Logger';
+
+jest.mock('@/config/config', () => ({
+  config: createMockConfig(),
+}));
 
 describe('UserRepository Integration Tests', () => {
   let mongoServer: MongoMemoryServer;
   let mongoClient: MongoClient;
   let userRepository: UserRepository;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockLogger: ILogger;
 
   beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
     mongoClient = await MongoClient.connect(mongoUri);
     mockConfig.DATABASE_URL = mongoUri;
-
-    mockLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-    } as unknown as jest.Mocked<Logger>;
+    mockLogger = createMockLogger();
   }, 30000);
 
   afterAll(async () => {

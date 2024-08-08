@@ -1,19 +1,28 @@
-import { createMockPullRequest } from '@/__mocks__/mockFactories';
+import {
+  createMockPullRequest,
+  createMockConfig,
+  createMockLogger,
+} from '@/__mocks__/mockFactories';
 import type {
   IGitHubRepository,
   IMetricCalculator,
   IProgressTracker,
   IMetric,
+  ILogger,
 } from '@/interfaces';
 import { GitHubService } from '@/services/github/GitHubService';
-import { Logger } from '@/utils/Logger';
+import {} from '@/utils/Logger';
+
+jest.mock('@/config/config', () => ({
+  config: createMockConfig(),
+}));
 
 describe('GitHubService', () => {
   let gitHubService: GitHubService;
   let mockGitHubRepository: jest.Mocked<IGitHubRepository>;
   let mockMetricCalculator: jest.Mocked<IMetricCalculator>;
   let mockProgressTracker: jest.Mocked<IProgressTracker>;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockLogger: ILogger;
 
   beforeEach(() => {
     mockGitHubRepository = {
@@ -28,10 +37,7 @@ describe('GitHubService', () => {
       trackProgress: jest.fn(),
     } as unknown as jest.Mocked<IProgressTracker>;
 
-    mockLogger = {
-      info: jest.fn(),
-      error: jest.fn(),
-    } as unknown as jest.Mocked<Logger>;
+    mockLogger = createMockLogger();
 
     gitHubService = new GitHubService(
       mockGitHubRepository,
