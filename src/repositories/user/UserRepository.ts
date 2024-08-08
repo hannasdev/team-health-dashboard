@@ -38,7 +38,12 @@ export class UserRepository implements IUserRepository {
   }
 
   async waitForConnection(): Promise<void> {
-    return this.connectionPromise; // Return for better testability
+    try {
+      await this.connectionPromise; // This will propagate the error from initializeDb if it fails
+    } catch (error) {
+      this.logger.error('Error in waitForConnection:', error as Error);
+      throw error; // Ensure the error is re-thrown
+    }
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
