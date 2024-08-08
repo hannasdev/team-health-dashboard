@@ -1,14 +1,19 @@
 // test/e2e-setup.ts
+import dotenv from 'dotenv';
 import { MongoClient } from 'mongodb';
 
-import { config } from '@/config/config';
+import { Config } from '@/config/config';
+
+dotenv.config({ path: '.env.test' });
+const config = Config.getInstance({
+  DATABASE_URL:
+    process.env.TEST_DATABASE_URL || 'mongodb://localhost:27018/myapp_test',
+});
 
 let mongoClient: MongoClient;
 
 beforeAll(async () => {
-  mongoClient = new MongoClient(
-    process.env.DATABASE_URL || 'mongodb://localhost:27018/myapp_test',
-  );
+  mongoClient = new MongoClient(config.DATABASE_URL);
   await mongoClient.connect();
 });
 

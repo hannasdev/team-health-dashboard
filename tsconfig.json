@@ -31,7 +31,13 @@
     "noImplicitThis": true,
     "alwaysStrict": true
   },
-  "include": ["src/**/*", "jest.setup.ts", "e2e-setup.ts", "jest.config.js"],
+  "include": [
+    "src/**/*",
+    "jest.setup.ts",
+    "e2e-setup.ts",
+    "jest.config.js",
+    "jest.config.e2e.mjs"
+  ],
   "exclude": [
     "node_modules",
     "./dist",

@@ -8,9 +8,7 @@
  * @module Container
  */
 
-import bcrypt from 'bcrypt';
 import { Container } from 'inversify';
-import jwt from 'jsonwebtoken';
 
 import { GitHubAdapter } from '@/adapters/GitHubAdapter';
 import { GoogleSheetsAdapter } from '@/adapters/GoogleSheetAdapter';
@@ -49,26 +47,10 @@ import { CacheService } from '@/services/cache/CacheService';
 import { MetricCalculator } from '@/services/metrics/MetricsCalculator';
 import { MetricsService } from '@/services/metrics/MetricsService';
 import { ProgressTracker } from '@/services/progress/ProgressTracker';
+import { BcryptService } from '@/utils/BcryptService';
+import { JwtService } from '@/utils/JwtService';
 import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
-
-// Implement BcryptService
-class BcryptService implements IBcryptService {
-  async hash(data: string, saltOrRounds: string | number): Promise<string> {
-    return bcrypt.hash(data, saltOrRounds);
-  }
-
-  async compare(data: string, encrypted: string): Promise<boolean> {
-    return bcrypt.compare(data, encrypted);
-  }
-}
-
-// Implement JwtService
-class JwtService implements IJwtService {
-  sign(payload: object, secretOrPrivateKey: string, options?: object): string {
-    return jwt.sign(payload, secretOrPrivateKey, options);
-  }
-}
 
 const container = new Container();
 const config = Config.getInstance();

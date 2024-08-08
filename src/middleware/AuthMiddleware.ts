@@ -1,14 +1,10 @@
 // src/middleware/AuthMiddleware.ts
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 
 import { IAuthRequest, IConfig, IAuthMiddleware } from '@/interfaces';
 import { TYPES } from '@/utils/types';
-
-interface IJwtService {
-  verify(token: string, secret: string): string | JwtPayload;
-}
 
 @injectable()
 export class AuthMiddleware implements IAuthMiddleware {

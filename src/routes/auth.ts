@@ -8,7 +8,7 @@ import { TYPES } from '@/utils/types';
 const router = Router();
 const authController = container.get<AuthController>(TYPES.AuthController);
 
-router.post('/login', authController.login);
-router.post('/register', authController.register);
+router.post('/login', (req, res) => authController.login(req, res));
+router.post('/register', (req, res) => authController.register(req, res));
 
 export default router;
