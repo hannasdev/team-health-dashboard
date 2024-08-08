@@ -3,12 +3,30 @@ import dotenv from 'dotenv';
 
 import { IConfig } from '@/interfaces';
 
+/**
+ * @class Config
+ * @implements {IConfig}
+ * @description Singleton class for managing application configuration.
+ * Loads configuration from environment variables and provides default values.
+ *
+ * @example
+ * const config = Config.getInstance();
+ * console.log(config.DATABASE_URL);
+ *
+ * @example
+ * // Override config for testing
+ * const testConfig = Config.getInstance({ DATABASE_URL: 'mongodb://localhost:27017/test_db' });
+ */
 export class Config implements IConfig {
-  private static instance: Config;
+  private static instance: Config | null = null;
 
-  // Store config values here
   private config: IConfig;
 
+  /**
+   * @private
+   * @constructor
+   * @param {Partial<IConfig>} [env] - Optional partial configuration to override defaults and environment variables.
+   */
   private constructor(env?: Partial<IConfig>) {
     dotenv.config(); // Load .env file if present
     this.config = {
@@ -19,6 +37,13 @@ export class Config implements IConfig {
     this.validate();
   }
 
+  /**
+   * @static
+   * @method getInstance
+   * @param {Partial<IConfig>} [env] - Optional partial configuration to override defaults and environment variables.
+   * @returns {Config} The singleton instance of the Config class.
+   * @description Gets or creates the singleton instance of the Config class.
+   */
   public static getInstance(env?: Partial<IConfig>): Config {
     if (!Config.instance) {
       Config.instance = new Config(env);
@@ -149,5 +174,15 @@ export class Config implements IConfig {
         throw new Error(`Environment variable ${varName} is not set`);
       }
     });
+  }
+
+  /**
+   * @static
+   * @method resetInstance
+   * @description Resets the singleton instance. Primarily used for testing purposes.
+   * @warning This method should be used with caution, especially in production environments.
+   */
+  public static resetInstance(): void {
+    Config.instance = null;
   }
 }
