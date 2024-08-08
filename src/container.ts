@@ -12,7 +12,7 @@ import { Container } from 'inversify';
 
 import { GitHubAdapter } from '@/adapters/GitHubAdapter';
 import { GoogleSheetsAdapter } from '@/adapters/GoogleSheetAdapter';
-import { config } from '@/config/config';
+import { Config } from '@/config/config';
 import { AuthController } from '@/controllers/AuthController';
 import { HealthCheckController } from '@/controllers/HealthCheckController';
 import { MetricsController } from '@/controllers/MetricsController';
@@ -45,6 +45,7 @@ import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
 
 const container = new Container();
+const config = Config.getInstance();
 
 // Config
 container.bind<IConfig>(TYPES.Config).toConstantValue(config);

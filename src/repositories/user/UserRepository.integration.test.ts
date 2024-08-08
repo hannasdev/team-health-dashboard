@@ -1,33 +1,27 @@
-const mockConfig = createMockConfig();
-
-jest.mock('@/config/config', () => ({
-  config: mockConfig,
-}));
-
 import { MongoClient } from 'mongodb';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
-import { createMockConfig, createMockLogger } from '@/__mocks__/mockFactories';
-import { config } from '@/config/config';
-import { ILogger } from '@/interfaces';
+import { createMockLogger } from '@/__mocks__/mockFactories';
+import { Config } from '@/config/config';
+import { ILogger, IConfig } from '@/interfaces';
 import { User } from '@/models/User';
 import { UserRepository } from '@/repositories/user/UserRepository';
-
-jest.mock('@/config/config', () => ({
-  config: createMockConfig(),
-}));
 
 describe('UserRepository Integration Tests', () => {
   let mongoServer: MongoMemoryServer;
   let mongoClient: MongoClient;
   let userRepository: UserRepository;
   let mockLogger: ILogger;
+  let mockConfig: IConfig;
 
   beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
     mongoClient = await MongoClient.connect(mongoUri);
-    mockConfig.DATABASE_URL = mongoUri;
+    mockConfig = Config.getInstance({
+      DATABASE_URL: mongoUri,
+      JWT_SECRET: 'test-secret',
+    });
     mockLogger = createMockLogger();
   }, 30000);
 
@@ -57,10 +51,10 @@ describe('UserRepository Integration Tests', () => {
   });
 
   it('should log database connection failure', async () => {
-    const originalUrl = mockConfig.DATABASE_URL;
-    mockConfig.DATABASE_URL = 'mongodb://localhost:12345';
-
-    const errorRepository = new UserRepository(mockLogger, mockConfig);
+    const errorConfig = Config.getInstance({
+      DATABASE_URL: 'mongodb://invalid-host:12345/invalid-db',
+    });
+    const errorRepository = new UserRepository(mockLogger, errorConfig);
 
     try {
       await errorRepository.waitForConnection();
@@ -68,14 +62,14 @@ describe('UserRepository Integration Tests', () => {
       // Expected error, do nothing
     }
 
+    // Assertion:
     expect(mockLogger.error).toHaveBeenCalledWith(
-      'Failed to connect to the database',
+      'Failed to initialize database connection:',
       expect.any(Error),
     );
 
-    mockConfig.DATABASE_URL = originalUrl;
     await errorRepository.close();
-  }, 10000); // Increase timeout to 10 seconds
+  }, 10000);
 
   it('should create a new user', async () => {
     const email = 'test@example.com';

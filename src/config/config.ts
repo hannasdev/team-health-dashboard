@@ -6,84 +6,135 @@ import { IConfig } from '@/interfaces';
 export class Config implements IConfig {
   private static instance: Config;
 
-  private constructor() {
-    // eslint-disable-next-line import-x/no-named-as-default-member
-    dotenv.config();
+  // Store config values here
+  private config: IConfig;
+
+  private constructor(env?: Partial<IConfig>) {
+    dotenv.config(); // Load .env file if present
+    this.config = {
+      ...this.loadDefaults(),
+      ...this.loadFromEnv(),
+      ...env, // Override with provided env
+    };
     this.validate();
   }
 
-  public static getInstance(): Config {
+  public static getInstance(env?: Partial<IConfig>): Config {
     if (!Config.instance) {
-      Config.instance = new Config();
+      Config.instance = new Config(env);
     }
     return Config.instance;
   }
 
+  private loadDefaults(): IConfig {
+    return {
+      GOOGLE_SHEETS_CLIENT_EMAIL: '',
+      GOOGLE_SHEETS_PRIVATE_KEY: '',
+      GOOGLE_SHEETS_ID: '',
+      GITHUB_TOKEN: '',
+      GITHUB_OWNER: '',
+      GITHUB_REPO: '',
+      PORT: 3000,
+      CORS_ORIGIN: '*',
+      JWT_SECRET: 'your-secret-key', // Provide a safe default
+      DATABASE_URL: 'mongodb://localhost:27017/team-heath-dashboard',
+      MONGO_CONNECT_TIMEOUT_MS: 5000,
+      MONGO_SERVER_SELECTION_TIMEOUT_MS: 5000,
+      LOG_LEVEL: 'info',
+      LOG_FORMAT: 'json',
+      LOG_FILE_PATH: './logs',
+    };
+  }
+
+  private loadFromEnv(): Partial<IConfig> {
+    return {
+      GOOGLE_SHEETS_CLIENT_EMAIL: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
+      GOOGLE_SHEETS_PRIVATE_KEY: process.env.GOOGLE_SHEETS_PRIVATE_KEY,
+      GOOGLE_SHEETS_ID: process.env.GOOGLE_SHEETS_ID,
+      GITHUB_TOKEN: process.env.GITHUB_TOKEN,
+      GITHUB_OWNER: process.env.GITHUB_OWNER,
+      GITHUB_REPO: process.env.GITHUB_REPO,
+      PORT: parseInt(process.env.PORT || '3000', 10),
+      CORS_ORIGIN: process.env.CORS_ORIGIN,
+      JWT_SECRET: process.env.JWT_SECRET,
+      DATABASE_URL: process.env.DATABASE_URL,
+      MONGO_CONNECT_TIMEOUT_MS: parseInt(
+        process.env.MONGO_CONNECT_TIMEOUT_MS || '5000',
+        10,
+      ),
+      MONGO_SERVER_SELECTION_TIMEOUT_MS: parseInt(
+        process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS || '5000',
+        10,
+      ),
+      LOG_LEVEL: process.env.LOG_LEVEL,
+      LOG_FORMAT: process.env.LOG_FORMAT,
+      LOG_FILE_PATH: process.env.LOG_FILE_PATH,
+    };
+  }
+
+  // Getters
   public get GOOGLE_SHEETS_CLIENT_EMAIL(): string {
-    return process.env.GOOGLE_SHEETS_CLIENT_EMAIL!;
+    return this.config.GOOGLE_SHEETS_CLIENT_EMAIL;
   }
 
   public get GOOGLE_SHEETS_PRIVATE_KEY(): string {
-    return process.env.GOOGLE_SHEETS_PRIVATE_KEY!;
+    return this.config.GOOGLE_SHEETS_PRIVATE_KEY;
   }
 
   public get GOOGLE_SHEETS_ID(): string {
-    return process.env.GOOGLE_SHEETS_ID!;
+    return this.config.GOOGLE_SHEETS_ID;
   }
 
   public get GITHUB_TOKEN(): string {
-    return process.env.GITHUB_TOKEN!;
+    return this.config.GITHUB_TOKEN;
   }
 
   public get GITHUB_OWNER(): string {
-    return process.env.GITHUB_OWNER!;
+    return this.config.GITHUB_OWNER;
   }
 
   public get GITHUB_REPO(): string {
-    return process.env.GITHUB_REPO!;
+    return this.config.GITHUB_REPO;
   }
 
   public get PORT(): number {
-    return Number(process.env.PORT) || 3000;
+    return this.config.PORT;
   }
 
   public get CORS_ORIGIN(): string {
-    return process.env.CORS_ORIGIN || '*';
+    return this.config.CORS_ORIGIN;
   }
 
   public get JWT_SECRET(): string {
-    return process.env.JWT_SECRET || 'your-secret-key';
+    return this.config.JWT_SECRET;
   }
 
   public get DATABASE_URL(): string {
-    return (
-      process.env.DATABASE_URL ||
-      'mongodb://localhost:27017/team-heath-dashboard'
-    );
+    return this.config.DATABASE_URL;
   }
 
   public get MONGO_CONNECT_TIMEOUT_MS(): number {
-    return process.env.NODE_ENV === 'test' ? 1000 : 5000;
+    return this.config.MONGO_CONNECT_TIMEOUT_MS;
   }
 
   public get MONGO_SERVER_SELECTION_TIMEOUT_MS(): number {
-    return process.env.NODE_ENV === 'test' ? 1000 : 5000;
+    return this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS;
   }
 
   public get LOG_LEVEL(): string {
-    return process.env.LOG_LEVEL || 'info';
+    return this.config.LOG_LEVEL;
   }
 
   public get LOG_FORMAT(): string {
-    return process.env.LOG_FORMAT || 'json';
+    return this.config.LOG_FORMAT;
   }
 
   public get LOG_FILE_PATH(): string {
-    return process.env.LOG_FILE_PATH || './logs';
+    return this.config.LOG_FILE_PATH;
   }
 
   private validate(): void {
-    const requiredEnvVars = [
+    const requiredEnvVars: (keyof IConfig)[] = [
       'GOOGLE_SHEETS_CLIENT_EMAIL',
       'GOOGLE_SHEETS_PRIVATE_KEY',
       'GOOGLE_SHEETS_ID',
@@ -94,11 +145,9 @@ export class Config implements IConfig {
     ];
 
     requiredEnvVars.forEach(varName => {
-      if (!process.env[varName]) {
+      if (!this.config[varName]) {
         throw new Error(`Environment variable ${varName} is not set`);
       }
     });
   }
 }
-
-export const config = Config.getInstance();

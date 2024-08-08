@@ -1,33 +1,37 @@
 // src/middleware/authMiddleware.ts
 import { Response, NextFunction } from 'express';
-import { verify } from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 
-import { config } from '@/config/config';
-import { IAuthRequest } from '@/interfaces';
+import { IAuthRequest, IConfig } from '@/interfaces';
 
-export const authMiddleware = (
-  req: IAuthRequest,
-  res: Response,
-  next: NextFunction,
-) => {
-  const authHeader = (req.headers as any).authorization;
-  if (!authHeader) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
+interface IJwtService {
+  verify(token: string, secret: string): string | JwtPayload;
+}
 
-  const [bearer, token] = authHeader.split(' ');
-  if (bearer !== 'Bearer' || !token) {
-    return res.status(401).json({ message: 'Invalid token format' });
-  }
+export const authMiddleware =
+  (
+    config: IConfig,
+    jwtService: IJwtService = jwt, // Inject jwt service, defaulting to the real one
+  ) =>
+  (req: IAuthRequest, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
 
-  try {
-    const decoded = verify(token, config.JWT_SECRET) as {
-      id: string;
-      email: string;
-    };
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({ message: 'Invalid token' });
-  }
-};
+    const [bearer, token] = authHeader.split(' ');
+    if (bearer !== 'Bearer' || !token) {
+      return res.status(401).json({ message: 'Invalid token format' });
+    }
+
+    try {
+      const decoded = jwtService.verify(token, config.JWT_SECRET) as {
+        id: string;
+        email: string;
+      };
+      req.user = decoded;
+      next();
+    } catch (error) {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+  };

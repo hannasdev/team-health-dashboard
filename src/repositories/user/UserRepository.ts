@@ -17,7 +17,7 @@ export class UserRepository implements IUserRepository {
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.Config) private config: IConfig,
   ) {
-    this.connectionPromise = this.initializeDb();
+    this.connectionPromise = this.initializeDb(); // Start connection immediately
   }
 
   private async initializeDb(): Promise<void> {
@@ -29,58 +29,39 @@ export class UserRepository implements IUserRepository {
       this.db = this.client.db();
       this.logger.info('Successfully connected to the database');
     } catch (error) {
-      this.logger.error('Failed to connect to the database', error as Error);
+      this.logger.error(
+        'Failed to initialize database connection:',
+        error as Error,
+      );
       throw error;
     }
   }
 
   async waitForConnection(): Promise<void> {
-    await this.connectionPromise;
+    return this.connectionPromise; // Return for better testability
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
-    await this.ensureDbConnection();
-    try {
-      const user = await this.db.collection('users').findOne({ email });
-      if (!user) {
-        this.logger.debug(`User not found for email: ${email}`);
-        return undefined;
-      }
-      this.logger.debug(`User found for email: ${email}`);
-      return new User(user._id.toString(), user.email, user.password);
-    } catch (error) {
-      this.logger.error(
-        `Error finding user by email: ${email}`,
-        error as Error,
-      );
-      throw error;
+    await this.waitForConnection(); // Use waitForConnection consistently
+    const user = await this.db.collection('users').findOne({ email });
+
+    if (!user) {
+      this.logger.debug(`User not found for email: ${email}`);
+      return undefined;
     }
+
+    this.logger.debug(`User found for email: ${email}`);
+    return new User(user._id.toString(), user.email, user.password);
   }
 
   async create(email: string, password: string): Promise<User> {
-    await this.ensureDbConnection();
-    try {
-      const result = await this.db
-        .collection('users')
-        .insertOne({ email, password });
-      this.logger.info(`New user created with email: ${email}`);
-      return new User(result.insertedId.toString(), email, password);
-    } catch (error) {
-      this.logger.error(
-        `Error creating user with email: ${email}`,
-        error as Error,
-      );
-      throw error;
-    }
-  }
+    await this.waitForConnection(); // Use waitForConnection consistently
+    const result = await this.db
+      .collection('users')
+      .insertOne({ email, password });
 
-  private async ensureDbConnection(): Promise<void> {
-    if (!this.db) {
-      this.logger.warn(
-        'Database connection not initialized, attempting to connect',
-      );
-      await this.initializeDb();
-    }
+    this.logger.info(`New user created with email: ${email}`);
+    return new User(result.insertedId.toString(), email, password);
   }
 
   async close(): Promise<void> {
