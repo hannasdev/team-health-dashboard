@@ -35,9 +35,9 @@ jobs:
       - name: Debug TypeScript Config
         run: npx tsc --showConfig
       - name: Debug Webpack Config
-        run: npx webpack --config webpack.config.prod.js --stats-error-details
+        run: npx webpack --config webpack.config.cjs --stats-error-details
       - name: Build
-        run: npx webpack --config webpack.config.prod.js
+        run: npx webpack --config webpack.config.cjs
 
   test:
     runs-on: ubuntu-latest
