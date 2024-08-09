@@ -6,49 +6,60 @@ services:
     ports:
       - '3000:3000'
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - DATABASE_URL=mongodb://db:27017/myapp
       - NODE_ENV=production
-      - JWT_SECRET=${JWT_SECRET}
-      - CORS_ORIGIN=http://localhost:8080,http://127.0.0.1:8080
-      - TEST_DATABASE_URL=mongodb://db_test:27017/myapp_test
+    env_file:
+      - .env
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 10s
       retries: 3
     volumes:
+      - ./src:/app/src
+      - ./dist:/app/dist
       - node_modules:/app/node_modules
 
   db:
     image: mongo:latest
     volumes:
       - mongodb_data:/data/db
-      - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js
+      - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
     command: mongod --bind_ip_all
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
 
-  test:
+  test-runner:
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=mongodb://db:27017/myapp-test # Use test database
+      - GOOGLE_SHEETS_ID=test-id
+      - GOOGLE_SHEETS_CLIENT_EMAIL=test-user
+      - GOOGLE_SHEETS_PRIVATE_KEY=test-key
+      - GITHUB_TOKEN=test-github-token
+      - GITHUB_OWNER=test-user
+      - GITHUB_REPO=test-org/test-repo
+      - CORS_ORIGIN=http://localhost:3000,null
     build:
       context: .
-      dockerfile: Dockerfile.test
+      target: test
     depends_on:
-      - db_test
-    environment:
-      - DATABASE_URL=mongodb://db_test:27017/myapp_test
-      - NODE_ENV=test
-      - JWT_SECRET=test_secret
-      - CORS_ORIGIN=http://localhost:8080,http://127.0.0.1:8080
+      - db
     volumes:
-      - .:/app
-      - node_modules:/app/node_modules
+      - ./src:/app/src # Mount source code
+      - ./jest.config.ts:/app/jest.config.ts # Mount Jest config (if needed)
+      - node_modules:/app/node_modules # Use the same volume for dependencies
+    command: ['npm', 'run', 'test']
 
 volumes:
   mongodb_data:
-  mongodb_test_data:
   node_modules:

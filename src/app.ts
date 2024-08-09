@@ -9,42 +9,47 @@ import authRouter from '@/routes/auth';
 import healthCheckRouter from '@/routes/healthCheck';
 import metricsRouter from '@/routes/metrics';
 
-const config = Config.getInstance();
+export class App {
+  public app: Express;
+  private config: Config;
 
-const app: Express = express();
+  constructor() {
+    this.app = express();
+    this.config = Config.getInstance();
+    this.configureCors();
+    this.configureRoutes();
+  }
 
-// Enable CORS for all routes
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      const allowedOrigins = config.CORS_ORIGIN.split(',');
-      if (
-        !origin ||
-        allowedOrigins.indexOf(origin) !== -1 ||
-        allowedOrigins.includes('*')
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  }),
-);
+  private configureCors(): void {
+    this.app.use(
+      cors({
+        origin: (origin, callback) => {
+          const allowedOrigins = this.config.CORS_ORIGIN.split(',');
+          if (
+            !origin ||
+            allowedOrigins.indexOf(origin) !== -1 ||
+            allowedOrigins.includes('*')
+          ) {
+            callback(null, true);
+          } else {
+            callback(new Error('Not allowed by CORS'));
+          }
+        },
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+      }),
+    );
+  }
 
-// Root route
-app.get('/', (req: Request, res: Response) => {
-  res.send('Team Health Dashboard API');
-});
+  private configureRoutes(): void {
+    this.app.get('/', (req: Request, res: Response) => {
+      res.send('Team Health Dashboard API');
+    });
 
-// Use the health check router
-app.use('/health', healthCheckRouter);
+    this.app.use('/health', healthCheckRouter);
+    this.app.use('/api', metricsRouter);
+    this.app.use('/api/auth', authRouter);
+  }
+}
 
-// Use the metrics router
-app.use('/api', metricsRouter);
-
-// Use the auth router
-app.use('/api/auth', authRouter);
-
-export default app;
+export default new App().app;

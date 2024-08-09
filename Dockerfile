@@ -1,50 +1,24 @@
-# syntax=docker/dockerfile:1
-
-# Build stage
-FROM node:20.16.0 AS builder
-
-# Set working directory
+# Base Stage
+FROM node:20.16.0 AS base
 WORKDIR /app
 
-# Copy package files
+# Build Stage
+FROM base AS build
 COPY package*.json ./
-
-# Install ALL dependencies, including devDependencies
-RUN npm ci --legacy-peer-deps
-
-# Copy source files and configs
-COPY . .
-
-# Build the application using webpack
+# Copy Webpack config
+COPY webpack.config*.js ./ 
+COPY tsconfig.json ./ 
+RUN npm ci --omit=dev
+COPY ./src ./src
 RUN npm run build
 
-# Production stage
-FROM node:20.16.0-alpine
-
-# Add labels
-LABEL Name="team-health-dashboard"
-LABEL Version="1.0.0"
-
-# Set Node.js to production mode
-ENV NODE_ENV=production
-
-# Install MongoDB tools
-RUN apk add --no-cache mongodb-tools
-
-# Set working directory
-WORKDIR /app
-
-# Copy built assets from builder stage
-COPY --from=builder /app/dist ./dist
-
-# Copy package files
+# Test Stage
+FROM base AS test
 COPY package*.json ./
-
-# Install ONLY production dependencies
-RUN npm ci --only=production --legacy-peer-deps
-
-# Expose port
-EXPOSE 3000
-
-# Set start command
-CMD ["node", "--experimental-specifier-resolution=node", "--es-module-specifier-resolution=node", "dist/main.js"]
+COPY tsconfig.json ./
+COPY jest.config.ts ./
+COPY setupTests.ts ./
+RUN npm ci 
+# Copy built files from build stage
+COPY --from=build /app/dist /app/dist 
+CMD ["npm", "run", "test"]

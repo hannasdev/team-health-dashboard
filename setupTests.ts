@@ -1,4 +1,4 @@
-// jest.setup.ts
+// setupTest.ts
 import 'reflect-metadata';
 import { TextEncoder, TextDecoder } from 'util';
 

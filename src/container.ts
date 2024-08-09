@@ -13,14 +13,12 @@ import { Container } from 'inversify';
 import { GitHubAdapter } from '@/adapters/GitHubAdapter';
 import { GoogleSheetsAdapter } from '@/adapters/GoogleSheetAdapter';
 import { Config } from '@/config/config';
-import {
-  AuthController,
-  IBcryptService,
-  IJwtService,
-} from '@/controllers/AuthController';
+import { AuthController } from '@/controllers/AuthController';
 import { HealthCheckController } from '@/controllers/HealthCheckController';
 import { MetricsController } from '@/controllers/MetricsController';
 import {
+  IBcryptService,
+  IJwtService,
   ILogger,
   ICacheService,
   IConfig,
@@ -37,7 +35,7 @@ import {
   IMetricsController,
   IUserRepository,
   IAuthMiddleware,
-} from '@/interfaces';
+} from '@/interfaces/index';
 import { AuthMiddleware } from '@/middleware/AuthMiddleware';
 import { ErrorHandler } from '@/middleware/ErrorHandler';
 import { GitHubRepository } from '@/repositories/github/GitHubRepository';
