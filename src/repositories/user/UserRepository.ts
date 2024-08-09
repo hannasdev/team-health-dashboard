@@ -2,8 +2,7 @@
 import { injectable, inject } from 'inversify';
 import { MongoClient, Db } from 'mongodb';
 
-import { IConfig, ILogger } from '@/interfaces';
-import { IUserRepository } from '@/interfaces/IUserRepository';
+import type { IConfig, ILogger, IUserRepository } from '@/interfaces';
 import { User } from '@/models/User';
 import { TYPES } from '@/utils/types';
 

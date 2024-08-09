@@ -1,14 +1,11 @@
 // src/interfaces/IAuthController.ts
-import { Request, Response } from 'express';
+import { Response } from 'express';
 
-export interface IAuthRequest extends Request {
-  body: {
-    email: string;
-    password: string;
-  };
-}
+import { IAuthRequest } from './IAuthRequest';
 
-export interface IAuthController {
+interface IAuthController {
   login(req: IAuthRequest, res: Response): Promise<void>;
   register(req: IAuthRequest, res: Response): Promise<void>;
 }
+
+export { IAuthController };

@@ -6,4 +6,8 @@ import { Request } from 'express';
 export interface IAuthRequest extends Request {
   headers: IncomingHttpHeaders;
   user?: { id: string; email: string };
+  body: {
+    email: string;
+    password: string;
+  };
 }

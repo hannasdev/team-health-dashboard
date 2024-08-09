@@ -2,18 +2,16 @@
 import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { IConfig, ILogger, IUserRepository } from '@/interfaces';
-import { IAuthController } from '@/interfaces/IAuthController';
+import type {
+  IConfig,
+  ILogger,
+  IUserRepository,
+  IAuthController,
+  IBcryptService,
+  IJwtService,
+} from '@/interfaces';
 import { TYPES } from '@/utils/types';
 
-export interface IBcryptService {
-  hash(data: string, saltOrRounds: string | number): Promise<string>;
-  compare(data: string, encrypted: string): Promise<boolean>;
-}
-
-export interface IJwtService {
-  sign(payload: object, secretOrPrivateKey: string, options?: object): string;
-}
 @injectable()
 export class AuthController implements IAuthController {
   constructor(

@@ -6,12 +6,14 @@ import {
   createMockLogger,
 } from '@/__mocks__/mockFactories';
 import { Config } from '@/config/config';
+import { AuthController } from '@/controllers/AuthController';
 import {
-  AuthController,
+  IConfig,
+  ILogger,
+  IUserRepository,
   IBcryptService,
   IJwtService,
-} from '@/controllers/AuthController';
-import { IConfig, ILogger, IUserRepository } from '@/interfaces';
+} from '@/interfaces';
 
 describe('AuthController', () => {
   let authController: AuthController;

@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
 
-import { IHealthCheckController } from '@/interfaces/IHealthCheckController';
-import { ILogger } from '@/interfaces/ILogger';
+import type { ILogger, IHealthCheckController } from '@/interfaces';
 import { TYPES } from '@/utils/types';
 
 @injectable()

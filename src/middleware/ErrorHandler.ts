@@ -2,7 +2,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
 
-import { ILogger } from '@/interfaces';
+import type { ILogger } from '@/interfaces';
 import { TYPES } from '@/utils/types';
 
 @injectable()
