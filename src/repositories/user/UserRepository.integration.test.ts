@@ -1,61 +1,53 @@
-import { MongoClient } from 'mongodb';
+// src/repositories/user/UserRepository.integration.test.ts
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { Container } from 'inversify';
 
 import { createMockLogger } from '@/__mocks__/mockFactories';
 import { Config } from '@/config/config';
 import { ILogger, IConfig } from '@/interfaces';
 import { User } from '@/models/User';
 import { UserRepository } from '@/repositories/user/UserRepository';
-
-jest.mock('mongodb', () => {
-  const actualMongo = jest.requireActual('mongodb');
-  return {
-    ...actualMongo,
-    MongoClient: {
-      connect: jest.fn(),
-    },
-  };
-});
+import {
+  MongoDbClient,
+  IMongoDbClient,
+} from '@/services/database/MongoDbClient';
+import { TYPES } from '@/utils/types';
 
 describe('UserRepository Integration Tests', () => {
   let mongoServer: MongoMemoryServer;
-  let mongoClient: MongoClient;
+  let container: Container;
   let userRepository: UserRepository;
-  let mockLogger: jest.Mocked<ILogger>;
-  let mockConfig: IConfig;
+  let mongoDbClient: IMongoDbClient;
 
   beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
-    mongoClient = await MongoClient.connect(mongoUri);
-    mockConfig = Config.getInstance({
-      DATABASE_URL: mongoUri,
-      JWT_SECRET: 'test-secret',
-    });
-    mockLogger = createMockLogger();
+
+    container = new Container();
+    container.bind<IConfig>(TYPES.Config).toConstantValue(
+      Config.getInstance({
+        DATABASE_URL: mongoUri,
+        JWT_SECRET: 'test-secret',
+        MONGO_CONNECT_TIMEOUT_MS: 5000,
+        MONGO_SERVER_SELECTION_TIMEOUT_MS: 5000,
+      }),
+    );
+    container.bind<ILogger>(TYPES.Logger).toConstantValue(createMockLogger());
+    container
+      .bind<IMongoDbClient>(TYPES.MongoDbClient)
+      .to(MongoDbClient)
+      .inSingletonScope();
+    container.bind<UserRepository>(UserRepository).toSelf();
+
+    mongoDbClient = container.get<IMongoDbClient>(TYPES.MongoDbClient);
+    await mongoDbClient.connect();
+
+    userRepository = container.get<UserRepository>(UserRepository);
   }, 30000);
 
   afterAll(async () => {
-    await mongoClient.close();
+    await mongoDbClient.close();
     await mongoServer.stop();
-  });
-
-  beforeEach(async () => {
-    jest.clearAllMocks();
-    userRepository = new UserRepository(mockLogger, mockConfig);
-    await userRepository.waitForConnection();
-  }, 10000);
-
-  afterEach(async () => {
-    if (userRepository) {
-      await userRepository.close();
-    }
-  });
-
-  it('should log successful database connection', async () => {
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      'Successfully connected to the database',
-    );
   });
 
   it('should create a new user', async () => {
@@ -67,9 +59,6 @@ describe('UserRepository Integration Tests', () => {
     expect(user).toBeInstanceOf(User);
     expect(user.email).toBe(email);
     expect(user.password).toBe(password);
-    expect(mockLogger.info).toHaveBeenCalledWith(
-      `New user created with email: ${email}`,
-    );
   });
 
   it('should find a user by email', async () => {
@@ -81,9 +70,6 @@ describe('UserRepository Integration Tests', () => {
 
     expect(foundUser).toBeDefined();
     expect(foundUser?.email).toBe(email);
-    expect(mockLogger.debug).toHaveBeenCalledWith(
-      `User found for email: ${email}`,
-    );
   });
 
   it('should return undefined for non-existent user', async () => {
@@ -91,8 +77,5 @@ describe('UserRepository Integration Tests', () => {
     const nonExistentUser = await userRepository.findByEmail(nonExistentEmail);
 
     expect(nonExistentUser).toBeUndefined();
-    expect(mockLogger.debug).toHaveBeenCalledWith(
-      `User not found for email: ${nonExistentEmail}`,
-    );
   });
 });

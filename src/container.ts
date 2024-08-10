@@ -35,6 +35,7 @@ import {
   IMetricsController,
   IUserRepository,
   IAuthMiddleware,
+  IApplication,
 } from '@/interfaces/index';
 import { AuthMiddleware } from '@/middleware/AuthMiddleware';
 import { ErrorHandler } from '@/middleware/ErrorHandler';
@@ -49,9 +50,20 @@ import { BcryptService } from '@/utils/BcryptService';
 import { JwtService } from '@/utils/JwtService';
 import { Logger } from '@/utils/Logger';
 import { TYPES } from '@/utils/types';
+import { TeamHealthDashboardApp } from '@/TeamHealthDashboardApp';
+import {
+  MongoDbClient,
+  IMongoDbClient,
+} from '@/services/database/MongoDbClient';
 
 const container = new Container();
 const config = Config.getInstance();
+
+// Application
+container
+  .bind<IApplication>(TYPES.Application)
+  .to(TeamHealthDashboardApp)
+  .inSingletonScope();
 
 // Config
 container.bind<IConfig>(TYPES.Config).toConstantValue(config);
@@ -93,6 +105,12 @@ container
 
 // Progress Tracking
 container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
+
+// MongoDB Client
+container
+  .bind<IMongoDbClient>(TYPES.MongoDbClient)
+  .to(MongoDbClient)
+  .inSingletonScope();
 
 // User Repository
 container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);

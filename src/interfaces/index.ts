@@ -1,3 +1,4 @@
+export type { IApplication } from '@/interfaces/IApplication';
 export type { IAuthController } from '@/interfaces/IAuthController';
 export type { IAuthMiddleware } from '@/interfaces/IAuthMiddleware';
 export type { IAuthRequest } from '@/interfaces/IAuthRequest';
