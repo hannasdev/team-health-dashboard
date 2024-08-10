@@ -35,6 +35,7 @@ describe('AuthController', () => {
     };
     mockJwtService = {
       sign: jest.fn().mockReturnValue('mockToken'),
+      verify: jest.fn().mockReturnValue({ id: '1', email: 'test@example.com' }),
     };
     authController = new AuthController(
       mockUserRepository,
