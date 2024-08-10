@@ -18,6 +18,7 @@ const config: Config = {
       displayName: 'unit',
       testMatch: ['<rootDir>/src/**/*.test.ts'],
       testEnvironment: 'node',
+      testPathIgnorePatterns: ['<rootDir>/src/e2e/'],
       setupFiles: ['<rootDir>/setupTests.ts'],
       moduleNameMapper: {
         '@/(.*)': '<rootDir>/src/$1',
