@@ -27,7 +27,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 RUN npm ci --only=production
 
-COPY --from=build /app/dist/src ./dist
+COPY --from=build /app/dist ./dist 
 
 # Create a non-root user 
 RUN addgroup -g 1001 -S nodejs
@@ -38,7 +38,7 @@ USER nodejs
 RUN echo "Setting WORKDIR for nodejs user"
 WORKDIR /app
 
-# Create logs directory and set permissions (Move here!)
+# Create logs directory and set permissions
 RUN mkdir logs && chown nodejs:nodejs logs
 
 # Set environment variables
