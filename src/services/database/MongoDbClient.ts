@@ -21,19 +21,42 @@ export class MongoDbClient implements IMongoDbClient {
   ) {}
 
   async connect(): Promise<void> {
-    try {
-      this.client = await MongoClient.connect(this.config.DATABASE_URL, {
-        connectTimeoutMS: this.config.MONGO_CONNECT_TIMEOUT_MS,
-        serverSelectionTimeoutMS: this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS,
-      });
-      this.db = this.client.db();
-      this.logger.info('Successfully connected to the database');
-    } catch (error) {
-      this.logger.error('Failed to connect to the database', error as Error);
-      throw error;
+    if (this.client) {
+      return; // Already connected
+    }
+
+    const maxRetries = 5;
+    const retryDelay = 5000; // 5 seconds
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.client = await MongoClient.connect(this.config.DATABASE_URL, {
+          connectTimeoutMS: this.config.MONGO_CONNECT_TIMEOUT_MS,
+          serverSelectionTimeoutMS:
+            this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS,
+        });
+        this.db = this.client.db();
+        this.logger.info('Successfully connected to the database');
+        return;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Failed to connect to the database (attempt ${attempt}/${maxRetries}): ${errorMessage}`,
+        );
+
+        if (attempt === maxRetries) {
+          this.logger.error(
+            `Max retries reached. Failed to connect to the database: ${errorMessage}`,
+          );
+          throw error;
+        }
+
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
     }
   }
-
   getDb(): Db {
     if (!this.db) {
       throw new Error('Database not connected. Call connect() first.');

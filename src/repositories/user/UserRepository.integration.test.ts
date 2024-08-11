@@ -2,16 +2,16 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Container } from 'inversify';
 
-import { createMockLogger } from '../../__mocks__/mockFactories';
-import { Config } from '@/config/config';
-import { ILogger, IConfig } from '@/interfaces';
-import { User } from '@/models/User';
-import { UserRepository } from '@/repositories/user/UserRepository';
+import { createMockLogger } from '../../__mocks__/mockFactories.js';
+import { Config } from '../../config/config.js';
+import { ILogger, IConfig } from '../../interfaces/index.js';
+import { User } from '../../models/User.js';
+import { UserRepository } from './UserRepository.js';
 import {
   MongoDbClient,
   IMongoDbClient,
-} from '@/services/database/MongoDbClient';
-import { TYPES } from '@/utils/types';
+} from '../../services/database/MongoDbClient.js';
+import { TYPES } from '../../utils/types.js';
 
 describe('UserRepository Integration Tests', () => {
   let mongoServer: MongoMemoryServer;

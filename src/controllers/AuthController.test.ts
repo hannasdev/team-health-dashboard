@@ -4,16 +4,16 @@ import { Request, Response } from 'express';
 import {
   createMockUserRepository,
   createMockLogger,
-} from '../__mocks__/mockFactories';
-import { Config } from '@/config/config';
-import { AuthController } from '@/controllers/AuthController';
+} from '../__mocks__/mockFactories.js';
+import { Config } from '../config/config.js';
+import { AuthController } from '../controllers/AuthController.js';
 import {
   IConfig,
   ILogger,
   IUserRepository,
   IBcryptService,
   IJwtService,
-} from '@/interfaces';
+} from '../interfaces/index.js';
 
 describe('AuthController', () => {
   let authController: AuthController;

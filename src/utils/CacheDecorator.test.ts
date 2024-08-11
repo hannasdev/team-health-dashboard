@@ -1,8 +1,8 @@
 // src/utils/CacheDecorator.test.ts
 import { Container, injectable } from 'inversify';
-import { ICacheService } from '@/interfaces/ICacheService';
-import { Cacheable, CacheableClass } from '@/utils/CacheDecorator';
-import { TYPES } from '@/utils/types';
+import { ICacheService } from '../interfaces/ICacheService.js';
+import { Cacheable, CacheableClass } from '../utils/CacheDecorator.js';
+import { TYPES } from '../utils/types.js';
 
 describe('CacheDecorator', () => {
   let mockCacheService: jest.Mocked<ICacheService>;

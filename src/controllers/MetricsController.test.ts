@@ -5,10 +5,10 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import {
   createMockLogger,
   createMockMetricsService,
-} from '../__mocks__/mockFactories';
-import { MetricsController } from '@/controllers/MetricsController';
-import { IMetricsService, ILogger } from '@/interfaces';
-import { ProgressCallback } from '@/types';
+} from '../__mocks__/mockFactories.js';
+import { MetricsController } from './MetricsController.js';
+import { IMetricsService, ILogger } from '../interfaces/index.js';
+import { ProgressCallback } from '../types/index.js';
 
 describe('MetricsController', () => {
   let metricsController: MetricsController;

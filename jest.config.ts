@@ -3,42 +3,39 @@ import type { Config } from 'jest';
 const config: Config = {
   verbose: true,
   bail: 1,
-  preset: 'ts-jest',
+  preset: 'ts-jest/presets/default-esm',
   moduleFileExtensions: ['ts', 'js'],
   rootDir: './',
+  extensionsToTreatAsEsm: ['.ts'],
   projects: [
     {
       displayName: 'unit',
       testMatch: ['<rootDir>/src/**/*.test.ts'],
       testEnvironment: 'node',
       testPathIgnorePatterns: ['<rootDir>/src/e2e/', '<rootDir>/dist'],
-      setupFiles: ['<rootDir>/setupTests.ts'],
+      setupFiles: ['<rootDir>/src/setupTests.ts'],
+      modulePathIgnorePatterns: ['<rootDir>/dist/'],
       moduleNameMapper: {
-        // Must be here to work
-        '@/(.*)': '<rootDir>/src/$1',
+        '^(\\.{1,2}/.*)\\.js$': '$1',
       },
       transform: {
-        // Must be here to work
-        '^.+\\.tsx?$': ['ts-jest', { useESM: true }],
+        '^.+\\.ts$': ['ts-jest', { useESM: true }],
       },
-      modulePathIgnorePatterns: ['<rootDir>/dist/'],
     },
     {
       displayName: 'e2e',
       testMatch: ['<rootDir>/src/e2e/**/*.e2e.test.ts'],
       testEnvironment: 'node',
-      setupFiles: ['<rootDir>/setupTests.ts'],
+      setupFiles: ['<rootDir>/src/setupTests.ts'],
       testPathIgnorePatterns: ['<rootDir>/dist/'],
-      moduleNameMapper: {
-        // Must be here to work
-        '@/(.*)': '<rootDir>/src/$1',
-      },
-      transform: {
-        // Must be here to work
-        '^.+\\.(ts?|e2e\\.test\\.ts)$': ['ts-jest', { useESM: true }],
-      },
       transformIgnorePatterns: ['node_modules/(?!(@octokit)/)'],
       modulePathIgnorePatterns: ['<rootDir>/dist/'],
+      moduleNameMapper: {
+        '^(\\.{1,2}/.*)\\.js$': '$1',
+      },
+      transform: {
+        '^.+\\.ts$': ['ts-jest', { useESM: true }],
+      },
     },
   ],
   watchPathIgnorePatterns: ['<rootDir>/dist/'],

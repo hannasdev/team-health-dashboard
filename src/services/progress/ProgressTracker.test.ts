@@ -1,9 +1,9 @@
-import { IProgressTracker } from '@/interfaces';
+import { IProgressTracker } from '../../interfaces/index.js';
 import {
   createProgressCallback,
   ProgressTracker,
-} from '@/services/progress/ProgressTracker';
-import type { Logger } from '@/utils/Logger';
+} from '../../services/progress/ProgressTracker.js';
+import type { Logger } from '../../utils/Logger.js';
 
 describe('ProgressTracker', () => {
   let progressTracker: ProgressTracker;

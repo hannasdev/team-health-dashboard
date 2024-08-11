@@ -10,11 +10,11 @@ import type {
   ICacheService,
   IGraphQLResponse,
   ILogger,
-} from '@/interfaces';
-import { GitHubRepository } from '@/repositories/github/GitHubRepository';
-import { ProgressCallback } from '@/types';
+} from '../../interfaces/index.js';
+import { GitHubRepository } from './GitHubRepository.js';
+import { ProgressCallback } from '../../types/index.js';
 
-jest.mock('@/config/config', () => ({
+jest.mock('../../config/config', () => ({
   config: createMockConfig(),
 }));
 

@@ -2,18 +2,18 @@ import {
   createMockPullRequest,
   createMockConfig,
   createMockLogger,
-} from '../../__mocks__/mockFactories';
+} from '../../__mocks__/mockFactories.js';
 import type {
   IGitHubRepository,
   IMetricCalculator,
   IProgressTracker,
   IMetric,
   ILogger,
-} from '@/interfaces';
-import { GitHubService } from '@/services/github/GitHubService';
-import {} from '@/utils/Logger';
+} from '../../interfaces/index.js';
+import { GitHubService } from '../../services/github/GitHubService.js';
+import {} from '../../utils/Logger.js';
 
-jest.mock('@/config/config', () => ({
+jest.mock('../../config/config.js', () => ({
   config: createMockConfig(),
 }));
 

@@ -4,17 +4,17 @@ import {
   createMockCacheService,
   createMockConfig,
   createMockGoogleSheetsClient,
-} from '../../__mocks__/mockFactories';
+} from '../../__mocks__/mockFactories.js';
 import type {
   IGoogleSheetsClient,
   IConfig,
   IMetric,
   ILogger,
-} from '@/interfaces';
+} from '../../interfaces/index.js';
 
-import { GoogleSheetsRepository } from './GoogleSheetsRepository';
+import { GoogleSheetsRepository } from './GoogleSheetsRepository.js';
 
-jest.mock('@/config/config', () => ({
+jest.mock('../../config/config.js', () => ({
   config: createMockConfig(),
 }));
 
