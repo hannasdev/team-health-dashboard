@@ -1,16 +1,15 @@
 // src/routes/healthCheck.ts
 import { Router } from 'express';
 
-import { container } from '@/container';
-import { HealthCheckController } from '@/controllers/HealthCheckController';
-import { TYPES } from '@/utils/types';
+import { container } from '../container.js';
+import { HealthCheckController } from '../controllers/HealthCheckController.js';
+import { TYPES } from '../utils/types.js';
 
 const router = Router();
 
-const healthCheckController = container.get<HealthCheckController>(
-  TYPES.HealthCheckController,
-);
+const getHealthCheckController = () =>
+  container.get<HealthCheckController>(TYPES.HealthCheckController);
 
-router.get('/', healthCheckController.getHealth.bind(healthCheckController));
+router.get('/', (req, res) => getHealthCheckController().getHealth(req, res));
 
 export default router;

@@ -1,3 +1,4 @@
+```mermaid
 classDiagram
     MetricsController --> MetricsService
     MetricsService --> MetricsRepository
@@ -29,7 +30,17 @@ classDiagram
     AuthService --> CacheService
     AuthRouter --> AuthController
     AuthMiddleware --> AuthService
-    
+    GitHubRepository --> GitHubAdapter
+    GoogleSheetsRepository --> GoogleSheetsAdapter
+
+    class GitHubAdapter {
+        <<implements IGitHubClient>>
+    }
+
+    class GoogleSheetsAdapter {
+        <<implements IGoogleSheetsClient>>
+    }
+
     class MetricsService {
         <<implements IMetricsService>>
         +getMetrics()
@@ -139,3 +150,4 @@ classDiagram
         +authenticate(req: Request, res: Response, next: NextFunction)
         +logger: Logger
     }
+```

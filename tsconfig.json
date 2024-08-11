@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "module": "commonjs",
+    "module": "esnext",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
@@ -11,7 +11,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src/",
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] },
     "sourceMap": true,
@@ -22,8 +22,7 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/types/**/*.d.ts",
-    "global.d.ts",
-    "setupTests.ts"
+    "global.d.ts"
   ],
   "exclude": ["node_modules", "dist", "build", "*.config.js", ".eslintrc.cjs"]
 }

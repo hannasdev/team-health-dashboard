@@ -10,9 +10,9 @@ import type {
   IPullRequest,
   IMetric,
   ILogger,
-} from '@/interfaces';
-import type { ProgressCallback } from '@/types';
-import { TYPES } from '@/utils/types';
+} from '../../interfaces/index.js';
+import type { ProgressCallback } from '../../types/index.js';
+import { TYPES } from '../../utils/types.js';
 
 /**
  * GitHubService

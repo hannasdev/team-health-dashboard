@@ -1,7 +1,7 @@
 // config/config.ts
 import dotenv from 'dotenv';
 
-import { IConfig } from '@/interfaces';
+import { IConfig } from '../interfaces/index.js';
 
 /**
  * @class Config

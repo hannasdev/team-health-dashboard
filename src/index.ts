@@ -1,10 +1,10 @@
 // src/index.ts
 console.log('Current working directory:', process.cwd());
 import 'reflect-metadata';
-import '@/loadEnv';
-import { container } from '@/container';
-import { TYPES } from '@/utils/types';
-import { ILogger, IApplication } from '@/interfaces';
+
+import { container } from './container.js';
+import { TYPES } from './utils/types.js';
+import { ILogger, IApplication } from './interfaces/index.js';
 
 const port = process.env.PORT || 3000;
 

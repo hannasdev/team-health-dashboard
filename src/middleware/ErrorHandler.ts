@@ -2,8 +2,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
 
-import type { ILogger } from '@/interfaces';
-import { TYPES } from '@/utils/types';
+import type { ILogger } from '../interfaces/index.js';
+import { TYPES } from '../utils/types.js';
 
 @injectable()
 export class ErrorHandler {

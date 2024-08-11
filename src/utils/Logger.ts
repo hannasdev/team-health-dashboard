@@ -4,9 +4,9 @@ import path from 'path';
 import { injectable, inject } from 'inversify';
 import winston from 'winston';
 
-import { Config } from '@/config/config';
-import { ILogger } from '@/interfaces/ILogger';
-import { TYPES } from '@/utils/types';
+import { Config } from '../config/config.js';
+import { ILogger } from '../interfaces/ILogger.js';
+import { TYPES } from '../utils/types.js';
 
 const config = Config.getInstance();
 

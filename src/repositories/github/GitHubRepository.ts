@@ -10,10 +10,10 @@ import type {
   IGraphQLResponse,
   IGraphQLPullRequest,
   ILogger,
-} from '@/interfaces';
-import type { ProgressCallback } from '@/types';
-import { Cacheable, CacheableClass } from '@/utils/CacheDecorator';
-import { TYPES } from '@/utils/types';
+} from '../../interfaces/index.js';
+import type { ProgressCallback } from '../../types/index.js';
+import { Cacheable, CacheableClass } from '../../utils/CacheDecorator.js';
+import { TYPES } from '../../utils/types.js';
 
 @injectable()
 export class GitHubRepository

@@ -4,11 +4,12 @@
   "description": "",
   "main": "dist/index.cjs",
   "sideEffects": false,
+  "type": "module",
   "scripts": {
     "start": "node --experimental-specifier-resolution=node /dist/index.cjs",
     "dev": "node --import tsx src/index.ts",
     "dev:fe": "python3 -m http.server 8080",
-    "build:prod": "npx tsc",
+    "build": "npx tsc",
     "build:types": "npx tsc -p tsconfig.build.json",
     "test:watch": "npx jest --watch",
     "test:unit": "npx jest --config jest.config.ts --selectProjects unit",

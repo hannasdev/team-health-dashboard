@@ -1,8 +1,8 @@
 // src/services/database/MongoDbClient.ts
 import { injectable, inject } from 'inversify';
 import { MongoClient, Db } from 'mongodb';
-import { IConfig, ILogger } from '@/interfaces';
-import { TYPES } from '@/utils/types';
+import { IConfig, ILogger } from '../../interfaces/index.js';
+import { TYPES } from '../../utils/types.js';
 
 export interface IMongoDbClient {
   connect(): Promise<void>;

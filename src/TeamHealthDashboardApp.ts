@@ -3,12 +3,12 @@ import 'reflect-metadata';
 import cors from 'cors';
 import express, { Express, Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
-import authRouter from '@/routes/auth';
-import healthCheckRouter from '@/routes/healthCheck';
-import metricsRouter from '@/routes/metrics';
-import { IMongoDbClient } from '@/services/database/MongoDbClient';
-import { ILogger, IConfig } from '@/interfaces';
-import { TYPES } from '@/utils/types';
+import authRouter from './routes/auth.js';
+import healthCheckRouter from './routes/healthCheck.js';
+import metricsRouter from './routes/metrics.js';
+import { IMongoDbClient } from './services/database/MongoDbClient.js';
+import { ILogger, IConfig } from './interfaces/index.js';
+import { TYPES } from './utils/types.js';
 
 @injectable()
 export class TeamHealthDashboardApp {

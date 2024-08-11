@@ -2,8 +2,8 @@
 import { graphql } from '@octokit/graphql';
 import { injectable, inject } from 'inversify';
 
-import type { IGitHubClient, IConfig } from '@/interfaces';
-import { TYPES } from '@/utils/types';
+import type { IGitHubClient, IConfig } from '../interfaces/index.js';
+import { TYPES } from '../utils/types.js';
 
 @injectable()
 export class GitHubAdapter implements IGitHubClient {

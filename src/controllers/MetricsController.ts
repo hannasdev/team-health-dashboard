@@ -7,9 +7,9 @@ import type {
   IMetricsController,
   ILogger,
   IMetric,
-} from '@/interfaces';
-import { ProgressCallback } from '@/types';
-import { TYPES } from '@/utils/types';
+} from '../interfaces/index.js';
+import { ProgressCallback } from '../types/index.js';
+import { TYPES } from '../utils/types.js';
 
 /**
  * MetricsController

@@ -2,10 +2,10 @@
 import { injectable, inject } from 'inversify';
 import { Collection } from 'mongodb';
 
-import type { ILogger, IUserRepository } from '@/interfaces';
-import { User } from '@/models/User';
-import { TYPES } from '@/utils/types';
-import { IMongoDbClient } from '@/services/database/MongoDbClient';
+import type { ILogger, IUserRepository } from '../../interfaces/index.js';
+import { User } from '../../models/User.js';
+import { TYPES } from '../../utils/types.js';
+import { IMongoDbClient } from '../../services/database/MongoDbClient.js';
 
 @injectable()
 export class UserRepository implements IUserRepository {
