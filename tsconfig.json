@@ -11,7 +11,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./",
     "baseUrl": ".",
     "paths": { "@/*": ["src/*"] },
     "sourceMap": true,
@@ -22,7 +22,8 @@
     "src/**/*.ts",
     "src/**/*.tsx",
     "src/types/**/*.d.ts",
-    "src/global.d.ts"
+    "global.d.ts",
+    "setupTests.ts"
   ],
   "exclude": ["node_modules", "dist", "build", "*.config.js", ".eslintrc.cjs"]
 }

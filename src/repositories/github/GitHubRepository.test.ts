@@ -3,7 +3,7 @@ import {
   createMockPullRequest,
   createMockConfig,
   createMockLogger,
-} from '@/__mocks__/mockFactories';
+} from '../../__mocks__/mockFactories';
 import type {
   IGitHubClient,
   IConfig,

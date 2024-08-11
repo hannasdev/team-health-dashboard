@@ -2,7 +2,7 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Container } from 'inversify';
 
-import { createMockLogger } from '@/__mocks__/mockFactories';
+import { createMockLogger } from '../../__mocks__/mockFactories';
 import { Config } from '@/config/config';
 import { ILogger, IConfig } from '@/interfaces';
 import { User } from '@/models/User';

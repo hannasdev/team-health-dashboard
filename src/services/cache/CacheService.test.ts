@@ -1,28 +1,29 @@
 // src/__tests__/services/CacheService.test.ts
 import 'reflect-metadata';
 import { describe, it, expect, beforeEach } from '@jest/globals';
+import { createMockCacheService } from '@/__mocks__/mockFactories';
 
-import { CacheService } from '@/services/cache/CacheService';
+import { ICacheService } from '@/interfaces';
 
 describe('CacheService', () => {
-  let cacheService: CacheService;
+  let mockCacheService: jest.Mocked<ICacheService>;
 
   beforeEach(() => {
-    cacheService = new CacheService();
+    mockCacheService = createMockCacheService();
   });
 
   it('should store and retrieve values', () => {
     const key = 'testKey';
     const value = { data: 'testData' };
 
-    cacheService.set(key, value);
-    const retrieved = cacheService.get(key);
+    mockCacheService.set(key, value);
+    const retrieved = mockCacheService.get(key);
 
     expect(retrieved).toEqual(value);
   });
 
   it('should return null for non-existent keys', () => {
-    const retrieved = cacheService.get('nonExistentKey');
+    const retrieved = mockCacheService.get('nonExistentKey');
     expect(retrieved).toBeNull();
   });
 
@@ -30,30 +31,30 @@ describe('CacheService', () => {
     const key = 'testKey';
     const value = { data: 'testData' };
 
-    cacheService.set(key, value);
-    cacheService.delete(key);
+    mockCacheService.set(key, value);
+    mockCacheService.delete(key);
 
-    const retrieved = cacheService.get(key);
+    const retrieved = mockCacheService.get(key);
     expect(retrieved).toBeNull();
   });
 
   it('should clear all values', () => {
-    cacheService.set('key1', 'value1');
-    cacheService.set('key2', 'value2');
+    mockCacheService.set('key1', 'value1');
+    mockCacheService.set('key2', 'value2');
 
-    cacheService.clear();
+    mockCacheService.clear();
 
-    expect(cacheService.get('key1')).toBeNull();
-    expect(cacheService.get('key2')).toBeNull();
+    expect(mockCacheService.get('key1')).toBeNull();
+    expect(mockCacheService.get('key2')).toBeNull();
   });
 
   it('should handle different types of values', () => {
-    cacheService.set('stringKey', 'stringValue');
-    cacheService.set('numberKey', 123);
-    cacheService.set('objectKey', { foo: 'bar' });
+    mockCacheService.set('stringKey', 'stringValue');
+    mockCacheService.set('numberKey', 123);
+    mockCacheService.set('objectKey', { foo: 'bar' });
 
-    expect(cacheService.get('stringKey')).toBe('stringValue');
-    expect(cacheService.get('numberKey')).toBe(123);
-    expect(cacheService.get('objectKey')).toEqual({ foo: 'bar' });
+    expect(mockCacheService.get('stringKey')).toBe('stringValue');
+    expect(mockCacheService.get('numberKey')).toBe(123);
+    expect(mockCacheService.get('objectKey')).toEqual({ foo: 'bar' });
   });
 });

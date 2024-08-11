@@ -4,7 +4,7 @@ import {
   createMockCacheService,
   createMockConfig,
   createMockGoogleSheetsClient,
-} from '@/__mocks__/mockFactories';
+} from '../../__mocks__/mockFactories';
 import type {
   IGoogleSheetsClient,
   IConfig,

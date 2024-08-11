@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken'; // Add this import
 import {
   createMockAuthRequest,
   createMockAuthMiddlewareResponse,
-} from '@/__mocks__/mockFactories';
+} from '../__mocks__/mockFactories';
 import { Config } from '@/config/config';
 import { IAuthRequest, IConfig, IAuthMiddleware } from '@/interfaces';
 import { AuthMiddleware } from '@/middleware/AuthMiddleware';

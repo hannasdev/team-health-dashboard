@@ -5,7 +5,7 @@ import { jest, describe, it, expect, beforeEach } from '@jest/globals';
 import {
   createMockLogger,
   createMockMetricsService,
-} from '@/__mocks__/mockFactories';
+} from '../__mocks__/mockFactories';
 import { MetricsController } from '@/controllers/MetricsController';
 import { IMetricsService, ILogger } from '@/interfaces';
 import { ProgressCallback } from '@/types';

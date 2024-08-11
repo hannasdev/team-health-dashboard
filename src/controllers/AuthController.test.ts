@@ -4,7 +4,7 @@ import { Request, Response } from 'express';
 import {
   createMockUserRepository,
   createMockLogger,
-} from '@/__mocks__/mockFactories';
+} from '../__mocks__/mockFactories';
 import { Config } from '@/config/config';
 import { AuthController } from '@/controllers/AuthController';
 import {

@@ -29,7 +29,7 @@ jobs:
           name: dist
           path: dist
 
-  test:
+  test-unit:
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -40,29 +40,54 @@ jobs:
           node-version: '20.16.0'
       - name: Install dependencies
         run: npm ci
-      - name: Download build artifacts
-        uses: actions/download-artifact@v3
+      - name: Run unit tests
+        run: npm run test:unit
+
+  e2e-test:
+    needs: [build, test-unit]
+    runs-on: ubuntu-latest
+    services:
+      app:
+        build: .
+        ports:
+          - 3000:3000
+      db:
+        image: mongo:latest
+        ports:
+          - '27017:27017'
+        environment:
+          - MONGO_INITDB_ROOT_USERNAME=root
+          - MONGO_INITDB_ROOT_PASSWORD=example
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
         with:
-          name: dist
-          path: dist
-      - name: Run tests
-        run: npm test
+          node-version: '20.16.0'
+      - name: Install dependencies
+        run: npm ci
+      - name: Wait for services
+        run: |
+          npx wait-on http://localhost:3000/health --timeout 30000
+          npx wait-on tcp:localhost:27017 --timeout 30000
+      - name: Run e2e tests
+        run: npm run test:e2e
     env:
-      GOOGLE_SHEETS_ID: 'test-id'
-      GOOGLE_SHEETS_CLIENT_EMAIL: 'test-user'
-      GOOGLE_SHEETS_PRIVATE_KEY: 'test-key'
-      GITHUB_TOKEN: 'github_pat_test'
-      GITHUB_OWNER: 'test-user'
-      GITHUB_REPO: 'test-org/test-repo'
-      PORT: 3000
-      CORS_ORIGIN: http://localhost:3000,null
+      GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+      GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
+      GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_OWNER: ${{ secrets.GITHUB_OWNER }}
+      GITHUB_REPO: ${{ secrets.GITHUB_REPO }}
+      PORT: ${{ secrets.PORT }}
+      CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       LOG_LEVEL: info
       LOG_FORMAT: json
       LOG_FILE_PATH: './logs'
 
-  docker:
-    needs: [build, test]
+  docker-build-and-push:
+    needs: [build, test-unit, e2e-test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -74,11 +99,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Download build artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: dist
-          path: dist
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:

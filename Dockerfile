@@ -5,33 +5,30 @@ WORKDIR /app
 # Build Stage
 FROM base AS build
 COPY package*.json ./
-COPY webpack.config*.js ./
 COPY tsconfig.json ./
 RUN npm ci
 COPY ./src ./src
-RUN npm run build
+RUN npm run build:prod
 
-# Test Stage
-FROM base AS test
-COPY package*.json ./
-COPY tsconfig.json ./
+# Unit Test Stage
+FROM build AS unit-test
 COPY jest.config.ts ./
 COPY setupTests.ts ./
-RUN npm ci
-COPY --from=build /app/dist /app/dist
-COPY ./src ./src
-CMD ["npm", "run", "test"]
+CMD ["npm", "run", "test:unit"]
+
+# E2E Test Stage
+FROM base AS e2e-test
+COPY jest.config.ts ./
+COPY setupTestsE2E.ts ./
+CMD ["npm", "run", "test:e2e"]
 
 # Production Stage
 FROM base AS production
 ENV NODE_ENV=production
+WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
-COPY --from=build /app/dist /app/dist
-
-# Copy necessary config files
-COPY tsconfig.json ./
-COPY webpack.config*.js ./
+COPY --from=build /app/dist ./dist
 
 # Create a non-root user
 RUN addgroup -g 1001 -S nodejs
@@ -42,4 +39,4 @@ USER nodejs
 ENV PORT=3000
 EXPOSE $PORT
 
-CMD ["node", "dist/index.cjs"]
+CMD ["node", "./dist/index.js"]

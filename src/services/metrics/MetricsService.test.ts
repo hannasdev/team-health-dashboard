@@ -5,7 +5,7 @@ import {
   createMockGoogleSheetsRepository,
   createMockGitHubRepository,
   createMockPullRequest,
-} from '@/__mocks__/mockFactories';
+} from '../../__mocks__/mockFactories';
 import type { IMetricsService, IMetric, ILogger } from '@/interfaces';
 import { MetricsService } from '@/services/metrics/MetricsService';
 

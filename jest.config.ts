@@ -4,41 +4,44 @@ const config: Config = {
   verbose: true,
   bail: 1,
   preset: 'ts-jest',
-  testEnvironment: 'node',
   moduleFileExtensions: ['ts', 'js'],
-  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   rootDir: './',
-  globals: {
-    'ts-jest': {
-      tsconfig: 'tsconfig.json',
-    },
-  },
   projects: [
     {
       displayName: 'unit',
       testMatch: ['<rootDir>/src/**/*.test.ts'],
       testEnvironment: 'node',
-      testPathIgnorePatterns: ['<rootDir>/src/e2e/'],
+      testPathIgnorePatterns: ['<rootDir>/src/e2e/', '<rootDir>/dist'],
       setupFiles: ['<rootDir>/setupTests.ts'],
       moduleNameMapper: {
+        // Must be here to work
         '@/(.*)': '<rootDir>/src/$1',
       },
       transform: {
-        '^.+\\.tsx?$': [
-          'ts-jest',
-          {
-            useESM: true,
-          },
-        ],
+        // Must be here to work
+        '^.+\\.tsx?$': ['ts-jest', { useESM: true }],
       },
+      modulePathIgnorePatterns: ['<rootDir>/dist/'],
     },
     {
       displayName: 'e2e',
-      testMatch: ['<rootDir>/src/e2e/**/*.test.ts'],
+      testMatch: ['<rootDir>/src/e2e/**/*.e2e.test.ts'],
       testEnvironment: 'node',
       setupFiles: ['<rootDir>/setupTestsE2E.ts'],
+      testPathIgnorePatterns: ['<rootDir>/dist/'],
+      moduleNameMapper: {
+        // Must be here to work
+        '@/(.*)': '<rootDir>/src/$1',
+      },
+      transform: {
+        // Must be here to work
+        '^.+\\.(ts?|e2e\\.test\\.ts)$': ['ts-jest', { useESM: true }],
+      },
+      transformIgnorePatterns: ['node_modules/(?!(@octokit)/)'],
+      modulePathIgnorePatterns: ['<rootDir>/dist/'],
     },
   ],
+  watchPathIgnorePatterns: ['<rootDir>/dist/'],
 };
 
 export default config;

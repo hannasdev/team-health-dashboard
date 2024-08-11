@@ -8,13 +8,12 @@
     "start": "node --experimental-specifier-resolution=node /dist/index.cjs",
     "dev": "node --import tsx src/index.ts",
     "dev:fe": "python3 -m http.server 8080",
-    "build": "webpack --config webpack.config.cjs",
-    "build:types": "tsc -p tsconfig.build.json",
+    "build:prod": "npx tsc",
+    "build:types": "npx tsc -p tsconfig.build.json",
     "build:dev": "node --experimental-json-modules node_modules/.bin/webpack --config webpack.config.dev.mjs",
-    "build:tsc": "npx tsc",
     "test:watch": "npx jest --watch",
-    "test": "npx jest --selectProjects unit",
-    "test:e2e": "npx jest --selectProjects e2e",
+    "test:unit": "npx jest --config jest.config.ts --selectProjects unit",
+    "test:e2e": "npx jest --config jest.config.ts --selectProjects e2e",
     "test:coverage": "jest --coverage",
     "lint": "eslint --config .eslintrc.cjs 'src/**/*.{ts,js}'",
     "lint:fix": "eslint 'src/**/*.{ts,js}' --fix",
@@ -35,7 +34,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^6.8.0",
     "reflect-metadata": "^0.2.2",
-    "winston": "^3.13.1"
+    "winston": "^3.14.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.1.0",
@@ -45,7 +44,7 @@
     "@types/jest": "^29.5.12",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/mongodb": "^4.0.7",
-    "@types/node": "^22.1.0",
+    "@types/node": "^22.2.0",
     "@types/supertest": "^6.0.2",
     "@types/webpack": "^5.28.5",
     "@types/webpack-node-externals": "^3.0.4",
@@ -66,9 +65,6 @@
     "ts-loader": "^9.5.1",
     "tsx": "^4.17.0",
     "typescript": "^5.5.4",
-    "webpack": "^5.93.0",
-    "webpack-cli": "^5.1.4",
-    "webpack-merge": "^6.0.1",
-    "webpack-node-externals": "^3.0.0"
+    "wait-on": "^7.2.0"
   }
 }

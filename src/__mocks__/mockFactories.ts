@@ -285,14 +285,14 @@ export const createMockGitHubRepository =
     }),
   });
 
-export const createMockCacheService = (): jest.Mocked<ICacheService> => ({
-  get: jest.fn(),
-  set: jest.fn(),
-  delete: jest.fn(),
-  clear: jest.fn(),
-});
-
 export const createMockGoogleSheetsRepository =
   (): jest.Mocked<IGoogleSheetsRepository> => ({
     fetchMetrics: jest.fn(),
   });
+
+export const createMockCacheService = (): jest.Mocked<ICacheService> => ({
+  get: jest.fn().mockImplementation(() => Promise.resolve(null)),
+  set: jest.fn().mockImplementation(() => Promise.resolve()),
+  delete: jest.fn(),
+  clear: jest.fn(),
+});

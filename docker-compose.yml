@@ -37,11 +37,19 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=example
 
-  test-runner:
+  unit-test-runner:
+    build:
+      context: .
+      target: unit-test
+    volumes:
+      - ./src:/app/src
+      - node_modules:/app/node_modules
+
+  e2e-test-runner:
     env_file:
-      - .env
+      - .env.test
     environment:
-      - DATABASE_URL=mongodb://db:27017/myapp-test # Use test database
+      - DATABASE_URL=mongodb://db:27017/myapp-test
       - GOOGLE_SHEETS_ID=test-id
       - GOOGLE_SHEETS_CLIENT_EMAIL=test-user
       - GOOGLE_SHEETS_PRIVATE_KEY=test-key
@@ -51,14 +59,20 @@ services:
       - CORS_ORIGIN=http://localhost:3000,null
     build:
       context: .
-      target: test
+      target: e2e-test
     depends_on:
       - db
+      - app
     volumes:
-      - ./src:/app/src # Mount source code
-      - ./jest.config.ts:/app/jest.config.ts # Mount Jest config (if needed)
-      - node_modules:/app/node_modules # Use the same volume for dependencies
-    command: ['npm', 'run', 'test']
+      - ./src:/app/src
+      - node_modules:/app/node_modules
+    command:
+      - sh
+      - -c
+      - |
+        npm ci &&
+        npx wait-on http://app:3000/health --timeout 30000 &&
+        npx jest --config jest.config.ts --selectProjects e2e
 
 volumes:
   mongodb_data:
