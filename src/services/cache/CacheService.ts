@@ -4,7 +4,6 @@ import { injectable } from 'inversify';
 import type { ICacheService } from '@/interfaces';
 
 @injectable()
-@injectable()
 export class CacheService implements ICacheService {
   private cache: Map<string, { value: any; expiry: number }> = new Map();
 

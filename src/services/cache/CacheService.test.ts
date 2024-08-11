@@ -12,49 +12,49 @@ describe('CacheService', () => {
     mockCacheService = createMockCacheService();
   });
 
-  it('should store and retrieve values', () => {
+  it('should store and retrieve values', async () => {
     const key = 'testKey';
     const value = { data: 'testData' };
 
-    mockCacheService.set(key, value);
-    const retrieved = mockCacheService.get(key);
+    await mockCacheService.set(key, value);
+    const retrieved = await mockCacheService.get(key);
 
     expect(retrieved).toEqual(value);
   });
 
-  it('should return null for non-existent keys', () => {
-    const retrieved = mockCacheService.get('nonExistentKey');
+  it('should return null for non-existent keys', async () => {
+    const retrieved = await mockCacheService.get('nonExistentKey');
     expect(retrieved).toBeNull();
   });
 
-  it('should delete values', () => {
+  it('should delete values', async () => {
     const key = 'testKey';
     const value = { data: 'testData' };
 
-    mockCacheService.set(key, value);
+    await mockCacheService.set(key, value);
     mockCacheService.delete(key);
 
-    const retrieved = mockCacheService.get(key);
+    const retrieved = await mockCacheService.get(key);
     expect(retrieved).toBeNull();
   });
 
-  it('should clear all values', () => {
-    mockCacheService.set('key1', 'value1');
-    mockCacheService.set('key2', 'value2');
+  it('should clear all values', async () => {
+    await mockCacheService.set('key1', 'value1');
+    await mockCacheService.set('key2', 'value2');
 
     mockCacheService.clear();
 
-    expect(mockCacheService.get('key1')).toBeNull();
-    expect(mockCacheService.get('key2')).toBeNull();
+    expect(await mockCacheService.get('key1')).toBeNull();
+    expect(await mockCacheService.get('key2')).toBeNull();
   });
 
-  it('should handle different types of values', () => {
-    mockCacheService.set('stringKey', 'stringValue');
-    mockCacheService.set('numberKey', 123);
-    mockCacheService.set('objectKey', { foo: 'bar' });
+  it('should handle different types of values', async () => {
+    await mockCacheService.set('stringKey', 'stringValue');
+    await mockCacheService.set('numberKey', 123);
+    await mockCacheService.set('objectKey', { foo: 'bar' });
 
-    expect(mockCacheService.get('stringKey')).toBe('stringValue');
-    expect(mockCacheService.get('numberKey')).toBe(123);
-    expect(mockCacheService.get('objectKey')).toEqual({ foo: 'bar' });
+    expect(await mockCacheService.get('stringKey')).toBe('stringValue');
+    expect(await mockCacheService.get('numberKey')).toBe(123);
+    expect(await mockCacheService.get('objectKey')).toEqual({ foo: 'bar' });
   });
 });

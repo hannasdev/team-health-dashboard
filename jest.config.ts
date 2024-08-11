@@ -27,7 +27,7 @@ const config: Config = {
       displayName: 'e2e',
       testMatch: ['<rootDir>/src/e2e/**/*.e2e.test.ts'],
       testEnvironment: 'node',
-      setupFiles: ['<rootDir>/setupTestsE2E.ts'],
+      setupFiles: ['<rootDir>/setupTests.ts'],
       testPathIgnorePatterns: ['<rootDir>/dist/'],
       moduleNameMapper: {
         // Must be here to work

@@ -10,7 +10,6 @@
     "dev:fe": "python3 -m http.server 8080",
     "build:prod": "npx tsc",
     "build:types": "npx tsc -p tsconfig.build.json",
-    "build:dev": "node --experimental-json-modules node_modules/.bin/webpack --config webpack.config.dev.mjs",
     "test:watch": "npx jest --watch",
     "test:unit": "npx jest --config jest.config.ts --selectProjects unit",
     "test:e2e": "npx jest --config jest.config.ts --selectProjects e2e",

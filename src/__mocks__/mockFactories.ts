@@ -290,9 +290,24 @@ export const createMockGoogleSheetsRepository =
     fetchMetrics: jest.fn(),
   });
 
-export const createMockCacheService = (): jest.Mocked<ICacheService> => ({
-  get: jest.fn().mockImplementation(() => Promise.resolve(null)),
-  set: jest.fn().mockImplementation(() => Promise.resolve()),
-  delete: jest.fn(),
-  clear: jest.fn(),
-});
+export const createMockCacheService = (): jest.Mocked<ICacheService> => {
+  let cache = new Map<string, any>();
+
+  return {
+    get: jest
+      .fn()
+      .mockImplementation((key: string) =>
+        Promise.resolve(cache.get(key) || null),
+      ),
+    set: jest.fn().mockImplementation((key: string, value: any) => {
+      cache.set(key, value);
+      return Promise.resolve();
+    }),
+    delete: jest.fn().mockImplementation((key: string) => {
+      cache.delete(key);
+    }),
+    clear: jest.fn().mockImplementation(() => {
+      cache.clear();
+    }),
+  };
+};
