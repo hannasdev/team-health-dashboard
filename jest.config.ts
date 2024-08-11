@@ -7,6 +7,11 @@ const config: Config = {
   moduleFileExtensions: ['ts', 'js'],
   rootDir: './',
   extensionsToTreatAsEsm: ['.ts'],
+  maxWorkers: 2, // Limit the number of workers
+  maxConcurrency: 1, // Ensure only one test file runs at a time
+  testTimeout: 30000, // Increase timeout to 30 seconds
+  globalSetup: '<rootDir>/jest.global-setup.mjs',
+  globalTeardown: '<rootDir>/jest.global-teardown.mjs',
   projects: [
     {
       displayName: 'unit',

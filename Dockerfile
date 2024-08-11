@@ -16,6 +16,8 @@ RUN ls -la /home/nodejs/app  # Debug: List contents after build
 # Unit Test Stage
 FROM build AS unit-test
 COPY --chown=node:node jest.config.ts ./
+COPY --chown=node:node jest.global-setup.mjs ./
+COPY --chown=node:node jest.global-teardown.mjs ./
 CMD ["npm", "run", "test:unit"]
 
 # E2E Test Stage

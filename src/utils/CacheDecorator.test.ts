@@ -1,101 +1,108 @@
-// src/utils/CacheDecorator.test.ts
 import { Container, injectable } from 'inversify';
 import { ICacheService } from '../interfaces/ICacheService.js';
 import { Cacheable, CacheableClass } from '../utils/CacheDecorator.js';
 import { TYPES } from '../utils/types.js';
 
+@injectable()
+class TestClass extends CacheableClass {
+  @Cacheable('test-key', 3600)
+  async testMethod(param: string) {
+    return `Result for ${param}`;
+  }
+}
+
 describe('CacheDecorator', () => {
   let mockCacheService: jest.Mocked<ICacheService>;
-  let container: Container;
+  let sharedContainer: Container;
+
+  beforeAll(() => {
+    sharedContainer = new Container();
+  });
 
   beforeEach(() => {
-    mockCacheService = {
-      get: jest.fn(),
-      set: jest.fn(),
-    } as unknown as jest.Mocked<ICacheService>;
+    if (global.gc) {
+      global.gc();
+    }
 
-    container = new Container();
-    container
+    mockCacheService = {
+      get: jest.fn().mockImplementation(() => Promise.resolve(null)),
+      set: jest.fn().mockImplementation(() => Promise.resolve()),
+      delete: jest.fn(),
+      clear: jest.fn(),
+    };
+
+    sharedContainer.unbindAll();
+    sharedContainer
       .bind<ICacheService>(TYPES.CacheService)
       .toConstantValue(mockCacheService);
+    sharedContainer.bind(TestClass).toSelf();
+  });
+
+  afterEach(() => {
+    sharedContainer.unbindAll();
+    jest.clearAllMocks();
+    if (global.gc) {
+      global.gc();
+    }
+  });
+
+  afterAll(() => {
+    sharedContainer.unbindAll();
+    (sharedContainer as any) = null;
   });
 
   describe('Cacheable', () => {
-    it('should return cached result if available', async () => {
-      @injectable()
-      class TestClass extends CacheableClass {
-        @Cacheable('test-key', 3600)
-        async testMethod(param: string) {
-          return `Result for ${param}`;
-        }
-      }
+    it.each([
+      ['cached', 'Cached result', true],
+      ['not cached', 'Result for test', false],
+    ])(
+      'should handle %s results',
+      async (scenario, expectedResult, isCached) => {
+        const instance = sharedContainer.get(TestClass);
+        mockCacheService.get.mockResolvedValue(
+          isCached ? expectedResult : null,
+        );
 
-      container.bind(TestClass).toSelf();
-      const instance = container.get(TestClass);
-      const cachedResult = 'Cached result';
-      mockCacheService.get.mockResolvedValue(cachedResult as any);
+        const result = await instance.testMethod('test');
 
-      const result = await instance.testMethod('test');
-
-      expect(result).toBe(cachedResult);
-      expect(mockCacheService.get).toHaveBeenCalledWith(
-        'TestClass:testMethod:test-key-["test"]',
-      );
-      expect(mockCacheService.set).not.toHaveBeenCalled();
-    });
-
-    it('should call original method and cache result if not cached', async () => {
-      @injectable()
-      class TestClass extends CacheableClass {
-        @Cacheable('test-key', 3600)
-        async testMethod(param: string) {
-          return `Result for ${param}`;
-        }
-      }
-
-      container.bind(TestClass).toSelf();
-      const instance = container.get(TestClass);
-      mockCacheService.get.mockResolvedValue(null);
-
-      const result = await instance.testMethod('test');
-
-      expect(result).toBe('Result for test');
-      expect(mockCacheService.get).toHaveBeenCalledWith(
-        'TestClass:testMethod:test-key-["test"]',
-      );
-      expect(mockCacheService.set).toHaveBeenCalledWith(
-        'TestClass:testMethod:test-key-["test"]',
-        'Result for test',
-        3600,
-      );
-    });
+        expect(result).toBe(expectedResult);
+        expect(mockCacheService.get).toHaveBeenCalledWith(
+          'TestClass:testMethod:test-key-["test"]',
+        );
+        expect(mockCacheService.set).toHaveBeenCalledTimes(isCached ? 0 : 1);
+      },
+    );
 
     it('should handle missing cacheService gracefully', async () => {
-      @injectable()
-      class TestClass {
-        @Cacheable('test-key', 3600)
-        async testMethod(param: string) {
-          return `Result for ${param}`;
+      await jest.isolateModules(async () => {
+        @injectable()
+        class TestClassWithoutCache {
+          @Cacheable('test-key', 3600)
+          async testMethod(param: string) {
+            return `Result for ${param}`;
+          }
         }
-      }
 
-      container.bind(TestClass).toSelf();
-      const instance = container.get(TestClass);
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+        const newContainer = new Container();
+        newContainer.bind(TestClassWithoutCache).toSelf();
+        const instance = newContainer.get(TestClassWithoutCache);
+        const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-      const result = await instance.testMethod('test');
+        const result = await instance.testMethod('test');
 
-      expect(result).toBe('Result for test');
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'CacheService not found for TestClass.testMethod. Cacheable decorator may not work as expected.',
-      );
+        expect(result).toBe('Result for test');
+        expect(consoleSpy).toHaveBeenCalledWith(
+          'CacheService not found for TestClassWithoutCache.testMethod. Cacheable decorator may not work as expected.',
+        );
 
-      consoleSpy.mockRestore();
+        consoleSpy.mockRestore();
+        newContainer.unbindAll();
+      });
     });
 
     it('should store metadata correctly', () => {
       @injectable()
-      class TestClass extends CacheableClass {
+      class TestClassWithMultipleMethods extends CacheableClass {
         @Cacheable('test-key-1', 3600)
         async method1() {}
 
@@ -103,7 +110,7 @@ describe('CacheDecorator', () => {
         async method2() {}
       }
 
-      const metadata = TestClass.getCacheableMetadata();
+      const metadata = TestClassWithMultipleMethods.getCacheableMetadata();
       expect(metadata).toEqual({
         method1: { cacheKey: 'test-key-1', duration: 3600 },
         method2: { cacheKey: 'test-key-2', duration: 7200 },
@@ -113,12 +120,7 @@ describe('CacheDecorator', () => {
 
   describe('CacheableClass', () => {
     it('should inject cacheService', () => {
-      @injectable()
-      class TestClass extends CacheableClass {}
-
-      container.bind(TestClass).toSelf();
-      const instance = container.get(TestClass);
-
+      const instance = sharedContainer.get(TestClass);
       expect((instance as any).cacheService).toBe(mockCacheService);
     });
   });

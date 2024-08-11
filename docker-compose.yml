@@ -13,6 +13,10 @@ services:
       - DATABASE_URL=mongodb://root:example@db:27017/myapp?authSource=admin
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          memory: 2G
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
@@ -36,6 +40,10 @@ services:
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=example
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
   unit-test-runner:
     build:
@@ -43,6 +51,10 @@ services:
       target: unit-test
     volumes:
       - node_modules:/app/node_modules
+    deploy:
+      resources:
+        limits:
+          memory: 2G
 
   e2e-test-runner:
     env_file:
@@ -64,13 +76,17 @@ services:
       - app
     volumes:
       - node_modules:/app/node_modules
+    deploy:
+      resources:
+        limits:
+          memory: 3G
     command:
       - sh
       - -c
       - |
         npm ci &&
         npx wait-on http://app:3000/health --timeout 30000 &&
-        npx jest --config jest.config.ts --selectProjects e2e
+        node --max-old-space-size=4096 node_modules/.bin/jest --config jest.config.ts --selectProjects e2e
 
 volumes:
   mongodb_data:

@@ -19,7 +19,13 @@
     "lint:fix": "eslint 'src/**/*.{ts,js}' --fix",
     "prettier": "prettier --write 'src/**/*.{ts,js,json,md}'",
     "ai": "npx ai-digest",
-    "check": "npm-check"
+    "check": "npm-check",
+    "test:clinic": "clinic doctor -- node --max-old-space-size=4096 node_modules/.bin/jest --runInBand src/utils",
+    "test:repositories": "node --expose-gc ./node_modules/.bin/jest src/repositories",
+    "test:controllers": "node --expose-gc ./node_modules/.bin/jest src/controllers",
+    "test:services": "node --expose-gc ./node_modules/.bin/jest src/services",
+    "test:middleware": "node --expose-gc ./node_modules/.bin/jest src/middleware",
+    "test:utils": "node --expose-gc ./node_modules/.bin/jest --runInBand src/utils"
   },
   "dependencies": {
     "@jest/globals": "^29.7.0",
