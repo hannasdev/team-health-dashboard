@@ -9,8 +9,39 @@ import { TYPES } from '../utils/types.js';
 export class ErrorHandler {
   constructor(@inject(TYPES.Logger) private logger: ILogger) {}
 
-  handle(err: Error, req: Request, res: Response, next: NextFunction): void {
-    this.logger.error('An error occurred', err as Error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
+  public handle = (
+    err: Error,
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    this.logger.error('Error caught in error handler:', err);
+
+    let statusCode = 500;
+    let errorMessage = 'An unexpected error occurred';
+
+    if (err.name === 'TimeoutError') {
+      statusCode = 504;
+      errorMessage = 'Operation timed out';
+    } else if (err.name === 'SimulatedError') {
+      statusCode = 400;
+      errorMessage = 'Simulated error';
+    }
+
+    if (req.headers['content-type'] === 'text/event-stream') {
+      res.write(
+        `event: error\ndata: ${JSON.stringify({
+          success: false,
+          errors: [{ message: errorMessage }],
+          status: statusCode,
+        })}\n\n`,
+      );
+      res.end();
+    } else {
+      res.status(statusCode).json({
+        success: false,
+        errors: [{ message: errorMessage }],
+      });
+    }
+  };
 }

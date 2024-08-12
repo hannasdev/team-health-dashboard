@@ -12,6 +12,7 @@ import { IMongoDbClient } from './services/database/MongoDbClient.js';
 import { ILogger, IConfig } from './interfaces/index.js';
 import { TYPES } from './utils/types.js';
 import { ITeamHealthDashboardApp } from './interfaces/ITeamHealthDashboardApp.js';
+import { ErrorHandler } from './middleware/ErrorHandler.js';
 
 @injectable()
 export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
@@ -21,6 +22,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     @inject(TYPES.Config) private config: IConfig,
     @inject(TYPES.MongoDbClient) private mongoDbClient: IMongoDbClient,
     @inject(TYPES.Logger) private logger: ILogger,
+    @inject(TYPES.ErrorHandler) private errorHandler: ErrorHandler,
   ) {
     this.expressApp = express();
     this.configureCors();
@@ -76,6 +78,10 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureErrorHandling(): void {
+    // Use the ErrorHandler middleware
+    this.expressApp.use(this.errorHandler.handle);
+
+    // Keep the default error handler as a fallback
     this.expressApp.use(
       (err: Error, req: Request, res: Response, _next: NextFunction) => {
         this.logger.error('Unhandled error', err);

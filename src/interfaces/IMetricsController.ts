@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 
 export interface IMetricsController {
   /**
@@ -8,10 +8,16 @@ export interface IMetricsController {
    *
    * @param {Request} req - The Express request object.
    * @param {Response} res - The Express response object.
+   * @param {NextFunction} next - The Express next function for error handling.
    * @param {number} timePeriod - The time period in days for which to fetch metrics.
    * @returns {Promise<void>}
    *
-   * @throws Will pass any errors from MetricsService to the client via SSE.
+   * @throws Will pass any errors to the next error handling middleware.
    */
-  getAllMetrics(req: Request, res: Response, timePeriod: number): Promise<void>;
+  getAllMetrics(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+    timePeriod: number,
+  ): Promise<void>;
 }

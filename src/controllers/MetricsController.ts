@@ -1,5 +1,5 @@
 // src/controllers/MetricsController.ts
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
 import type {
@@ -49,8 +49,17 @@ export class MetricsController implements IMetricsController {
   public getAllMetrics = async (
     req: Request,
     res: Response,
+    next: NextFunction,
     timePeriod: number,
   ): Promise<void> => {
+    let isClientConnected = true;
+
+    // Handle client disconnection
+    req.on('close', () => {
+      isClientConnected = false;
+      this.logger.info('Client disconnected');
+    });
+
     const sendEvent = (event: string, data: any) => {
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
@@ -66,7 +75,22 @@ export class MetricsController implements IMetricsController {
       });
     };
 
+    const timeout = setTimeout(() => {
+      if (isClientConnected) {
+        const timeoutError = new Error('Operation timed out');
+        timeoutError.name = 'TimeoutError';
+        next(timeoutError);
+      }
+    }, 120000); // 2 minutes timeout
+
     try {
+      // Set SSE headers
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      });
+
       const result = await this.metricsService.getAllMetrics(
         progressCallback,
         timePeriod,
@@ -94,21 +118,14 @@ export class MetricsController implements IMetricsController {
       sendEvent('result', responseData);
     } catch (error) {
       this.logger.error('Error in MetricsController:', error as Error);
-      sendEvent('error', {
-        success: false,
-        errors: [
-          {
-            source: 'MetricsController',
-            message:
-              error instanceof Error
-                ? error.message
-                : 'An unknown error occurred',
-          },
-        ],
-        status: 500,
-      });
+      if (isClientConnected) {
+        next(error);
+      }
     } finally {
-      res.end();
+      clearTimeout(timeout);
+      if (isClientConnected) {
+        res.end();
+      }
     }
   };
 }

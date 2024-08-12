@@ -10,34 +10,42 @@ import { ProgressCallback } from '../types/index.js';
 
 describe('MetricsController', () => {
   let metricsController: MetricsController;
-  let mockMetricsService: IMetricsService;
-  let mockResponse: any; // We'll mock the Response object directly
+  let mockMetricsService: jest.Mocked<IMetricsService>;
+  let mockResponse: any;
+  let mockRequest: any;
+  let mockNext: jest.Mock;
   let mockLogger: ILogger;
 
   beforeEach(() => {
     jest.resetAllMocks();
     mockLogger = createMockLogger();
-    mockMetricsService = createMockMetricsService();
+    mockMetricsService =
+      createMockMetricsService() as jest.Mocked<IMetricsService>;
     metricsController = new MetricsController(mockMetricsService, mockLogger);
 
-    // Mock the Response object's methods
+    mockRequest = {
+      on: jest.fn(),
+    };
     mockResponse = {
+      writeHead: jest.fn(),
       write: jest.fn(),
       end: jest.fn(),
     };
+    mockNext = jest.fn();
   });
 
   describe('getAllMetrics', () => {
     it('should call MetricsService.getAllMetrics with correct parameters', async () => {
       const timePeriod = 90;
       await metricsController.getAllMetrics(
-        {} as any,
+        mockRequest,
         mockResponse,
+        mockNext,
         timePeriod,
       );
 
       expect(mockMetricsService.getAllMetrics).toHaveBeenCalledWith(
-        expect.any(Function), // Check for progress callback
+        expect.any(Function),
         timePeriod,
       );
     });
@@ -46,33 +54,36 @@ describe('MetricsController', () => {
       const mockMetricsData = {
         metrics: [
           {
-            id: '1', // Now a string
+            id: '1',
             source: 'test',
             value: 100,
             metric_category: 'test_category',
             metric_name: 'test_name',
             timestamp: new Date(),
-            unit: 'unit', // Added unit
-            additional_info: 'info', // Added additional_info
+            unit: 'unit',
+            additional_info: 'info',
           },
         ],
         errors: [],
         githubStats: { totalPRs: 10, fetchedPRs: 10, timePeriod: 90 },
       };
 
-      // Mock the implementation directly:
-      mockMetricsService.getAllMetrics = jest.fn(
-        (progressCallback?: ProgressCallback, timePeriod?: number) =>
-          Promise.resolve(mockMetricsData),
+      mockMetricsService.getAllMetrics.mockResolvedValue(mockMetricsData);
+
+      await metricsController.getAllMetrics(
+        mockRequest,
+        mockResponse,
+        mockNext,
+        90,
       );
 
-      await metricsController.getAllMetrics({} as any, mockResponse, 90);
-
+      expect(mockResponse.writeHead).toHaveBeenCalledWith(
+        200,
+        expect.any(Object),
+      );
       expect(mockResponse.write).toHaveBeenCalledWith(
         expect.stringContaining('event: result'),
       );
-
-      // Correct the assertion:
       expect(mockResponse.write).toHaveBeenCalledWith(
         expect.stringContaining(
           JSON.stringify({
@@ -80,22 +91,43 @@ describe('MetricsController', () => {
             data: mockMetricsData.metrics,
             errors: mockMetricsData.errors,
             githubStats: mockMetricsData.githubStats,
-            status: 200, // Expect status 200 for success
+            status: 200,
           }),
         ),
       );
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it('should call next with error on failure', async () => {
+      const mockErrorMessage = 'Something went wrong!';
+      const mockError = new Error(mockErrorMessage);
+
+      mockMetricsService.getAllMetrics.mockRejectedValue(mockError);
+
+      await metricsController.getAllMetrics(
+        mockRequest,
+        mockResponse,
+        mockNext,
+        90,
+      );
+
+      expect(mockNext).toHaveBeenCalledWith(mockError);
+      expect(mockResponse.write).not.toHaveBeenCalled();
     });
 
     it('should send "error" event with details on failure', async () => {
       const mockErrorMessage = 'Something went wrong!';
 
-      // Mock the implementation directly:
-      mockMetricsService.getAllMetrics = jest.fn(
-        (progressCallback?: ProgressCallback, timePeriod?: number) =>
-          Promise.reject(new Error(mockErrorMessage)),
+      mockMetricsService.getAllMetrics.mockRejectedValue(
+        new Error(mockErrorMessage),
       );
 
-      await metricsController.getAllMetrics({} as any, mockResponse, 90);
+      await metricsController.getAllMetrics(
+        {} as any,
+        mockResponse,
+        mockNext,
+        90,
+      );
 
       expect(mockResponse.write).toHaveBeenCalledWith(
         expect.stringContaining('event: error'),
@@ -112,23 +144,69 @@ describe('MetricsController', () => {
             ],
             status: 500,
           }),
-        ), // Check for the structured error response
+        ),
       );
     });
 
-    it('should always call res.end()', async () => {
-      // Test success case:
-      await metricsController.getAllMetrics({} as any, mockResponse, 90);
-      expect(mockResponse.end).toHaveBeenCalledTimes(1);
+    it('should always call res.end() on success', async () => {
+      mockMetricsService.getAllMetrics.mockResolvedValue({
+        metrics: [],
+        errors: [],
+        githubStats: { totalPRs: 0, fetchedPRs: 0, timePeriod: 90 },
+      });
 
-      // Mock for failure - directly implement:
-      mockMetricsService.getAllMetrics = jest.fn(
-        (progressCallback?: ProgressCallback, timePeriod?: number) =>
-          Promise.reject(new Error('Simulated error')),
+      await metricsController.getAllMetrics(
+        mockRequest,
+        mockResponse,
+        mockNext,
+        90,
       );
 
-      await metricsController.getAllMetrics({} as any, mockResponse, 90);
-      expect(mockResponse.end).toHaveBeenCalledTimes(2);
+      expect(mockResponse.end).toHaveBeenCalled();
+    });
+
+    it('should not call res.end() on failure', async () => {
+      mockMetricsService.getAllMetrics.mockRejectedValue(
+        new Error('Test error'),
+      );
+
+      await metricsController.getAllMetrics(
+        mockRequest,
+        mockResponse,
+        mockNext,
+        90,
+      );
+
+      expect(mockResponse.end).not.toHaveBeenCalled();
+    });
+
+    it('should handle client disconnection', async () => {
+      let onCloseHandler: (() => void) | undefined;
+      mockRequest.on.mockImplementation(
+        (event: string, handler: () => void) => {
+          if (event === 'close') {
+            onCloseHandler = handler;
+          }
+        },
+      );
+
+      const getAllMetricsPromise = metricsController.getAllMetrics(
+        mockRequest,
+        mockResponse,
+        mockNext,
+        90,
+      );
+
+      // Simulate client disconnection
+      if (onCloseHandler) {
+        onCloseHandler();
+      }
+
+      await getAllMetricsPromise;
+
+      expect(mockLogger.info).toHaveBeenCalledWith('Client disconnected');
+      expect(mockResponse.write).not.toHaveBeenCalled();
+      expect(mockResponse.end).not.toHaveBeenCalled();
     });
   });
 });

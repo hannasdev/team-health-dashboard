@@ -1,6 +1,5 @@
 // src/routes/metrics.ts
-import { Response, Router } from 'express';
-
+import { Response, Router, NextFunction } from 'express';
 import { container } from '../container.js';
 import { MetricsController } from '../controllers/MetricsController.js';
 import { IAuthRequest, IAuthMiddleware } from '../interfaces/index.js';
@@ -16,26 +15,20 @@ const getAuthMiddleware = () =>
 
 router.get(
   '/metrics',
-  // Delay resolving IAuthMiddleware
-  (req: IAuthRequest, res: Response, next) =>
+  (req: IAuthRequest, res: Response, next: NextFunction) =>
     getAuthMiddleware().handle(req, res, next),
-  (req: IAuthRequest, res: Response) => {
-    // Set necessary headers for SSE
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    });
-
-    // Handle client disconnect
-    req.on('close', () => {
-      console.log('Client closed connection');
-    });
-
+  (req: IAuthRequest, res: Response, next: NextFunction) => {
     // Parse time period from query params, default to 90 days if not provided
     const timePeriod = parseInt(req.query.timePeriod as string) || 90;
 
-    getMetricsController().getAllMetrics(req, res, timePeriod);
+    // Check for error query parameter
+    if (req.query.error === 'true') {
+      const simulatedError = new Error('Simulated error');
+      simulatedError.name = 'SimulatedError';
+      return next(simulatedError);
+    }
+
+    getMetricsController().getAllMetrics(req, res, next, timePeriod);
   },
 );
 
