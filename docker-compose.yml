@@ -24,6 +24,8 @@ services:
       resources:
         limits:
           memory: 2G
+    networks:
+      - app-network
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
@@ -45,6 +47,8 @@ services:
       - mongodb_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
     command: mongod --bind_ip_all
+    networks:
+      - app-network
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
@@ -67,6 +71,8 @@ services:
     build:
       context: .
       target: unit-test
+    networks:
+      - app-network
     deploy:
       resources:
         limits:
@@ -86,6 +92,8 @@ services:
     build:
       context: .
       target: e2e-test
+    networks:
+      - app-network
     env_file:
       - .env.test
     environment:
@@ -138,3 +146,7 @@ volumes:
   mongodb_data:
   mongodb_test_data:
   node_modules:
+
+networks:
+  app-network:
+    driver: bridge
