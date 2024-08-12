@@ -20,8 +20,6 @@ jobs:
         run: npm ci
       - name: Debug TypeScript Config
         run: npx tsc --showConfig
-      - name: Debug Webpack Config
-        run: npx webpack --config webpack.config.cjs --stats-error-details
       - name: Build
         run: npm run build
       - name: Upload build artifacts
