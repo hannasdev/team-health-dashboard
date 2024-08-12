@@ -1,7 +1,9 @@
-//src/app.ts
+// src/app.ts
+
 import 'reflect-metadata';
 import cors from 'cors';
-import express, { Express, Request, Response } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
+import bodyParser from 'body-parser';
 import { inject, injectable } from 'inversify';
 import authRouter from './routes/auth.js';
 import healthCheckRouter from './routes/healthCheck.js';
@@ -9,9 +11,10 @@ import metricsRouter from './routes/metrics.js';
 import { IMongoDbClient } from './services/database/MongoDbClient.js';
 import { ILogger, IConfig } from './interfaces/index.js';
 import { TYPES } from './utils/types.js';
+import { ITeamHealthDashboardApp } from './interfaces/ITeamHealthDashboardApp.js';
 
 @injectable()
-export class TeamHealthDashboardApp {
+export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   public expressApp: Express;
 
   constructor(
@@ -21,7 +24,9 @@ export class TeamHealthDashboardApp {
   ) {
     this.expressApp = express();
     this.configureCors();
+    this.configureMiddleware();
     this.configureRoutes();
+    this.configureErrorHandling();
   }
 
   public async initialize(): Promise<void> {
@@ -55,6 +60,11 @@ export class TeamHealthDashboardApp {
     );
   }
 
+  private configureMiddleware(): void {
+    this.expressApp.use(bodyParser.json());
+    this.expressApp.use(bodyParser.urlencoded({ extended: true }));
+  }
+
   private configureRoutes(): void {
     this.expressApp.get('/', (req: Request, res: Response) => {
       res.send('Team Health Dashboard API');
@@ -63,5 +73,16 @@ export class TeamHealthDashboardApp {
     this.expressApp.use('/health', healthCheckRouter);
     this.expressApp.use('/api', metricsRouter);
     this.expressApp.use('/api/auth', authRouter);
+  }
+
+  private configureErrorHandling(): void {
+    this.expressApp.use(
+      (err: Error, req: Request, res: Response, _next: NextFunction) => {
+        this.logger.error('Unhandled error', err);
+        res
+          .status(500)
+          .json({ message: 'Internal server error', error: err.message });
+      },
+    );
   }
 }

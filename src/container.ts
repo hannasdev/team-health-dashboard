@@ -11,9 +11,10 @@
 import { container } from './appContainer.js';
 import { Config } from './config/config.js';
 import {
+  IApplication,
+  IAuthController,
+  IAuthMiddleware,
   IBcryptService,
-  IJwtService,
-  ILogger,
   ICacheService,
   IConfig,
   IErrorHandler,
@@ -21,15 +22,15 @@ import {
   IGitHubRepository,
   IGoogleSheetsClient,
   IGoogleSheetsRepository,
+  IHealthCheckController,
+  IJwtService,
+  ILogger,
   IMetricCalculator,
+  IMetricsController,
   IMetricsService,
   IProgressTracker,
+  ITeamHealthDashboardApp,
   IUserRepository,
-  IAuthMiddleware,
-  IApplication,
-  IHealthCheckController,
-  IAuthController,
-  IMetricsController,
 } from './interfaces/index.js';
 import { AuthMiddleware } from './middleware/AuthMiddleware.js';
 import { ErrorHandler } from './middleware/ErrorHandler.js';
@@ -64,6 +65,9 @@ container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
 container.bind<string>(TYPES.LogFormat).toConstantValue(config.LOG_FORMAT);
 
 // 2. Core Services and Utilities
+container
+  .bind<ITeamHealthDashboardApp>(TYPES.TeamHealthDashboardApp)
+  .to(TeamHealthDashboardApp);
 container.bind<ICacheService>(TYPES.CacheService).to(CacheService); // Often used by other services
 container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
 container.bind<IBcryptService>(TYPES.BcryptService).to(BcryptService);
