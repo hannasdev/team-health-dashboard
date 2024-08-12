@@ -48,7 +48,7 @@ jest.isolateModules(() => {
       if (global.gc) global.gc();
     });
 
-    it.skip('should fetch pull requests and calculate metrics', async () => {
+    it('should fetch pull requests and calculate metrics', async () => {
       const mockPRs: Partial<IPullRequest>[] = [
         { number: 1, createdAt: '2023-01-01T00:00:00Z' },
         { number: 2, createdAt: '2023-01-02T00:00:00Z' },
@@ -93,7 +93,7 @@ jest.isolateModules(() => {
       });
     });
 
-    it.skip('should fetch data with custom time period', async () => {
+    it('should fetch data with custom time period', async () => {
       const customTimePeriod = 30;
       const mockPRs: Partial<IPullRequest>[] = [
         { number: 1, createdAt: '2023-01-01T00:00:00Z' },
@@ -116,7 +116,7 @@ jest.isolateModules(() => {
       expect(result.timePeriod).toBe(customTimePeriod);
     });
 
-    it.skip('should use progress tracker and progress callback when provided', async () => {
+    it('should use progress tracker and progress callback when provided', async () => {
       const progressCallback = jest.fn();
       const mockPRs: Partial<IPullRequest>[] = [
         { number: 1, createdAt: '2023-01-01T00:00:00Z' },
@@ -145,7 +145,7 @@ jest.isolateModules(() => {
       );
     });
 
-    it.skip('should handle errors during fetch', async () => {
+    it('should handle errors during fetch', async () => {
       const errorMessage = 'API Error';
       mockGitHubRepository.fetchPullRequests.mockRejectedValue(
         new Error(errorMessage),
@@ -159,7 +159,7 @@ jest.isolateModules(() => {
       expect(mockMetricCalculator.calculateMetrics).not.toHaveBeenCalled();
     });
 
-    it.skip('should handle empty pull requests', async () => {
+    it('should handle empty pull requests', async () => {
       mockGitHubRepository.fetchPullRequests.mockResolvedValue({
         pullRequests: [],
         totalPRs: 0,

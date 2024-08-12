@@ -52,6 +52,7 @@ export class GitHubRepository
     let pullRequests: IPullRequest[] = [];
     let hasNextPage = true;
     let cursor: string | null = null;
+    let estimatedTotal = 0;
 
     const startTime = Date.now();
 
@@ -75,6 +76,11 @@ export class GitHubRepository
         );
         pullRequests = [...pullRequests, ...newPRs];
 
+        // Update estimated total after first fetch
+        if (estimatedTotal === 0) {
+          estimatedTotal = Math.max(100, newPRs.length * 2); // Assume at least one more page
+        }
+
         hasNextPage = response.repository.pullRequests.pageInfo.hasNextPage;
         cursor = response.repository.pullRequests.pageInfo.endCursor;
 
@@ -83,6 +89,10 @@ export class GitHubRepository
           Infinity,
           `Fetched ${pullRequests.length} pull requests`,
         );
+
+        if (pullRequests.length > estimatedTotal) {
+          estimatedTotal = pullRequests.length + 100; // Assume at least one more page
+        }
 
         if (
           newPRs.length > 0 &&

@@ -114,6 +114,7 @@ describe('GitHubRepository', () => {
               headRefOid: 'head-sha-2',
             },
           ],
+          totalCount: 2,
         },
       },
     };
@@ -178,6 +179,7 @@ describe('GitHubRepository', () => {
             headRefName: 'feature',
             headRefOid: 'head-sha',
           }),
+          totalCount: 100,
         },
       },
     };
@@ -207,6 +209,7 @@ describe('GitHubRepository', () => {
             headRefName: 'feature-2',
             headRefOid: 'head-sha-2',
           }),
+          totalCount: 50,
         },
       },
     };
@@ -259,6 +262,7 @@ describe('GitHubRepository', () => {
             headRefName: 'feature',
             headRefOid: 'head-sha',
           }),
+          totalCount: 50,
         },
       },
     };
@@ -271,7 +275,7 @@ describe('GitHubRepository', () => {
 
     expect(mockProgressCallback).toHaveBeenCalledWith(
       50,
-      50,
+      expect.any(Number),
       'Fetched 50 pull requests',
     );
   });

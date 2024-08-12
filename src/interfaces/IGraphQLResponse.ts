@@ -9,6 +9,7 @@ export interface IGraphQLResponse {
         endCursor: string | null;
       };
       nodes: IGraphQLPullRequest[];
+      totalCount: number;
     };
   };
 }
