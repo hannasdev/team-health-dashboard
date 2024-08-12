@@ -1,7 +1,7 @@
 // src/interfaces/IGitHubService.ts
-import { ProgressCallback } from '@/types';
+import { ProgressCallback } from '../types/index.js';
 
-import { IFetchDataResult } from './IFetchDataResult';
+import { IFetchDataResult } from './IFetchDataResult.js';
 
 export interface IGitHubService {
   fetchData(

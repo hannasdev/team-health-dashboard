@@ -1,8 +1,8 @@
 // src/interfaces/IGitHubRepository.ts
 
-import { ProgressCallback } from '@/types';
+import { ProgressCallback } from '../types/index.js';
 
-import { IPullRequest } from './IPullRequest';
+import { IPullRequest } from './IPullRequest.js';
 
 export interface IGitHubRepository {
   fetchPullRequests(

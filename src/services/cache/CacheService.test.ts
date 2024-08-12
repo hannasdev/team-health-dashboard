@@ -57,4 +57,24 @@ describe('CacheService', () => {
     expect(await mockCacheService.get('numberKey')).toBe(123);
     expect(await mockCacheService.get('objectKey')).toEqual({ foo: 'bar' });
   });
+
+  it('should expire items after TTL', async () => {
+    jest.useFakeTimers();
+    const key = 'expiringKey';
+    const value = 'expiringValue';
+    const ttl = 5; // 5 seconds
+
+    await mockCacheService.set(key, value, ttl);
+
+    // Item should still be available before TTL
+    expect(await mockCacheService.get(key)).toBe(value);
+
+    // Advance time by 6 seconds (just past TTL)
+    jest.advanceTimersByTime(6000);
+
+    // Item should now be expired
+    expect(await mockCacheService.get(key)).toBeNull();
+
+    jest.useRealTimers();
+  });
 });

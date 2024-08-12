@@ -1,4 +1,4 @@
-import { IMetric } from './IMetricModel';
+import { IMetric } from './IMetricModel.js';
 
 /**
  * Represents the result of fetching GitHub data.

@@ -1,5 +1,5 @@
 // src/interfaces/IGoogleSheetsService.ts
-import { IMetric } from './IMetricModel';
+import { IMetric } from './IMetricModel.js';
 
 export interface IGoogleSheetsService {
   fetchData(

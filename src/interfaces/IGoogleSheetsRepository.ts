@@ -1,5 +1,5 @@
-import { IMetric } from './IMetricModel';
-import { ProgressCallback } from '../types';
+import { IMetric } from './IMetricModel.js';
+import { ProgressCallback } from '../types/index.js';
 
 export interface IGoogleSheetsRepository {
   /**

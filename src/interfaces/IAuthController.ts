@@ -1,7 +1,7 @@
 // src/interfaces/IAuthController.ts
 import { Response } from 'express';
 
-import { IAuthRequest } from './IAuthRequest';
+import { IAuthRequest } from './IAuthRequest.js';
 
 interface IAuthController {
   login(req: IAuthRequest, res: Response): Promise<void>;
