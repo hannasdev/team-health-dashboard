@@ -109,7 +109,7 @@ services:
       - -c
       - |
         npx wait-on http://app:3000/health --timeout 30000 &&
-        node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --rootDir ./dist --testMatch "**/*.e2e-test.js"
+        node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/*.e2e.spec.js"
   # DB Test
   # - Similar to the db service, but for testing purposes.
   # - Uses a different volume for data and exposes port 27018.
