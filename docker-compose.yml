@@ -27,7 +27,7 @@ services:
       - node_modules:/app/node_modules
 
   db:
-    image: mongo:latest
+    image: mongo:8
     volumes:
       - mongodb_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
@@ -44,23 +44,34 @@ services:
       resources:
         limits:
           memory: 2G
+    ports:
+      - '27017:27017'
 
   unit-test-runner:
     build:
       context: .
       target: unit-test
-    volumes:
-      - node_modules:/app/node_modules
     deploy:
       resources:
         limits:
           memory: 2G
+    command:
+      - node
+      - --experimental-vm-modules
+      - node_modules/.bin/jest
+      - --config
+      - jest.config.js
+      - --testMatch
+      - '**/dist/**/*.test.js'
 
   e2e-test-runner:
+    build:
+      context: .
+      target: e2e-test
     env_file:
       - .env.test
     environment:
-      - DATABASE_URL=mongodb://db:27017/myapp-test
+      - DATABASE_URL=mongodb://root:example@db-test:27017/myapp-test?authSource=admin
       - GOOGLE_SHEETS_ID=test-id
       - GOOGLE_SHEETS_CLIENT_EMAIL=test-user
       - GOOGLE_SHEETS_PRIVATE_KEY=test-key
@@ -68,14 +79,8 @@ services:
       - GITHUB_OWNER=test-user
       - GITHUB_REPO=test-org/test-repo
       - CORS_ORIGIN=http://localhost:3000,null
-    build:
-      context: .
-      target: e2e-test
     depends_on:
-      - db
-      - app
-    volumes:
-      - node_modules:/app/node_modules
+      - db-test
     deploy:
       resources:
         limits:
@@ -84,9 +89,29 @@ services:
       - sh
       - -c
       - |
-        npm ci &&
         npx wait-on http://app:3000/health --timeout 30000 &&
-        node --max-old-space-size=4096 node_modules/.bin/jest --config jest.config.ts --selectProjects e2e
+        node --experimental-vm-modules node_modules/.bin/jest --config jest.config.js --testMatch "**/dist/**/*.e2e.spec.js"
+
+  db-test:
+    image: mongo:8
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
+    command: mongod --bind_ip_all
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    ports:
+      - '27018:27017'
 
 volumes:
   mongodb_data:

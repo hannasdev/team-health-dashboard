@@ -1,11 +1,10 @@
 # Ignore node_modules in the host, we'll install dependencies in the container
 node_modules
+npm-debug.log
 
 # Ignore logs
 logs
-npm-debug.log
-yarn-debug.log
-yarn-error.log
+*.log
 
 # Ignore version control files
 .git
@@ -14,8 +13,11 @@ yarn-error.log
 # Ignore editor directories
 .vscode
 .idea
+*.env*
+!.env.example
 
 # Ignore test and coverage files
+__tests__
 *.test.ts
 *.spec.ts
 coverage
@@ -30,3 +32,20 @@ dist
 
 # Ignore the solar-imprint.json file
 solar-imprint.json
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Other unnecessary files
+LICENSE
+*.md
+*.yml
+*.yaml
+.editorconfig
+.prettierrc
+.eslintrc
