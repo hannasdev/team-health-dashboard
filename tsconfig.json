@@ -1,48 +1,22 @@
 {
   "compilerOptions": {
-    "allowJs": true,
-    "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
-    "checkJs": true,
-    "declaration": false,
-    "emitDeclarationOnly": false,
-    "emitDecoratorMetadata": true,
-    "esModuleInterop": true,
-    "experimentalDecorators": true,
-    "forceConsistentCasingInFileNames": true,
-    "module": "ESNext",
+    "target": "ES2020",
+    "module": "ES2020",
     "moduleResolution": "node",
-    "noImplicitAny": true,
-    "outDir": "./dist",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    "resolveJsonModule": true,
-    "rootDir": "./",
-    "skipLibCheck": true,
-    "sourceMap": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "strict": true,
-    "target": "ESNext",
-    "types": ["reflect-metadata", "jest", "node"],
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./src",
+    "sourceMap": true,
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "types": ["jest", "node"]
   },
-  "include": [
-    "src/**/*",
-    "jest.setup.ts",
-    "e2e-setup.ts",
-    "jest.config.js",
-    "jest.config.e2e.mjs"
-  ],
-  "exclude": [
-    "node_modules",
-    "./dist",
-    "webpack.config.base.js",
-    "webpack.config.dev.js",
-    "webpack.config.prod.js"
-  ]
+  "include": ["src/**/*.ts", "src/types/**/*.d.ts", "src/global.d.ts"],
+  "exclude": ["node_modules", "dist", "*.config.js", ".eslintrc.cjs"]
 }

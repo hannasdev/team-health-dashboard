@@ -1,5 +1,5 @@
 // src/controllers/AuthController.ts
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
 import type {
@@ -9,8 +9,8 @@ import type {
   IAuthController,
   IBcryptService,
   IJwtService,
-} from '@/interfaces';
-import { TYPES } from '@/utils/types';
+} from '../interfaces/index.js';
+import { TYPES } from '../utils/types.js';
 
 @injectable()
 export class AuthController implements IAuthController {
@@ -22,7 +22,11 @@ export class AuthController implements IAuthController {
     @inject(TYPES.JwtService) private jwtService: IJwtService,
   ) {}
 
-  public async login(req: Request, res: Response): Promise<void> {
+  public async login(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     const { email, password } = req.body;
     try {
       const user = await this.userRepository.findByEmail(email);
@@ -37,11 +41,15 @@ export class AuthController implements IAuthController {
       res.json({ token });
     } catch (error) {
       this.logger.error('Error in login:', error as Error);
-      res.status(500).json({ message: 'Internal server error' });
+      next(error);
     }
   }
 
-  public async register(req: Request, res: Response): Promise<void> {
+  public async register(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
     const { email, password } = req.body;
     try {
       const existingUser = await this.userRepository.findByEmail(email);
@@ -52,10 +60,11 @@ export class AuthController implements IAuthController {
       const hashedPassword = await this.bcryptService.hash(password, 10);
       const user = await this.userRepository.create(email, hashedPassword);
       const token = this.generateToken(user.id, user.email);
+
       res.status(201).json({ token });
     } catch (error) {
       this.logger.error('Error in register:', error as Error);
-      res.status(500).json({ message: 'Internal server error' });
+      next(error);
     }
   }
 

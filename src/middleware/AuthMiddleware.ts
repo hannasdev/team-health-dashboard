@@ -7,8 +7,8 @@ import type {
   IConfig,
   IAuthMiddleware,
   IJwtService,
-} from '@/interfaces';
-import { TYPES } from '@/utils/types';
+} from '../interfaces/index.js';
+import { TYPES } from '../utils/types.js';
 
 @injectable()
 export class AuthMiddleware implements IAuthMiddleware {

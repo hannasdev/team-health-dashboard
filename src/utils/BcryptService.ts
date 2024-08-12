@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt';
 import { injectable } from 'inversify';
 
-import { IBcryptService } from '@/interfaces';
+import { IBcryptService } from '../interfaces/index.js';
 
 @injectable()
 export class BcryptService implements IBcryptService {

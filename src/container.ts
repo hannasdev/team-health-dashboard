@@ -8,20 +8,13 @@
  * @module Container
  */
 
-import { Container } from 'inversify';
-
-import { GitHubAdapter } from '@/adapters/GitHubAdapter';
-import { GoogleSheetsAdapter } from '@/adapters/GoogleSheetAdapter';
-import { Config } from '@/config/config';
+import { container } from './appContainer.js';
+import { Config } from './config/config.js';
 import {
-  AuthController,
+  IApplication,
+  IAuthController,
+  IAuthMiddleware,
   IBcryptService,
-  IJwtService,
-} from '@/controllers/AuthController';
-import { HealthCheckController } from '@/controllers/HealthCheckController';
-import { MetricsController } from '@/controllers/MetricsController';
-import {
-  ILogger,
   ICacheService,
   IConfig,
   IErrorHandler,
@@ -29,84 +22,98 @@ import {
   IGitHubRepository,
   IGoogleSheetsClient,
   IGoogleSheetsRepository,
+  IHealthCheckController,
+  IJwtService,
+  ILogger,
   IMetricCalculator,
+  IMetricsController,
   IMetricsService,
   IProgressTracker,
-  IAuthController,
-  IHealthCheckController,
-  IMetricsController,
+  ITeamHealthDashboardApp,
   IUserRepository,
-  IAuthMiddleware,
-} from '@/interfaces';
-import { AuthMiddleware } from '@/middleware/AuthMiddleware';
-import { ErrorHandler } from '@/middleware/ErrorHandler';
-import { GitHubRepository } from '@/repositories/github/GitHubRepository';
-import { GoogleSheetsRepository } from '@/repositories/googlesheets/GoogleSheetsRepository';
-import { UserRepository } from '@/repositories/user/UserRepository';
-import { CacheService } from '@/services/cache/CacheService';
-import { MetricCalculator } from '@/services/metrics/MetricsCalculator';
-import { MetricsService } from '@/services/metrics/MetricsService';
-import { ProgressTracker } from '@/services/progress/ProgressTracker';
-import { BcryptService } from '@/utils/BcryptService';
-import { JwtService } from '@/utils/JwtService';
-import { Logger } from '@/utils/Logger';
-import { TYPES } from '@/utils/types';
+} from './interfaces/index.js';
+import { AuthMiddleware } from './middleware/AuthMiddleware.js';
+import { ErrorHandler } from './middleware/ErrorHandler.js';
+import { GitHubRepository } from './repositories/github/GitHubRepository.js';
+import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository.js';
+import { UserRepository } from './repositories/user/UserRepository.js';
+import { CacheService } from './services/cache/CacheService.js';
+import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
+import { MetricsService } from './services/metrics/MetricsService.js';
+import { ProgressTracker } from './services/progress/ProgressTracker.js';
+import { BcryptService } from './utils/BcryptService.js';
+import { JwtService } from './utils/JwtService.js';
+import { Logger } from './utils/Logger.js';
+import { TYPES } from './utils/types.js';
+import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
+import {
+  MongoDbClient,
+  IMongoDbClient,
+} from './services/database/MongoDbClient.js';
+import { AuthController } from './controllers/AuthController.js';
+import { HealthCheckController } from './controllers/HealthCheckController.js';
+import { MetricsController } from './controllers/MetricsController.js';
+import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter.js';
+import { GitHubAdapter } from './adapters/GitHubAdapter.js';
 
-const container = new Container();
 const config = Config.getInstance();
 
-// Config
+// 1. Configuration and Logging (Fundamental Dependencies)
 container.bind<IConfig>(TYPES.Config).toConstantValue(config);
-
-// Health Check
-container
-  .bind<IHealthCheckController>(TYPES.HealthCheckController)
-  .to(HealthCheckController);
-
-// Logger
 container.bind<ILogger>(TYPES.Logger).to(Logger);
 container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
 container.bind<string>(TYPES.LogFormat).toConstantValue(config.LOG_FORMAT);
 
-// ErrorHandler
-container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
+// 2. Core Services and Utilities
+container
+  .bind<ITeamHealthDashboardApp>(TYPES.TeamHealthDashboardApp)
+  .to(TeamHealthDashboardApp);
+container.bind<ICacheService>(TYPES.CacheService).to(CacheService); // Often used by other services
+container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
+container.bind<IBcryptService>(TYPES.BcryptService).to(BcryptService);
+container.bind<IJwtService>(TYPES.JwtService).to(JwtService);
+container
+  .bind<IMongoDbClient>(TYPES.MongoDbClient)
+  .to(MongoDbClient)
+  .inSingletonScope();
 
-// CacheService
-container.bind<ICacheService>(TYPES.CacheService).to(CacheService);
-
-// GoogleSheets
+// 3. Adapters (Clients for external services)
+container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
 container
   .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
   .to(GoogleSheetsAdapter);
+
+// 3. Repositories (Depend on config, logger, and potentially cache)
+container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
+container.bind<IGitHubRepository>(TYPES.GitHubRepository).to(GitHubRepository);
 container
   .bind<IGoogleSheetsRepository>(TYPES.GoogleSheetsRepository)
   .to(GoogleSheetsRepository);
 
-// GitHub
-container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
-container.bind<IGitHubRepository>(TYPES.GitHubRepository).to(GitHubRepository);
-
-// Metrics
+// 4. Metric Calculation (Can depend on repositories and other services)
 container.bind<IMetricCalculator>(TYPES.MetricCalculator).to(MetricCalculator);
+
+// 6.  Services (Depend on repositories, metric calculators, and other services)
 container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService);
+
+// 7.  Controllers (Depend on services)
+container
+  .bind<IHealthCheckController>(TYPES.HealthCheckController)
+  .to(HealthCheckController);
+container.bind<IAuthController>(TYPES.AuthController).to(AuthController);
 container
   .bind<IMetricsController>(TYPES.MetricsController)
   .to(MetricsController);
 
-// Progress Tracking
-container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
-
-// User Repository
-container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
-
-// Auth Controller
-container.bind<IAuthController>(TYPES.AuthController).to(AuthController);
-
-// Auth Middleware
+// 8.  Middleware (Can depend on services)
+container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
 container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
+// ... bind other middleware
 
-// BcryptService and JwtService
-container.bind<IBcryptService>(TYPES.BcryptService).to(BcryptService);
-container.bind<IJwtService>(TYPES.JwtService).to(JwtService);
+// 9. Application (Depends on middleware, routers, and potentially other services)
+container
+  .bind<IApplication>(TYPES.Application)
+  .to(TeamHealthDashboardApp)
+  .inSingletonScope();
 
 export { container };

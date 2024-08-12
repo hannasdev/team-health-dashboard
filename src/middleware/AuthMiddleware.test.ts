@@ -8,11 +8,11 @@ import jwt from 'jsonwebtoken'; // Add this import
 import {
   createMockAuthRequest,
   createMockAuthMiddlewareResponse,
-} from '@/__mocks__/mockFactories';
-import { Config } from '@/config/config';
-import { IAuthRequest, IConfig, IAuthMiddleware } from '@/interfaces';
-import { AuthMiddleware } from '@/middleware/AuthMiddleware';
-import { TYPES } from '@/utils/types';
+} from '../__mocks__/mockFactories';
+import { Config } from '../config/config.js';
+import { IAuthRequest, IConfig, IAuthMiddleware } from '../interfaces/index.js';
+import { AuthMiddleware } from '../middleware/AuthMiddleware.js';
+import { TYPES } from '../utils/types.js';
 
 describe('AuthMiddleware', () => {
   let mockRequest: IAuthRequest;

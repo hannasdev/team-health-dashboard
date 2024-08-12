@@ -1,7 +1,6 @@
-// jest.setup.ts
+// setupTest.ts
 import 'reflect-metadata';
 import { TextEncoder, TextDecoder } from 'util';
-
 import { jest } from '@jest/globals';
 
 global.TextEncoder = TextEncoder;
@@ -21,4 +20,4 @@ process.env.LOG_LEVEL = 'info';
 process.env.LOG_FORMAT = 'json';
 process.env.LOG_FILE_PATH = './logs';
 
-global.jest = jest;
+(global as any).jest = jest;

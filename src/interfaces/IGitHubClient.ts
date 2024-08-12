@@ -1,5 +1,5 @@
 // src/interfaces/IGitHubClient.ts
-import { IGraphQLResponse } from './IGraphQLResponse';
+import { IGraphQLResponse } from './IGraphQLResponse.js';
 
 export interface IGitHubClient {
   graphql<T = IGraphQLResponse>(

@@ -1,9 +1,9 @@
 module.exports = {
   root: true,
   env: {
-    browser: true,
-    es2021: true,
-    node: true,
+    browser: false, // Not needed for backend
+    node: true, // Node environment
+    es2022: true, // Latest ECMAScript version supported by Node 22.16
   },
   extends: [
     'eslint:recommended',
@@ -13,7 +13,13 @@ module.exports = {
     'plugin:import-x/warnings',
     'prettier',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs'],
+  ignorePatterns: [
+    'dist',
+    'node_modules',
+    '.eslintrc.cjs',
+    'build',
+    'e2e/**', // Ignore E2E test files
+  ],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 'latest',
@@ -21,7 +27,7 @@ module.exports = {
     project: './tsconfig.json',
     tsconfigRootDir: __dirname,
   },
-  plugins: ['@typescript-eslint', 'import-x'],
+  plugins: ['@typescript-eslint', 'import-x', 'prettier'],
   rules: {
     'import-x/order': [
       'error',
@@ -48,11 +54,11 @@ module.exports = {
     ],
     '@typescript-eslint/no-unused-vars': 'warn',
     '@typescript-eslint/no-explicit-any': 'warn',
-    // Add other rules here
+    'prettier/prettier': 'error',
   },
   settings: {
     'import-x/parsers': {
-      '@typescript-eslint/parser': ['.ts', '.tsx'],
+      '@typescript-eslint/parser': ['.ts'],
     },
     'import-x/resolver': {
       typescript: {
@@ -60,7 +66,7 @@ module.exports = {
         project: './tsconfig.json',
       },
       node: {
-        extensions: ['.js', '.jsx', '.ts', '.tsx'],
+        extensions: ['.js', '.ts', '.mjs', '.cjs'],
       },
     },
   },
@@ -70,6 +76,7 @@ module.exports = {
       parser: '@typescript-eslint/parser',
       parserOptions: {
         project: './tsconfig.json',
+        tsconfigRootDir: __dirname,
       },
     },
     {

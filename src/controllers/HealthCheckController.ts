@@ -1,16 +1,25 @@
 import { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
 
-import type { ILogger, IHealthCheckController } from '@/interfaces';
-import { TYPES } from '@/utils/types';
+import type { ILogger, IHealthCheckController } from '../interfaces/index.js';
+import { TYPES } from '../utils/types.js';
+import { IMongoDbClient } from '../services/database/MongoDbClient.js';
 
 @injectable()
 export class HealthCheckController implements IHealthCheckController {
-  constructor(@inject(TYPES.Logger) private logger: ILogger) {}
+  constructor(
+    @inject(TYPES.Logger) private logger: ILogger,
+    @inject(TYPES.MongoDbClient) private mongoClient: IMongoDbClient,
+  ) {}
 
-  public getHealth(req: Request, res: Response): void {
+  public async getHealth(req: Request, res: Response): Promise<void> {
     try {
-      // Here you could add checks for database connectivity, external services, etc.
+      // Check if we can get the database object
+      const db = this.mongoClient.getDb();
+
+      // Perform a simple database operation to ensure connectivity
+      await db.command({ ping: 1 });
+
       const status = 'OK';
       this.logger.info('Health check performed', { status });
       res.status(200).json({ status });

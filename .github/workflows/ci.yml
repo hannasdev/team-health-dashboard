@@ -2,54 +2,110 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: '*'
   pull_request:
     branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
-      GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
-      GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
-      GITHUB_TOKEN: ''
-      GITHUB_OWNER: ''
-      GITHUB_REPO: ''
-      PORT: ${{ secrets.PORT }}
-      CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      LOG_LEVEL: info
-      LOG_FORMAT: json
-      LOG_FILE_PATH: './logs'
     steps:
       - uses: actions/checkout@v3
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20.16.0'
-      - name: Clean install
-        run: |
-          rm -rf node_modules
-          npm ci --legacy-peer-deps
-      - name: Debug TypeScript Config
-        run: npx tsc --showConfig
-      - name: Debug Webpack Config
-        run: npx webpack --config webpack.config.prod.js --stats-error-details
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
       - name: Build
-        run: npx webpack --config webpack.config.prod.js
-      - name: Run tests
-        run: npm test
-        env:
-          GOOGLE_SHEETS_ID: 'test-id'
-          GOOGLE_SHEETS_CLIENT_EMAIL: 'test-user'
-          GOOGLE_SHEETS_PRIVATE_KEY: 'test-key'
-          GITHUB_TOKEN: 'github_pat_test'
-          GITHUB_OWNER: 'test-user'
-          GITHUB_REPO: 'test-org/test-repo'
-          PORT: 3000
-          CORS_ORIGIN: http://localhost:3000,null
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          LOG_LEVEL: info
-          LOG_FORMAT: json
-          LOG_FILE_PATH: './logs'
+        run: npm run build
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: dist
+
+  test-unit:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.16.0'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run unit tests
+        run: npm run test:unit
+
+  e2e-test:
+    needs: [build, test-unit]
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: mongo:latest
+        ports:
+          - '27017:27017'
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20.16.0'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist
+      - name: Start application
+        run: npm start &
+      - name: Wait for services
+        run: |
+          npx wait-on http://localhost:3000/health --timeout 30000
+          npx wait-on tcp:localhost:27017 --timeout 30000
+      - name: Run e2e tests
+        run: npm run test:e2e
+    env:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+      GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
+      GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_OWNER: ${{ secrets.GITHUB_OWNER }}
+      GITHUB_REPO: ${{ secrets.GITHUB_REPO }}
+      PORT: ${{ secrets.PORT }}
+      CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+      LOG_FILE_PATH: './logs'
+
+  docker-build-and-push:
+    needs: [build, test-unit, e2e-test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        if: github.event_name == 'push'
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/your-image-name:${{ github.sha }}
+          build-args: |
+            NODE_ENV=production

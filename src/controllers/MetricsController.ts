@@ -1,5 +1,5 @@
 // src/controllers/MetricsController.ts
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
 import type {
@@ -7,9 +7,9 @@ import type {
   IMetricsController,
   ILogger,
   IMetric,
-} from '@/interfaces';
-import { ProgressCallback } from '@/types';
-import { TYPES } from '@/utils/types';
+} from '../interfaces/index.js';
+import { ProgressCallback } from '../types/index.js';
+import { TYPES } from '../utils/types.js';
 
 /**
  * MetricsController
@@ -49,22 +49,74 @@ export class MetricsController implements IMetricsController {
   public getAllMetrics = async (
     req: Request,
     res: Response,
+    next: NextFunction,
     timePeriod: number,
   ): Promise<void> => {
-    const sendEvent = (event: string, data: any) => {
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    let isClientConnected = true;
+    let isResponseEnded = false;
+
+    const endResponse = () => {
+      if (!isResponseEnded) {
+        res.end();
+        isResponseEnded = true;
+      }
     };
 
-    const progressCallback: ProgressCallback = (
-      current: number,
-      total: number,
-      message: string,
-    ) => {
+    const handleClientDisconnection = () => {
+      isClientConnected = false;
+      this.logger.info('Client disconnected');
+      endResponse();
+    };
+
+    const setupSSE = () => {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      });
+      res.write(':\n\n');
+    };
+
+    const sendEvent = (event: string, data: any) => {
+      if (isClientConnected && !isResponseEnded) {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      }
+    };
+
+    const progressCallback: ProgressCallback = (current, total, message) => {
       sendEvent('progress', {
         progress: Math.min(Math.round((current / total) * 100), 100),
         message,
       });
     };
+
+    const handleTimeout = () => {
+      const timeoutError = new Error('Operation timed out');
+      timeoutError.name = 'TimeoutError';
+      handleError(timeoutError);
+    };
+
+    const handleError = (error: Error) => {
+      this.logger.error('Error in MetricsController:', error);
+      if (isClientConnected && !isResponseEnded) {
+        sendEvent('error', {
+          success: false,
+          errors: [
+            {
+              source: 'MetricsController',
+              message: error.message || 'An unknown error occurred',
+            },
+          ],
+          status: 500,
+        });
+        next(error);
+      }
+    };
+
+    // Setup
+    req.on('close', handleClientDisconnection);
+    setupSSE();
+    const timeout = setTimeout(handleTimeout, 120000); // 2 minutes timeout
 
     try {
       const result = await this.metricsService.getAllMetrics(
@@ -72,43 +124,20 @@ export class MetricsController implements IMetricsController {
         timePeriod,
       );
 
-      // Add type annotation if needed:
-      const responseData: {
-        success: true;
-        data: IMetric[];
-        errors: { source: string; message: string }[];
-        githubStats: {
-          totalPRs: number;
-          fetchedPRs: number;
-          timePeriod: number;
-        };
-        status: number;
-      } = {
-        success: true,
-        data: result.metrics,
-        errors: result.errors,
-        githubStats: result.githubStats,
-        status: result.errors.length > 0 ? 207 : 200,
-      };
-
-      sendEvent('result', responseData);
+      if (isClientConnected && !isResponseEnded) {
+        sendEvent('result', {
+          success: true,
+          data: result.metrics,
+          errors: result.errors,
+          githubStats: result.githubStats,
+          status: result.errors.length > 0 ? 207 : 200,
+        });
+        endResponse();
+      }
     } catch (error) {
-      this.logger.error('Error in MetricsController:', error as Error);
-      sendEvent('error', {
-        success: false,
-        errors: [
-          {
-            source: 'MetricsController',
-            message:
-              error instanceof Error
-                ? error.message
-                : 'An unknown error occurred',
-          },
-        ],
-        status: 500,
-      });
+      handleError(error as Error);
     } finally {
-      res.end();
+      clearTimeout(timeout);
     }
   };
 }

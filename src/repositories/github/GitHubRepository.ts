@@ -10,10 +10,10 @@ import type {
   IGraphQLResponse,
   IGraphQLPullRequest,
   ILogger,
-} from '@/interfaces';
-import type { ProgressCallback } from '@/types';
-import { Cacheable, CacheableClass } from '@/utils/CacheDecorator';
-import { TYPES } from '@/utils/types';
+} from '../../interfaces/index.js';
+import type { ProgressCallback } from '../../types/index.js';
+import { Cacheable, CacheableClass } from '../../utils/CacheDecorator.js';
+import { TYPES } from '../../utils/types.js';
 
 @injectable()
 export class GitHubRepository
@@ -52,6 +52,7 @@ export class GitHubRepository
     let pullRequests: IPullRequest[] = [];
     let hasNextPage = true;
     let cursor: string | null = null;
+    let estimatedTotal = 0;
 
     const startTime = Date.now();
 
@@ -75,6 +76,11 @@ export class GitHubRepository
         );
         pullRequests = [...pullRequests, ...newPRs];
 
+        // Update estimated total after first fetch
+        if (estimatedTotal === 0) {
+          estimatedTotal = Math.max(100, newPRs.length * 2); // Assume at least one more page
+        }
+
         hasNextPage = response.repository.pullRequests.pageInfo.hasNextPage;
         cursor = response.repository.pullRequests.pageInfo.endCursor;
 
@@ -83,6 +89,10 @@ export class GitHubRepository
           Infinity,
           `Fetched ${pullRequests.length} pull requests`,
         );
+
+        if (pullRequests.length > estimatedTotal) {
+          estimatedTotal = pullRequests.length + 100; // Assume at least one more page
+        }
 
         if (
           newPRs.length > 0 &&

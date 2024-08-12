@@ -2,26 +2,27 @@
 import { IncomingHttpHeaders } from 'http';
 
 import { Request, Response } from 'express';
-import { MockedObject } from 'jest-mock';
 
 import {
   IAuthRequest,
   ICacheService,
   IConfig,
   IFetchDataResult,
+  IGitHubClient,
   IGitHubRepository,
   IGitHubService,
+  IGoogleSheetsClient,
   IGoogleSheetsRepository,
   IGoogleSheetsService,
-  IGoogleSheetsClient,
+  IGraphQLResponse,
   ILogger,
   IMetric,
   IMetricCalculator,
   IMetricsService,
   IProgressTracker,
   IPullRequest,
-} from '@/interfaces';
-import { UserRepository } from '@/repositories/user/UserRepository';
+} from '../interfaces/index.js';
+import { UserRepository } from '../repositories/user/UserRepository.js';
 
 export const createMockGoogleSheetsClient =
   (): jest.Mocked<IGoogleSheetsClient> => ({
@@ -200,25 +201,32 @@ export function createMockRequest(
 
 export const createMockResponse = () => {
   const res: Partial<Response> = {
-    type: jest.fn().mockReturnThis(),
-    header: jest.fn().mockReturnThis(),
+    append: jest.fn().mockReturnThis(),
+    attachment: jest.fn().mockReturnThis(),
+    charset: '',
     clearCookie: jest.fn().mockReturnThis(),
+    contentType: jest.fn().mockReturnThis(),
     cookie: jest.fn().mockReturnThis(),
+    download: jest.fn(),
     format: jest.fn(),
     get: jest.fn(),
+    header: jest.fn().mockReturnThis(),
+    headersSent: false,
     links: jest.fn().mockReturnThis(),
+    locals: {},
     location: jest.fn().mockReturnThis(),
     redirect: jest.fn().mockReturnThis(),
     render: jest.fn(),
     set: jest.fn().mockReturnThis(),
+    type: jest.fn().mockReturnThis(),
     vary: jest.fn().mockReturnThis(),
-    append: jest.fn().mockReturnThis(),
-    attachment: jest.fn().mockReturnThis(),
-    contentType: jest.fn().mockReturnThis(),
-    download: jest.fn(),
-    headersSent: false,
-    locals: {},
-    charset: '',
+    write: jest.fn().mockReturnThis(),
+    writeHead: jest.fn().mockReturnThis(),
+    end: jest.fn().mockReturnThis(),
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn().mockReturnThis(),
+    send: jest.fn().mockReturnThis(),
+    sendStatus: jest.fn().mockReturnThis(),
   };
 
   res.status = jest.fn().mockReturnValue(res);
@@ -285,14 +293,87 @@ export const createMockGitHubRepository =
     }),
   });
 
-export const createMockCacheService = (): jest.Mocked<ICacheService> => ({
-  get: jest.fn(),
-  set: jest.fn(),
-  delete: jest.fn(),
-  clear: jest.fn(),
-});
-
 export const createMockGoogleSheetsRepository =
   (): jest.Mocked<IGoogleSheetsRepository> => ({
     fetchMetrics: jest.fn(),
   });
+
+export const createMockCacheService = (): jest.Mocked<ICacheService> => {
+  const cache = new Map<string, { value: any; expiry: number }>();
+
+  return {
+    get: jest.fn(async (key: string) => {
+      const item = cache.get(key);
+      if (!item) return null;
+      if (item.expiry < Date.now()) {
+        cache.delete(key);
+        return null;
+      }
+      return item.value;
+    }),
+    set: jest.fn(async (key: string, value: any, ttl?: number) => {
+      const expiry = ttl ? Date.now() + ttl * 1000 : Infinity;
+      cache.set(key, { value, expiry });
+    }),
+    delete: jest.fn((key: string) => {
+      cache.delete(key);
+    }),
+    clear: jest.fn(() => {
+      cache.clear();
+    }),
+  };
+};
+
+export function createMockGitHubClient(): jest.Mocked<IGitHubClient> {
+  return {
+    graphql: jest
+      .fn()
+      .mockImplementation(
+        async <T = IGraphQLResponse>(
+          query: string,
+          variables?: Record<string, any>,
+        ): Promise<T> => {
+          // Default mock implementation
+          return {} as T;
+        },
+      ),
+  };
+}
+
+export function createMockMetricsRequest(
+  overrides: Partial<Request> = {},
+): Request {
+  const mockRequest = {
+    app: {} as any,
+    baseUrl: '',
+    body: {},
+    cookies: {},
+    fresh: false,
+    hostname: '',
+    ip: '',
+    ips: [],
+    method: 'GET',
+    originalUrl: '',
+    params: {},
+    path: '',
+    protocol: 'http',
+    query: {},
+    route: {} as any,
+    secure: false,
+    signedCookies: {},
+    stale: false,
+    subdomains: [],
+    xhr: false,
+    accepts: jest.fn(),
+    acceptsCharsets: jest.fn(),
+    acceptsEncodings: jest.fn(),
+    acceptsLanguages: jest.fn(),
+    get: jest.fn(),
+    header: jest.fn(),
+    is: jest.fn(),
+    range: jest.fn(),
+    ...overrides,
+  } as Request;
+
+  return mockRequest;
+}

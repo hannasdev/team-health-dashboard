@@ -1,37 +1,34 @@
 // src/routes/metrics.ts
-import { Response, Router } from 'express';
-
-import { container } from '@/container';
-import { MetricsController } from '@/controllers/MetricsController';
-import { IAuthRequest, IAuthMiddleware } from '@/interfaces';
-import { TYPES } from '@/utils/types';
+import { Response, Router, NextFunction } from 'express';
+import { container } from '../container.js';
+import { MetricsController } from '../controllers/MetricsController.js';
+import { IAuthRequest, IAuthMiddleware } from '../interfaces/index.js';
+import { TYPES } from '../utils/types.js';
 
 const router = Router();
-const metricsController = container.get<MetricsController>(
-  TYPES.MetricsController,
-);
-const authMiddleware = container.get<IAuthMiddleware>(TYPES.AuthMiddleware);
+
+const getMetricsController = () =>
+  container.get<MetricsController>(TYPES.MetricsController);
+
+const getAuthMiddleware = () =>
+  container.get<IAuthMiddleware>(TYPES.AuthMiddleware);
 
 router.get(
   '/metrics',
-  authMiddleware.handle,
-  (req: IAuthRequest, res: Response) => {
-    // Set necessary headers for SSE
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    });
-
-    // Handle client disconnect
-    req.on('close', () => {
-      console.log('Client closed connection');
-    });
-
+  (req: IAuthRequest, res: Response, next: NextFunction) =>
+    getAuthMiddleware().handle(req, res, next),
+  (req: IAuthRequest, res: Response, next: NextFunction) => {
     // Parse time period from query params, default to 90 days if not provided
     const timePeriod = parseInt(req.query.timePeriod as string) || 90;
 
-    metricsController.getAllMetrics(req, res, timePeriod);
+    // Check for error query parameter
+    if (req.query.error === 'true') {
+      const simulatedError = new Error('Simulated error');
+      simulatedError.name = 'SimulatedError';
+      return next(simulatedError);
+    }
+
+    getMetricsController().getAllMetrics(req, res, next, timePeriod);
   },
 );
 
