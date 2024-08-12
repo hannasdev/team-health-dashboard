@@ -42,8 +42,8 @@ describe('API E2E Tests', () => {
         headers: { Authorization: `Bearer ${authToken}` },
       });
 
-      // es.onopen = () => console.log('Connection opened');
-      // es.onerror = (err: Event) => console.error('EventSource error:', err);
+      es.onopen = () => console.log('Connection opened');
+      es.onerror = (err: Event) => console.error('EventSource error:', err);
 
       return es;
     };
@@ -89,38 +89,38 @@ describe('API E2E Tests', () => {
         }
       };
 
-      // es.onopen = () => {
-      //   console.log('Connection opened');
-      // };
+      es.onopen = () => {
+        console.log('Connection opened');
+      };
 
-      // es.onmessage = (event: MessageEvent) => {
-      //   console.log('Received message:', event.data);
-      //   try {
-      //     const data = JSON.parse(event.data);
-      //     events.push(data);
-      //     if (data.progress !== undefined) {
-      //       progressReceived = true;
-      //     }
-      //     checkCompletion();
-      //   } catch (error) {
-      //     console.error('Error parsing message:', error);
-      //   }
-      // };
+      es.onmessage = (event: MessageEvent) => {
+        console.log('Received message:', event.data);
+        try {
+          const data = JSON.parse(event.data);
+          events.push(data);
+          if (data.progress !== undefined) {
+            progressReceived = true;
+          }
+          checkCompletion();
+        } catch (error) {
+          console.error('Error parsing message:', error);
+        }
+      };
 
-      // es.onerror = (err: Event) => {
-      //   console.error('EventSource error:', err);
-      //   // If we've already received the result, this error is expected (connection closed)
-      //   if (resultReceived) {
-      //     es.close();
-      //     done();
-      //   } else {
-      //     es.close();
-      //     done(err);
-      //   }
-      // };
+      es.onerror = (err: Event) => {
+        console.error('EventSource error:', err);
+        // If we've already received the result, this error is expected (connection closed)
+        if (resultReceived) {
+          es.close();
+          done();
+        } else {
+          es.close();
+          done(err);
+        }
+      };
 
       es.addEventListener('result', (event: MessageEvent) => {
-        // console.log('Received result event:', event.data);
+        console.log('Received result event:', event.data);
         try {
           const resultData = JSON.parse(event.data);
           expect(resultData.success).toBe(true);
@@ -197,6 +197,7 @@ describe('API E2E Tests', () => {
           doneWithTimeout();
         } catch (error) {
           console.error('Error parsing error event:', error);
+
           doneWithTimeout.fail(
             error instanceof Error ? error : new Error(String(error)),
           );
