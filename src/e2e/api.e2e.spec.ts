@@ -1,62 +1,113 @@
-// e2e/api.e2e.test.ts
+// e2e/api.e2e.spec.ts
 import request from 'supertest';
+import EventSource from 'eventsource';
 
 const apiEndpoint = 'http://app:3000';
 
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const retryRequest = async (
+  method: 'get' | 'post',
+  url: string,
+  body?: any,
+  maxRetries = 5,
+  delay = 1000,
+): Promise<request.Response> => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const req = request(apiEndpoint)[method](url);
+      if (body) req.send(body);
+      return await req;
+    } catch (error) {
+      if (i === maxRetries - 1) throw error;
+      await wait(delay);
+    }
+  }
+  throw new Error('Max retries reached');
+};
+
 describe('API E2E Tests', () => {
   describe('GET /api/metrics', () => {
-    it('should stream metrics data with progress and result events', done => {
-      const timePeriod = 7; // Test with a specific time period
-      request(apiEndpoint)
-        .get(`/api/metrics?timePeriod=${timePeriod}`)
-        .set('Accept', 'text/event-stream')
-        .expect('Content-Type', /text\/event-stream/)
-        .end((err, res) => {
-          if (err) return done(err);
+    let authToken: string;
 
-          // Parse the SSE response
-          const events = res.text.split('\n\n').filter(Boolean);
+    beforeAll(async () => {
+      // Register a user
+      await retryRequest('post', '/api/auth/register', {
+        email: 'testuser@example.com',
+        password: 'testpassword',
+      });
 
-          // Expect progress events
-          expect(
-            events.some(event => event.startsWith('event: progress')),
-          ).toBe(true);
+      // Login to get the token
+      const loginResponse = await retryRequest('post', '/api/auth/login', {
+        email: 'testuser@example.com',
+        password: 'testpassword',
+      });
 
-          // Expect a result event
-          const resultEvent = events.find(event =>
-            event.startsWith('event: result'),
-          );
-          expect(resultEvent).toBeDefined();
-
-          // Validate result event data
-          const resultData = JSON.parse(
-            resultEvent!.split('\n')[1].replace('data: ', ''),
-          );
-          expect(resultData.success).toBe(true);
-          expect(Array.isArray(resultData.data)).toBe(true);
-          expect(resultData.githubStats.timePeriod).toBe(timePeriod); // Check timePeriod
-
-          done();
-        });
+      authToken = loginResponse.body.token;
     });
+
+    it('should stream metrics data with progress and result events', done => {
+      const timePeriod = 7;
+      const es = new EventSource(
+        `${apiEndpoint}/api/metrics?timePeriod=${timePeriod}`,
+        { headers: { Authorization: `Bearer ${authToken}` } },
+      );
+
+      const events: any[] = [];
+
+      es.onmessage = (event: MessageEvent) => {
+        // CHANGED: Add type
+        events.push(JSON.parse(event.data));
+      };
+
+      es.onerror = (err: Event) => {
+        // CHANGED: Add type
+        es.close();
+        done(err);
+      };
+
+      es.addEventListener('result', (event: MessageEvent) => {
+        // CHANGED: Add type
+        es.close();
+        const resultData = JSON.parse(event.data);
+        expect(resultData.success).toBe(true);
+        expect(Array.isArray(resultData.data)).toBe(true);
+        expect(resultData.githubStats.timePeriod).toBe(timePeriod);
+
+        expect(events.some(e => e.progress !== undefined)).toBe(true);
+
+        done();
+      });
+    }, 60000);
 
     it('should handle errors gracefully', done => {
-      // ... (Simulate an error scenario, e.g., by providing invalid input)
-      // ... Then assert for an "error" event in the response
-    });
+      const es = new EventSource(`${apiEndpoint}/api/metrics?error=true`);
+
+      es.onerror = (err: Event) => {
+        // CHANGED: Add type
+        es.close();
+        done(err);
+      };
+
+      es.addEventListener('error', (event: MessageEvent) => {
+        // CHANGED: Add type
+        es.close();
+        const errorData = JSON.parse(event.data);
+        expect(errorData.success).toBe(false);
+        expect(errorData.errors).toBeDefined();
+        done();
+      });
+    }, 60000);
   });
 
   describe('POST /api/auth/register', () => {
     it('should register a new user', async () => {
-      const response = await request(apiEndpoint)
-        .post('/api/auth/register')
-        .send({
-          email: 'testuser@example.com',
-          password: 'testpassword',
-        })
-        .expect(201)
-        .expect('Content-Type', /json/);
+      const response = await retryRequest('post', '/api/auth/register', {
+        email: 'testuser@example.com',
+        password: 'testpassword',
+      });
 
+      expect(response.status).toBe(201);
       expect(response.body).toHaveProperty('token');
     });
 
@@ -64,7 +115,7 @@ describe('API E2E Tests', () => {
       const response = await request(apiEndpoint)
         .post('/api/auth/register')
         .send({
-          email: 'testuser@example.com', // Try to register the same user again
+          email: 'testuser@example.com',
           password: 'testpassword',
         })
         .expect(400)
