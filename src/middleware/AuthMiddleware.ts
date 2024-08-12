@@ -2,13 +2,14 @@
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
+import { TYPES } from '../utils/types.js';
+
 import type {
   IAuthRequest,
   IConfig,
   IAuthMiddleware,
   IJwtService,
 } from '../interfaces/index.js';
-import { TYPES } from '../utils/types.js';
 
 @injectable()
 export class AuthMiddleware implements IAuthMiddleware {

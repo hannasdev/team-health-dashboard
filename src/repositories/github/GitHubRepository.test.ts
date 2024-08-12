@@ -1,8 +1,18 @@
 // src/__tests__/repositories/GitHubRepository.test.ts
 
 import { Container } from 'inversify';
-import { IGraphQLResponse } from '../../interfaces/index.js';
+
 import {
+  createMockLogger,
+  createMockCacheService,
+  createMockGitHubClient,
+} from '../../__mocks__/mockFactories.js';
+import { Config } from '../../config/config.js';
+import { GitHubRepository } from '../../repositories/github/GitHubRepository.js';
+import { TYPES } from '../../utils/types.js';
+
+import type {
+  IGraphQLResponse,
   IGitHubClient,
   IConfig,
   ICacheService,
@@ -10,15 +20,7 @@ import {
   IPullRequest,
   IGitHubRepository,
 } from '../../interfaces/index.js';
-import { Config } from '../../config/config.js';
-import { GitHubRepository } from '../../repositories/github/GitHubRepository.js';
-import { TYPES } from '../../utils/types.js';
-import {
-  createMockLogger,
-  createMockCacheService,
-  createMockGitHubClient,
-} from '../../__mocks__/mockFactories.js';
-import { ProgressCallback } from '../../types/index.js';
+import type { ProgressCallback } from '../../types/index.js';
 
 describe('GitHubRepository', () => {
   let container: Container;

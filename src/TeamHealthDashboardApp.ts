@@ -1,18 +1,19 @@
 // src/app.ts
 
 import 'reflect-metadata';
+import usebodyParser from 'body-parser';
 import cors from 'cors';
 import express, { Express, Request, Response, NextFunction } from 'express';
-import bodyParser from 'body-parser';
 import { inject, injectable } from 'inversify';
+
+import { ILogger, IConfig } from './interfaces/index.js';
+import { ITeamHealthDashboardApp } from './interfaces/ITeamHealthDashboardApp.js';
+import { ErrorHandler } from './middleware/ErrorHandler.js';
 import authRouter from './routes/auth.js';
 import healthCheckRouter from './routes/healthCheck.js';
 import metricsRouter from './routes/metrics.js';
 import { IMongoDbClient } from './services/database/MongoDbClient.js';
-import { ILogger, IConfig } from './interfaces/index.js';
 import { TYPES } from './utils/types.js';
-import { ITeamHealthDashboardApp } from './interfaces/ITeamHealthDashboardApp.js';
-import { ErrorHandler } from './middleware/ErrorHandler.js';
 
 @injectable()
 export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
@@ -63,8 +64,8 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureMiddleware(): void {
-    this.expressApp.use(bodyParser.json());
-    this.expressApp.use(bodyParser.urlencoded({ extended: true }));
+    this.expressApp.use(usebodyParser.json());
+    this.expressApp.use(usebodyParser.urlencoded({ extended: true }));
   }
 
   private configureRoutes(): void {
@@ -83,6 +84,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
 
     // Keep the default error handler as a fallback
     this.expressApp.use(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       (err: Error, req: Request, res: Response, _next: NextFunction) => {
         this.logger.error('Unhandled error', err);
         res

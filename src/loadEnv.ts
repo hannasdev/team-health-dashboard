@@ -1,6 +1,7 @@
 // src/loadEnv.ts
-import { config } from 'dotenv';
 import { resolve } from 'path';
+
+import { config } from 'dotenv';
 
 // Load environment variables
 config({ path: resolve(__dirname, '../.env') });

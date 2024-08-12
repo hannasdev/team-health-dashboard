@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
 
-import type { ILogger, IHealthCheckController } from '../interfaces/index.js';
 import { TYPES } from '../utils/types.js';
-import { IMongoDbClient } from '../services/database/MongoDbClient.js';
+
+import type { ILogger, IHealthCheckController } from '../interfaces/index.js';
+import type { IMongoDbClient } from '../services/database/MongoDbClient.js';
 
 @injectable()
 export class HealthCheckController implements IHealthCheckController {

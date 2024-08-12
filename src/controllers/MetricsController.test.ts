@@ -1,15 +1,17 @@
 // src/controllers/MetricsController.test.ts
 import 'reflect-metadata';
 import { Request, Response, NextFunction } from 'express';
+
+import { MetricsController } from './MetricsController.js';
 import {
   createMockLogger,
   createMockMetricsService,
   createMockMetricsRequest,
   createMockResponse,
 } from '../__mocks__/mockFactories.js';
-import { MetricsController } from './MetricsController.js';
-import { IMetricsService, ILogger } from '../interfaces/index.js';
 import { ProgressCallback } from '../types/index.js';
+
+import type { IMetricsService, ILogger } from '../interfaces/index.js';
 
 describe('MetricsController', () => {
   let metricsController: MetricsController;

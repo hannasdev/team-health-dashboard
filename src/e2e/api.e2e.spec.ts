@@ -1,6 +1,6 @@
 // e2e/api.e2e.spec.ts
+import useEventSource from 'eventsource';
 import request from 'supertest';
-import EventSource from 'eventsource';
 
 const apiEndpoint = 'http://app:3000';
 
@@ -38,7 +38,7 @@ describe('API E2E Tests', () => {
     let authToken: string;
 
     const setupEventSource = (url: string, authToken: string) => {
-      const es = new EventSource(url, {
+      const es = new useEventSource(url, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
 
@@ -73,7 +73,7 @@ describe('API E2E Tests', () => {
 
     it('should stream metrics data with progress and result events', done => {
       const timePeriod = 7;
-      const es = new EventSource(
+      const es = new useEventSource(
         `${apiEndpoint}/api/metrics?timePeriod=${timePeriod}`,
         { headers: { Authorization: `Bearer ${authToken}` } },
       );
@@ -153,6 +153,7 @@ describe('API E2E Tests', () => {
       let errorReceived = false;
 
       const doneWithTimeout = (() => {
+        // eslint-disable-next-line prefer-const
         let timeout: NodeJS.Timeout;
 
         const wrappedDone: jest.DoneCallback = Object.assign(

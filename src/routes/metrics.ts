@@ -1,9 +1,11 @@
 // src/routes/metrics.ts
 import { Response, Router, NextFunction } from 'express';
+
 import { container } from '../container.js';
 import { MetricsController } from '../controllers/MetricsController.js';
-import { IAuthRequest, IAuthMiddleware } from '../interfaces/index.js';
 import { TYPES } from '../utils/types.js';
+
+import type { IAuthRequest, IAuthMiddleware } from '../interfaces/index.js';
 
 const router = Router();
 

@@ -1,6 +1,8 @@
 // src/services/MetricsService.ts
 import { injectable, inject } from 'inversify';
 
+import { TYPES } from '../../utils/types.js';
+
 import type {
   IMetricsService,
   IMetric,
@@ -9,8 +11,7 @@ import type {
   IPullRequest,
   ILogger,
 } from '../../interfaces/index.js';
-import { ProgressCallback } from '../../types/index.js';
-import { TYPES } from '../../utils/types.js';
+import type { ProgressCallback } from '../../types/index.js';
 
 @injectable()
 export class MetricsService implements IMetricsService {

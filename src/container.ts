@@ -8,8 +8,13 @@
  * @module Container
  */
 
+import { GitHubAdapter } from './adapters/GitHubAdapter.js';
+import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter.js';
 import { container } from './appContainer.js';
 import { Config } from './config/config.js';
+import { AuthController } from './controllers/AuthController.js';
+import { HealthCheckController } from './controllers/HealthCheckController.js';
+import { MetricsController } from './controllers/MetricsController.js';
 import {
   IApplication,
   IAuthController,
@@ -38,23 +43,18 @@ import { GitHubRepository } from './repositories/github/GitHubRepository.js';
 import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository.js';
 import { UserRepository } from './repositories/user/UserRepository.js';
 import { CacheService } from './services/cache/CacheService.js';
-import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
-import { MetricsService } from './services/metrics/MetricsService.js';
-import { ProgressTracker } from './services/progress/ProgressTracker.js';
-import { BcryptService } from './utils/BcryptService.js';
-import { JwtService } from './utils/JwtService.js';
-import { Logger } from './utils/Logger.js';
-import { TYPES } from './utils/types.js';
-import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
 import {
   MongoDbClient,
   IMongoDbClient,
 } from './services/database/MongoDbClient.js';
-import { AuthController } from './controllers/AuthController.js';
-import { HealthCheckController } from './controllers/HealthCheckController.js';
-import { MetricsController } from './controllers/MetricsController.js';
-import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter.js';
-import { GitHubAdapter } from './adapters/GitHubAdapter.js';
+import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
+import { MetricsService } from './services/metrics/MetricsService.js';
+import { ProgressTracker } from './services/progress/ProgressTracker.js';
+import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
+import { BcryptService } from './utils/BcryptService.js';
+import { JwtService } from './utils/JwtService.js';
+import { Logger } from './utils/Logger.js';
+import { TYPES } from './utils/types.js';
 
 const config = Config.getInstance();
 

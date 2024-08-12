@@ -2,6 +2,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
+import { TYPES } from '../utils/types.js';
+
 import type {
   IConfig,
   ILogger,
@@ -10,7 +12,6 @@ import type {
   IBcryptService,
   IJwtService,
 } from '../interfaces/index.js';
-import { TYPES } from '../utils/types.js';
 
 @injectable()
 export class AuthController implements IAuthController {

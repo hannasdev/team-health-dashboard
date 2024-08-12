@@ -1,14 +1,15 @@
 // BaseService.ts
 // Abstract Class
 import { injectable, inject } from 'inversify';
-import type { ICacheService } from '../interfaces/index.js';
-import { Logger } from '../utils/Logger.js';
+
 import { TYPES } from '../utils/types.js';
+
+import type { ILogger, ICacheService } from '../interfaces/index.js';
 
 @injectable()
 export abstract class BaseService {
   constructor(
-    @inject(TYPES.Logger) protected logger: Logger,
+    @inject(TYPES.Logger) protected logger: ILogger,
     @inject(TYPES.CacheService) protected cacheService: ICacheService,
   ) {}
 

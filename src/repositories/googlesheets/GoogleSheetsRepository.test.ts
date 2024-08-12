@@ -1,5 +1,15 @@
 import { Container } from 'inversify';
+
 import {
+  createMockLogger,
+  createMockCacheService,
+  createMockGoogleSheetsClient,
+} from '../../__mocks__/mockFactories.js';
+import { Config } from '../../config/config.js';
+import { GoogleSheetsRepository } from '../../repositories/googlesheets/GoogleSheetsRepository.js';
+import { TYPES } from '../../utils/types.js';
+
+import type {
   IGoogleSheetsClient,
   IConfig,
   ICacheService,
@@ -7,15 +17,7 @@ import {
   IMetric,
   IGoogleSheetsRepository,
 } from '../../interfaces/index.js';
-import { Config } from '../../config/config.js';
-import { GoogleSheetsRepository } from '../../repositories/googlesheets/GoogleSheetsRepository.js';
-import { TYPES } from '../../utils/types.js';
-import {
-  createMockLogger,
-  createMockCacheService,
-  createMockGoogleSheetsClient,
-} from '../../__mocks__/mockFactories.js';
-import { ProgressCallback } from '../../types/index.js';
+import type { ProgressCallback } from '../../types/index.js';
 
 describe('GoogleSheetsRepository', () => {
   let container: Container;

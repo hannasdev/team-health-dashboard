@@ -1,6 +1,9 @@
 // src/repositories/github/GitHubRepository.ts
 import { injectable, inject } from 'inversify';
 
+import { Cacheable, CacheableClass } from '../../utils/CacheDecorator.js';
+import { TYPES } from '../../utils/types.js';
+
 import type {
   IGitHubClient,
   IConfig,
@@ -12,8 +15,6 @@ import type {
   ILogger,
 } from '../../interfaces/index.js';
 import type { ProgressCallback } from '../../types/index.js';
-import { Cacheable, CacheableClass } from '../../utils/CacheDecorator.js';
-import { TYPES } from '../../utils/types.js';
 
 @injectable()
 export class GitHubRepository

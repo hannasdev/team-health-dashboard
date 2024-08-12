@@ -1,6 +1,8 @@
 // src/services/github/GitHubService.ts
 import { injectable, inject } from 'inversify';
 
+import { TYPES } from '../../utils/types.js';
+
 import type {
   IMetricCalculator,
   IGitHubRepository,
@@ -12,7 +14,6 @@ import type {
   ILogger,
 } from '../../interfaces/index.js';
 import type { ProgressCallback } from '../../types/index.js';
-import { TYPES } from '../../utils/types.js';
 
 /**
  * GitHubService

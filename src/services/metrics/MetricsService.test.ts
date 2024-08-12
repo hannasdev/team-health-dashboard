@@ -1,5 +1,5 @@
 // src/__tests__/services/metrics/MetricsService.test.ts
-import { ProgressCallback } from 'types/index.js';
+
 import {
   createMockLogger,
   createMockMetric,
@@ -7,12 +7,14 @@ import {
   createMockGitHubRepository,
   createMockPullRequest,
 } from '../../__mocks__/mockFactories.js';
+import { MetricsService } from '../../services/metrics/MetricsService.js';
+
 import type {
   IMetricsService,
   IMetric,
   ILogger,
 } from '../../interfaces/index.js';
-import { MetricsService } from '../../services/metrics/MetricsService.js';
+import type { ProgressCallback } from 'types/index.js';
 
 describe('MetricsService', () => {
   let metricsService: IMetricsService;

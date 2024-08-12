@@ -1,5 +1,16 @@
 import { Container } from 'inversify';
+
 import {
+  createMockLogger,
+  createMockGitHubRepository,
+  createMockMetricCalculator,
+  createMockProgressTracker,
+} from '../../__mocks__/mockFactories.js';
+import { Config } from '../../config/config.js';
+import { GitHubService } from '../../services/github/GitHubService.js';
+import { TYPES } from '../../utils/types.js';
+
+import type {
   IGitHubRepository,
   IMetricCalculator,
   IProgressTracker,
@@ -8,16 +19,7 @@ import {
   IPullRequest,
   IGitHubService,
 } from '../../interfaces/index.js';
-import { Config } from '../../config/config.js';
-import { GitHubService } from '../../services/github/GitHubService.js';
-import { TYPES } from '../../utils/types.js';
-import {
-  createMockLogger,
-  createMockGitHubRepository,
-  createMockMetricCalculator,
-  createMockProgressTracker,
-} from '../../__mocks__/mockFactories.js';
-import { ProgressCallback } from '../../types/index.js';
+import type { ProgressCallback } from '../../types/index.js';
 
 describe('GitHubService', () => {
   let container: Container;

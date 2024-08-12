@@ -2,8 +2,9 @@
 import { inject, injectable } from 'inversify';
 import 'reflect-metadata';
 
-import type { ICacheService } from '../interfaces/index.js';
 import { TYPES } from '../utils/types.js';
+
+import type { ICacheService } from '../interfaces/index.js';
 
 const CACHEABLE_METADATA_KEY = Symbol('cacheable');
 
