@@ -20,8 +20,8 @@ import {
   IMetricsService,
   IProgressTracker,
   IPullRequest,
-} from '@/interfaces';
-import { UserRepository } from '@/repositories/user/UserRepository';
+} from '../interfaces/index.js';
+import { UserRepository } from '../repositories/user/UserRepository.js';
 
 export const createMockGoogleSheetsClient =
   (): jest.Mocked<IGoogleSheetsClient> => ({
@@ -291,22 +291,26 @@ export const createMockGoogleSheetsRepository =
   });
 
 export const createMockCacheService = (): jest.Mocked<ICacheService> => {
-  let cache = new Map<string, any>();
+  const cache = new Map<string, { value: any; expiry: number }>();
 
   return {
-    get: jest
-      .fn()
-      .mockImplementation((key: string) =>
-        Promise.resolve(cache.get(key) || null),
-      ),
-    set: jest.fn().mockImplementation((key: string, value: any) => {
-      cache.set(key, value);
-      return Promise.resolve();
+    get: jest.fn(async (key: string) => {
+      const item = cache.get(key);
+      if (!item) return null;
+      if (item.expiry < Date.now()) {
+        cache.delete(key);
+        return null;
+      }
+      return item.value;
     }),
-    delete: jest.fn().mockImplementation((key: string) => {
+    set: jest.fn(async (key: string, value: any, ttl?: number) => {
+      const expiry = ttl ? Date.now() + ttl * 1000 : Infinity;
+      cache.set(key, { value, expiry });
+    }),
+    delete: jest.fn((key: string) => {
       cache.delete(key);
     }),
-    clear: jest.fn().mockImplementation(() => {
+    clear: jest.fn(() => {
       cache.clear();
     }),
   };

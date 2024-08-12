@@ -1,4 +1,5 @@
 // src/__tests__/services/metrics/MetricsService.test.ts
+import { ProgressCallback } from 'types/index.js';
 import {
   createMockLogger,
   createMockMetric,
@@ -25,7 +26,7 @@ describe('MetricsService', () => {
     jest.resetAllMocks();
     mockGoogleSheetsRepository = createMockGoogleSheetsRepository();
     mockGitHubRepository = createMockGitHubRepository();
-    mockLogger = createMockLogger(); // No need for casting
+    mockLogger = createMockLogger();
     metricsService = new MetricsService(
       mockGoogleSheetsRepository,
       mockGitHubRepository,
@@ -44,7 +45,7 @@ describe('MetricsService', () => {
       };
 
       mockGoogleSheetsRepository.fetchMetrics.mockImplementation(
-        async progressCallback => {
+        async (progressCallback?: ProgressCallback) => {
           progressCallback?.(0, 100, 'Starting to fetch data');
           progressCallback?.(100, 100, 'Finished fetching data');
           return mockSheetMetrics;
@@ -52,7 +53,7 @@ describe('MetricsService', () => {
       );
 
       mockGitHubRepository.fetchPullRequests.mockImplementation(
-        async (timePeriod, progressCallback) => {
+        async (timePeriod: number, progressCallback?: ProgressCallback) => {
           progressCallback?.(0, 100, 'Starting to fetch data');
           progressCallback?.(100, 100, 'Finished fetching data');
           return mockGitHubResult;
@@ -123,14 +124,14 @@ describe('MetricsService', () => {
 
     it('should handle errors from both repositories with progress updates', async () => {
       mockGoogleSheetsRepository.fetchMetrics.mockImplementation(
-        async progressCallback => {
+        async (progressCallback?: ProgressCallback) => {
           progressCallback?.(0, 100, 'Starting to fetch data');
           throw new Error('Google Sheets API error');
         },
       );
 
       mockGitHubRepository.fetchPullRequests.mockImplementation(
-        async (timePeriod, progressCallback) => {
+        async (timePeriod: number, progressCallback?: ProgressCallback) => {
           progressCallback?.(0, 100, 'Starting to fetch data');
           throw new Error('GitHub API error');
         },
