@@ -2,18 +2,19 @@
 import { IncomingHttpHeaders } from 'http';
 
 import { Request, Response } from 'express';
-import { MockedObject } from 'jest-mock';
 
 import {
   IAuthRequest,
   ICacheService,
   IConfig,
   IFetchDataResult,
+  IGitHubClient,
   IGitHubRepository,
   IGitHubService,
+  IGoogleSheetsClient,
   IGoogleSheetsRepository,
   IGoogleSheetsService,
-  IGoogleSheetsClient,
+  IGraphQLResponse,
   ILogger,
   IMetric,
   IMetricCalculator,
@@ -315,3 +316,19 @@ export const createMockCacheService = (): jest.Mocked<ICacheService> => {
     }),
   };
 };
+
+export function createMockGitHubClient(): jest.Mocked<IGitHubClient> {
+  return {
+    graphql: jest
+      .fn()
+      .mockImplementation(
+        async <T = IGraphQLResponse>(
+          query: string,
+          variables?: Record<string, any>,
+        ): Promise<T> => {
+          // Default mock implementation
+          return {} as T;
+        },
+      ),
+  };
+}
