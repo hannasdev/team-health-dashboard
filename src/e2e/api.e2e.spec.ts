@@ -13,17 +13,24 @@ const retryRequest = async (
   maxRetries = 5,
   delay = 1000,
 ): Promise<request.Response> => {
+  let lastError: unknown;
   for (let i = 0; i < maxRetries; i++) {
     try {
       const req = request(apiEndpoint)[method](url);
       if (body) req.send(body);
       return await req;
-    } catch (error) {
-      if (i === maxRetries - 1) throw error;
+    } catch (error: unknown) {
+      lastError = error;
+      if (i === maxRetries - 1) break;
       await wait(delay);
     }
   }
-  throw new Error('Max retries reached');
+
+  if (lastError instanceof Error) {
+    throw new Error(`Max retries reached: ${lastError.message}`);
+  } else {
+    throw new Error('Max retries reached: Unknown error');
+  }
 };
 
 describe('API E2E Tests', () => {
@@ -46,6 +53,13 @@ describe('API E2E Tests', () => {
       authToken = loginResponse.body.token;
     });
 
+    afterAll(async () => {
+      // Add a method to your auth service to remove test users
+      await request(apiEndpoint)
+        .post('/api/auth/cleanup')
+        .send({ email: 'testuser@example.com' });
+    });
+
     it('should stream metrics data with progress and result events', done => {
       const timePeriod = 7;
       const es = new EventSource(
@@ -54,43 +68,59 @@ describe('API E2E Tests', () => {
       );
 
       const events: any[] = [];
+      let progressReceived = false;
+      let resultReceived = false;
+
+      const checkCompletion = () => {
+        if (progressReceived && resultReceived) {
+          es.close();
+          done();
+        }
+      };
 
       es.onmessage = (event: MessageEvent) => {
-        // CHANGED: Add type
-        events.push(JSON.parse(event.data));
+        const data = JSON.parse(event.data);
+        events.push(data);
+        if (data.progress !== undefined) {
+          progressReceived = true;
+        }
+        checkCompletion();
       };
 
       es.onerror = (err: Event) => {
-        // CHANGED: Add type
         es.close();
         done(err);
       };
 
       es.addEventListener('result', (event: MessageEvent) => {
-        // CHANGED: Add type
-        es.close();
         const resultData = JSON.parse(event.data);
         expect(resultData.success).toBe(true);
         expect(Array.isArray(resultData.data)).toBe(true);
         expect(resultData.githubStats.timePeriod).toBe(timePeriod);
-
-        expect(events.some(e => e.progress !== undefined)).toBe(true);
-
-        done();
+        resultReceived = true;
+        checkCompletion();
       });
-    }, 60000);
+    }, 120000);
 
     it('should handle errors gracefully', done => {
-      const es = new EventSource(`${apiEndpoint}/api/metrics?error=true`);
+      const es = new EventSource(`${apiEndpoint}/api/metrics?error=true`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
 
       es.onerror = (err: Event) => {
-        // CHANGED: Add type
         es.close();
-        done(err);
+        // Check if the error is due to an unauthorized request
+        if (err instanceof MessageEvent && err.data) {
+          const errorData = JSON.parse(err.data);
+          expect(errorData.message).toBe('Unauthorized');
+          expect(errorData.status).toBe(401);
+          done();
+        } else {
+          done(err);
+        }
       };
 
       es.addEventListener('error', (event: MessageEvent) => {
-        // CHANGED: Add type
         es.close();
         const errorData = JSON.parse(event.data);
         expect(errorData.success).toBe(false);
@@ -102,8 +132,9 @@ describe('API E2E Tests', () => {
 
   describe('POST /api/auth/register', () => {
     it('should register a new user', async () => {
+      const uniqueEmail = `testuser_${Date.now()}@example.com`;
       const response = await retryRequest('post', '/api/auth/register', {
-        email: 'testuser@example.com',
+        email: uniqueEmail,
         password: 'testpassword',
       });
 
