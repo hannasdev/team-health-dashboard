@@ -201,25 +201,32 @@ export function createMockRequest(
 
 export const createMockResponse = () => {
   const res: Partial<Response> = {
-    type: jest.fn().mockReturnThis(),
-    header: jest.fn().mockReturnThis(),
+    append: jest.fn().mockReturnThis(),
+    attachment: jest.fn().mockReturnThis(),
+    charset: '',
     clearCookie: jest.fn().mockReturnThis(),
+    contentType: jest.fn().mockReturnThis(),
     cookie: jest.fn().mockReturnThis(),
+    download: jest.fn(),
     format: jest.fn(),
     get: jest.fn(),
+    header: jest.fn().mockReturnThis(),
+    headersSent: false,
     links: jest.fn().mockReturnThis(),
+    locals: {},
     location: jest.fn().mockReturnThis(),
     redirect: jest.fn().mockReturnThis(),
     render: jest.fn(),
     set: jest.fn().mockReturnThis(),
+    type: jest.fn().mockReturnThis(),
     vary: jest.fn().mockReturnThis(),
-    append: jest.fn().mockReturnThis(),
-    attachment: jest.fn().mockReturnThis(),
-    contentType: jest.fn().mockReturnThis(),
-    download: jest.fn(),
-    headersSent: false,
-    locals: {},
-    charset: '',
+    write: jest.fn().mockReturnThis(),
+    writeHead: jest.fn().mockReturnThis(),
+    end: jest.fn().mockReturnThis(),
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn().mockReturnThis(),
+    send: jest.fn().mockReturnThis(),
+    sendStatus: jest.fn().mockReturnThis(),
   };
 
   res.status = jest.fn().mockReturnValue(res);
@@ -331,4 +338,42 @@ export function createMockGitHubClient(): jest.Mocked<IGitHubClient> {
         },
       ),
   };
+}
+
+export function createMockMetricsRequest(
+  overrides: Partial<Request> = {},
+): Request {
+  const mockRequest = {
+    app: {} as any,
+    baseUrl: '',
+    body: {},
+    cookies: {},
+    fresh: false,
+    hostname: '',
+    ip: '',
+    ips: [],
+    method: 'GET',
+    originalUrl: '',
+    params: {},
+    path: '',
+    protocol: 'http',
+    query: {},
+    route: {} as any,
+    secure: false,
+    signedCookies: {},
+    stale: false,
+    subdomains: [],
+    xhr: false,
+    accepts: jest.fn(),
+    acceptsCharsets: jest.fn(),
+    acceptsEncodings: jest.fn(),
+    acceptsLanguages: jest.fn(),
+    get: jest.fn(),
+    header: jest.fn(),
+    is: jest.fn(),
+    range: jest.fn(),
+    ...overrides,
+  } as Request;
+
+  return mockRequest;
 }

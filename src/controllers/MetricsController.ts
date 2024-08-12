@@ -53,79 +53,91 @@ export class MetricsController implements IMetricsController {
     timePeriod: number,
   ): Promise<void> => {
     let isClientConnected = true;
+    let isResponseEnded = false;
 
-    // Handle client disconnection
-    req.on('close', () => {
-      isClientConnected = false;
-      this.logger.info('Client disconnected');
-    });
-
-    const sendEvent = (event: string, data: any) => {
-      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    const endResponse = () => {
+      if (!isResponseEnded) {
+        res.end();
+        isResponseEnded = true;
+      }
     };
 
-    const progressCallback: ProgressCallback = (
-      current: number,
-      total: number,
-      message: string,
-    ) => {
+    const handleClientDisconnection = () => {
+      isClientConnected = false;
+      this.logger.info('Client disconnected');
+      endResponse();
+    };
+
+    const setupSSE = () => {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      });
+      res.write(':\n\n');
+    };
+
+    const sendEvent = (event: string, data: any) => {
+      if (isClientConnected && !isResponseEnded) {
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      }
+    };
+
+    const progressCallback: ProgressCallback = (current, total, message) => {
       sendEvent('progress', {
         progress: Math.min(Math.round((current / total) * 100), 100),
         message,
       });
     };
 
-    const timeout = setTimeout(() => {
-      if (isClientConnected) {
-        const timeoutError = new Error('Operation timed out');
-        timeoutError.name = 'TimeoutError';
-        next(timeoutError);
+    const handleTimeout = () => {
+      const timeoutError = new Error('Operation timed out');
+      timeoutError.name = 'TimeoutError';
+      handleError(timeoutError);
+    };
+
+    const handleError = (error: Error) => {
+      this.logger.error('Error in MetricsController:', error);
+      if (isClientConnected && !isResponseEnded) {
+        sendEvent('error', {
+          success: false,
+          errors: [
+            {
+              source: 'MetricsController',
+              message: error.message || 'An unknown error occurred',
+            },
+          ],
+          status: 500,
+        });
+        next(error);
       }
-    }, 120000); // 2 minutes timeout
+    };
+
+    // Setup
+    req.on('close', handleClientDisconnection);
+    setupSSE();
+    const timeout = setTimeout(handleTimeout, 120000); // 2 minutes timeout
 
     try {
-      // Set SSE headers
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
-      });
-
       const result = await this.metricsService.getAllMetrics(
         progressCallback,
         timePeriod,
       );
 
-      // Add type annotation if needed:
-      const responseData: {
-        success: true;
-        data: IMetric[];
-        errors: { source: string; message: string }[];
-        githubStats: {
-          totalPRs: number;
-          fetchedPRs: number;
-          timePeriod: number;
-        };
-        status: number;
-      } = {
-        success: true,
-        data: result.metrics,
-        errors: result.errors,
-        githubStats: result.githubStats,
-        status: result.errors.length > 0 ? 207 : 200,
-      };
-
-      sendEvent('result', responseData);
-    } catch (error) {
-      this.logger.error('Error in MetricsController:', error as Error);
-      if (isClientConnected) {
-        next(error);
+      if (isClientConnected && !isResponseEnded) {
+        sendEvent('result', {
+          success: true,
+          data: result.metrics,
+          errors: result.errors,
+          githubStats: result.githubStats,
+          status: result.errors.length > 0 ? 207 : 200,
+        });
+        endResponse();
       }
+    } catch (error) {
+      handleError(error as Error);
     } finally {
       clearTimeout(timeout);
-      if (isClientConnected) {
-        res.end();
-      }
     }
   };
 }

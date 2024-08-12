@@ -1,8 +1,11 @@
 // src/controllers/MetricsController.test.ts
 import 'reflect-metadata';
+import { Request, Response, NextFunction } from 'express';
 import {
   createMockLogger,
   createMockMetricsService,
+  createMockMetricsRequest,
+  createMockResponse,
 } from '../__mocks__/mockFactories.js';
 import { MetricsController } from './MetricsController.js';
 import { IMetricsService, ILogger } from '../interfaces/index.js';
@@ -11,9 +14,9 @@ import { ProgressCallback } from '../types/index.js';
 describe('MetricsController', () => {
   let metricsController: MetricsController;
   let mockMetricsService: jest.Mocked<IMetricsService>;
-  let mockResponse: any;
-  let mockRequest: any;
-  let mockNext: jest.Mock;
+  let mockResponse: Response;
+  let mockRequest: Request;
+  let mockNext: jest.Mock<NextFunction>;
   let mockLogger: ILogger;
 
   beforeEach(() => {
@@ -23,14 +26,8 @@ describe('MetricsController', () => {
       createMockMetricsService() as jest.Mocked<IMetricsService>;
     metricsController = new MetricsController(mockMetricsService, mockLogger);
 
-    mockRequest = {
-      on: jest.fn(),
-    };
-    mockResponse = {
-      writeHead: jest.fn(),
-      write: jest.fn(),
-      end: jest.fn(),
-    };
+    mockRequest = createMockMetricsRequest({ on: jest.fn() });
+    mockResponse = createMockResponse() as Response;
     mockNext = jest.fn();
   });
 
@@ -112,7 +109,9 @@ describe('MetricsController', () => {
       );
 
       expect(mockNext).toHaveBeenCalledWith(mockError);
-      expect(mockResponse.write).not.toHaveBeenCalled();
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('event: error'),
+      );
     });
 
     it('should send "error" event with details on failure', async () => {
@@ -123,8 +122,8 @@ describe('MetricsController', () => {
       );
 
       await metricsController.getAllMetrics(
-        {} as any,
-        mockResponse,
+        mockRequest as Request,
+        mockResponse as Response,
         mockNext,
         90,
       );
@@ -146,6 +145,7 @@ describe('MetricsController', () => {
           }),
         ),
       );
+      expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
     });
 
     it('should always call res.end() on success', async () => {
@@ -178,35 +178,97 @@ describe('MetricsController', () => {
       );
 
       expect(mockResponse.end).not.toHaveBeenCalled();
+      // ADDED: Check that next was called with an error
+      expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
     });
 
     it('should handle client disconnection', async () => {
       let onCloseHandler: (() => void) | undefined;
-      mockRequest.on.mockImplementation(
-        (event: string, handler: () => void) => {
+      mockRequest.on = jest
+        .fn()
+        .mockImplementation((event: string, handler: () => void) => {
           if (event === 'close') {
             onCloseHandler = handler;
           }
+        });
+
+      // CHANGED: Use a custom mock implementation for getAllMetrics
+      mockMetricsService.getAllMetrics.mockImplementation(
+        async (progressCallback?: ProgressCallback) => {
+          progressCallback?.(25, 100, 'Starting...');
+          // Simulate client disconnection after first progress update
+          if (onCloseHandler) {
+            onCloseHandler();
+          }
+          // These calls should not result in writes after disconnection
+          progressCallback?.(50, 100, 'Halfway there...');
+          progressCallback?.(100, 100, 'Completed!');
+          return {
+            metrics: [],
+            errors: [],
+            githubStats: { totalPRs: 0, fetchedPRs: 0, timePeriod: 90 },
+          };
         },
       );
 
-      const getAllMetricsPromise = metricsController.getAllMetrics(
-        mockRequest,
-        mockResponse,
+      await metricsController.getAllMetrics(
+        mockRequest as Request,
+        mockResponse as Response,
         mockNext,
         90,
       );
 
-      // Simulate client disconnection
-      if (onCloseHandler) {
-        onCloseHandler();
-      }
-
-      await getAllMetricsPromise;
-
       expect(mockLogger.info).toHaveBeenCalledWith('Client disconnected');
-      expect(mockResponse.write).not.toHaveBeenCalled();
-      expect(mockResponse.end).not.toHaveBeenCalled();
+      // CHANGED: Allow for the initial write calls before disconnection
+      expect(mockResponse.write).toHaveBeenCalledTimes(2); // Headers and first progress event
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('event: progress'),
+      );
+      expect(mockResponse.end).toHaveBeenCalled();
+      // Ensure that the result event is not sent after disconnection
+      expect(mockResponse.write).not.toHaveBeenCalledWith(
+        expect.stringContaining('event: result'),
+      );
+    });
+
+    it('should send progress events', async () => {
+      mockMetricsService.getAllMetrics.mockImplementation(
+        async (progressCallback?: ProgressCallback) => {
+          progressCallback?.(25, 100, 'Starting...');
+          progressCallback?.(50, 100, 'Halfway there...');
+          progressCallback?.(75, 100, 'Almost done...');
+          progressCallback?.(100, 100, 'Completed!');
+          return {
+            metrics: [],
+            errors: [],
+            githubStats: { totalPRs: 0, fetchedPRs: 0, timePeriod: 90 },
+          };
+        },
+      );
+
+      await metricsController.getAllMetrics(
+        mockRequest as Request,
+        mockResponse as Response,
+        mockNext,
+        90,
+      );
+
+      expect(mockResponse.write).toHaveBeenCalledTimes(6); // 1 initial message + 4 progress events + 1 result event
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('event: progress'),
+      );
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('"progress":25'),
+      );
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('"progress":50'),
+      );
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('"progress":75'),
+      );
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('"progress":100'),
+      );
     });
   });
 });
