@@ -1,7 +1,5 @@
 // src/controllers/MetricsController.test.ts
 import 'reflect-metadata';
-import { jest, describe, it, expect, beforeEach } from '@jest/globals';
-
 import {
   createMockLogger,
   createMockMetricsService,

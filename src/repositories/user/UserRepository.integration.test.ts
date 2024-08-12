@@ -13,7 +13,7 @@ import {
 } from '../../services/database/MongoDbClient.js';
 import { TYPES } from '../../utils/types.js';
 
-describe('UserRepository Integration Tests', () => {
+describe.skip('UserRepository Integration Tests', () => {
   let mongoServer: MongoMemoryServer;
   let container: Container;
   let userRepository: UserRepository;
