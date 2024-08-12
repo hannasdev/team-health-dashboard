@@ -15,6 +15,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20.16.0'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
       - name: Debug TypeScript Config
@@ -38,6 +39,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20.16.0'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
       - name: Run unit tests
@@ -47,25 +49,26 @@ jobs:
     needs: [build, test-unit]
     runs-on: ubuntu-latest
     services:
-      app:
-        build: .
-        ports:
-          - 3000:3000
       db:
         image: mongo:latest
         ports:
           - '27017:27017'
-        environment:
-          - MONGO_INITDB_ROOT_USERNAME=root
-          - MONGO_INITDB_ROOT_PASSWORD=example
     steps:
       - uses: actions/checkout@v3
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20.16.0'
+          cache: 'npm'
       - name: Install dependencies
         run: npm ci
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist
+          path: dist
+      - name: Start application
+        run: npm start &
       - name: Wait for services
         run: |
           npx wait-on http://localhost:3000/health --timeout 30000
@@ -73,6 +76,8 @@ jobs:
       - name: Run e2e tests
         run: npm run test:e2e
     env:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
       GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
       GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
       GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
@@ -108,16 +113,3 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/your-image-name:${{ github.sha }}
           build-args: |
             NODE_ENV=production
-    env:
-      GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
-      GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
-      GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_OWNER: ${{ secrets.GITHUB_OWNER }}
-      GITHUB_REPO: ${{ secrets.GITHUB_REPO }}
-      PORT: ${{ secrets.PORT }}
-      CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      LOG_LEVEL: info
-      LOG_FORMAT: json
-      LOG_FILE_PATH: './logs'
