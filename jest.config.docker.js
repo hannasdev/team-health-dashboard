@@ -5,7 +5,6 @@ export default {
   rootDir: '.',
   testMatch: ['<rootDir>/dist/**/*.test.js'],
   testEnvironment: 'node',
-  testPathIgnorePatterns: ['<rootDir>/dist/e2e/'],
   setupFiles: ['<rootDir>/dist/setupTests.js'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
