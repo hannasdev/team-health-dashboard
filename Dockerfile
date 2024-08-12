@@ -29,8 +29,6 @@ RUN npm run build
 # - Copies the jest.config.docker.js file to the root folder (app).
 # - Removes src/ as it is no longer needed.
 FROM build AS test
-COPY --chown=node:node resolver.mjs ./
-COPY --chown=node:node prepare-tests.js ./
 COPY --chown=node:node jest.config.docker.js ./
 RUN rm -rf ./src
 

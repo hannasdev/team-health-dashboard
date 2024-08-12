@@ -75,7 +75,6 @@ services:
       - sh
       - -c
       - |
-        node prepare-tests.js
         node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js
 
   # E2E Test Runner
