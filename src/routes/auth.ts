@@ -1,5 +1,5 @@
 // src/routes/auth.ts
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 
 import { container } from '../container.js';
 import { AuthController } from '../controllers/AuthController.js';
@@ -9,7 +9,12 @@ const router = Router();
 const getAuthController = () =>
   container.get<AuthController>(TYPES.AuthController);
 
-router.post('/login', (req, res) => getAuthController().login(req, res));
-router.post('/register', (req, res) => getAuthController().register(req, res));
+router.post('/login', (req: Request, res: Response, next: NextFunction) =>
+  getAuthController().login(req, res, next),
+);
+
+router.post('/register', (req: Request, res: Response, next: NextFunction) =>
+  getAuthController().register(req, res, next),
+);
 
 export default router;
