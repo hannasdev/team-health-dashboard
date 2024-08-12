@@ -13,13 +13,9 @@ logs
 # Ignore editor directories
 .vscode
 .idea
-*.env*
 !.env.example
 
-# Ignore test and coverage files
-__tests__
-*.test.ts
-*.spec.ts
+# Ignore coverage files
 coverage
 .nyc_output
 
@@ -37,10 +33,6 @@ solar-imprint.json
 .DS_Store
 Thumbs.db
 
-# Docker
-Dockerfile
-docker-compose.yml
-
 # Other unnecessary files
 LICENSE
 *.md
@@ -49,3 +41,11 @@ LICENSE
 .editorconfig
 .prettierrc
 .eslintrc
+
+# Keep TypeScript config files
+!tsconfig.json
+!tsconfig.*.json
+
+# Keep Jest config files
+!jest.config.ts
+!jest.config.docker.js

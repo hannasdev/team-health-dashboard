@@ -17,11 +17,6 @@
     "typeRoots": ["./node_modules/@types", "./src/types"],
     "types": ["jest", "node"]
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "src/types/**/*.d.ts",
-    "src/global.d.ts"
-  ],
+  "include": ["src/**/*.ts", "src/types/**/*.d.ts", "src/global.d.ts"],
   "exclude": ["node_modules", "dist", "*.config.js", ".eslintrc.cjs"]
 }
