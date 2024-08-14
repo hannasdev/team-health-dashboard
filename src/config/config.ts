@@ -62,7 +62,7 @@ export class Config implements IConfig {
       PORT: 3000,
       CORS_ORIGIN: '*',
       JWT_SECRET: 'your-secret-key', // Provide a safe default
-      DATABASE_URL: 'mongodb://localhost:27017/team-heath-dashboard',
+      DATABASE_URL: 'mongodb://localhost:27017/team-health-dashboard',
       MONGO_CONNECT_TIMEOUT_MS: 5000,
       MONGO_SERVER_SELECTION_TIMEOUT_MS: 5000,
       LOG_LEVEL: 'info',

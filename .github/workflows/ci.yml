@@ -49,6 +49,11 @@ jobs:
         image: mongo:latest
         ports:
           - '27017:27017'
+        options: >-
+          --health-cmd mongosh --eval "db.adminCommand('ping')"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v3
       - name: Use Node.js
@@ -70,7 +75,7 @@ jobs:
           npx wait-on http://localhost:3000/health --timeout 30000
           npx wait-on tcp:localhost:27017 --timeout 30000
       - name: Run e2e tests
-        run: npm run test:e2e
+        run: npm run test:e2e -- --forceExit
     env:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
