@@ -6,7 +6,7 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "start": "node --experimental-specifier-resolution=node /dist/index.cjs",
+    "start": "node --experimental-specifier-resolution=node /dist/index.js",
     "dev": "node --import tsx src/index.ts",
     "dev:fe": "python3 -m http.server 8080",
     "build": "npx tsc",

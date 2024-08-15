@@ -82,6 +82,9 @@ services:
       - -c
       - |
         node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js
+        exit_code=$?
+        echo "Unit tests completed with exit code $exit_code"
+        exit $exit_code
 
   # E2E Test Runner
   # - Builds using the Dockerfile, targeting the e2e-test stage.
@@ -116,8 +119,11 @@ services:
       - sh
       - -c
       - |
-        npx wait-on http://app:3000/health --timeout 30000 &&
+        npx wait-on http://app:3000/health --timeout 30000
         node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/*.e2e.spec.js"
+        exit_code=$?
+        echo "E2E tests completed with exit code $exit_code"
+        exit $exit_code
   # DB Test
   # - Similar to the db service, but for testing purposes.
   # - Uses a different volume for data and exposes port 27018.
