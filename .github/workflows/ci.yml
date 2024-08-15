@@ -20,14 +20,7 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
-      - name: Prepare artifacts for local use
-        if: env.ACT == 'true'
-        run: |
-          tar -czf dist.tar.gz dist
-          mkdir -p /tmp/artifacts
-          mv dist.tar.gz /tmp/artifacts/
       - name: Upload build artifacts
-        if: env.ACT != 'true'
         uses: actions/upload-artifact@v3
         with:
           name: dist
@@ -76,9 +69,11 @@ jobs:
         with:
           name: dist
           path: dist
+      - name: Display structure of downloaded files
+        run: ls -R
       - name: Start application and wait for it to be ready
         run: |
-          npm start &
+          node dist/index.js &
           npx wait-on http://localhost:${{ secrets.PORT }}/health --timeout 60000
       - name: Run e2e tests
         run: |
