@@ -49,3 +49,5 @@ LICENSE
 # Keep Jest config files
 !jest.config.ts
 !jest.config.docker.js
+
+.secrets

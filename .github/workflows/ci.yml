@@ -20,7 +20,14 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+      - name: Prepare artifacts for local use
+        if: env.ACT == 'true'
+        run: |
+          tar -czf dist.tar.gz dist
+          mkdir -p /tmp/artifacts
+          mv dist.tar.gz /tmp/artifacts/
       - name: Upload build artifacts
+        if: env.ACT != 'true'
         uses: actions/upload-artifact@v3
         with:
           name: dist
@@ -39,21 +46,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Run unit tests
-        run: npm run test:unit
+        run: |
+          NODE_OPTIONS=--max_old_space_size=4096 npm run test:unit  # Increase Node.js memory to 4GB
 
   e2e-test:
     needs: [build, test-unit]
     runs-on: ubuntu-latest
     services:
-      db:
+      mongodb:
         image: mongo:latest
         ports:
-          - '27017:27017'
+          - 27017:27017
         options: >-
-          --health-cmd mongosh --eval "db.adminCommand('ping')"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd="mongosh --eval \"db.runCommand({ ping: 1 })\"" 
+          --health-interval=10s 
+          --health-timeout=5s 
+          --health-retries=5
     steps:
       - uses: actions/checkout@v3
       - name: Use Node.js
@@ -68,14 +76,13 @@ jobs:
         with:
           name: dist
           path: dist
-      - name: Start application
-        run: npm start &
-      - name: Wait for services
+      - name: Start application and wait for it to be ready
         run: |
-          npx wait-on http://localhost:3000/health --timeout 30000
-          npx wait-on tcp:localhost:27017 --timeout 30000
+          npm start &
+          npx wait-on http://localhost:${{ secrets.PORT }}/health --timeout 60000
       - name: Run e2e tests
-        run: npm run test:e2e -- --forceExit
+        run: |
+          npm run test:e2e -- --forceExit || (cat logs/app.log && exit 1)
     env:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: example
@@ -91,7 +98,6 @@ jobs:
       LOG_LEVEL: info
       LOG_FORMAT: json
       LOG_FILE_PATH: './logs'
-
   docker-build-and-push:
     needs: [build, test-unit, e2e-test]
     runs-on: ubuntu-latest
