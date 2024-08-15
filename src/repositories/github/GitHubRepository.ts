@@ -31,8 +31,8 @@ export class GitHubRepository
     @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
     super(cacheService);
-    this.owner = this.configService.GITHUB_OWNER;
-    this.repo = this.configService.GITHUB_REPO;
+    this.owner = this.configService.REPO_OWNER;
+    this.repo = this.configService.REPO_REPO;
     if (this.repo.includes('/')) {
       [this.owner, this.repo] = this.repo.split('/');
     }

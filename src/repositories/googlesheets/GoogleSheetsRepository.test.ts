@@ -26,10 +26,10 @@ describe('GoogleSheetsRepository', () => {
   let mockCacheService: jest.Mocked<ICacheService>;
 
   const testConfig = {
-    GITHUB_OWNER: 'github_owner_test',
-    GITHUB_REPO: 'github_repo_test',
+    REPO_OWNER: 'github_owner_test',
+    REPO_REPO: 'github_repo_test',
     JWT_SECRET: 'test-secret',
-    GITHUB_TOKEN: 'test-github-token',
+    REPO_TOKEN: 'test-github-token',
     GOOGLE_SHEETS_PRIVATE_KEY: 'test-google-sheets-private-key',
     GOOGLE_SHEETS_CLIENT_EMAIL: 'test-client-email@example.com',
     GOOGLE_SHEETS_SHEET_ID: 'test-sheet-id',

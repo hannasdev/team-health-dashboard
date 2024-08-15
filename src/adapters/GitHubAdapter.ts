@@ -12,7 +12,7 @@ export class GitHubAdapter implements IGitHubClient {
   constructor(@inject(TYPES.Config) private config: IConfig) {
     this.graphqlWithAuth = graphql.defaults({
       headers: {
-        authorization: `token ${this.config.GITHUB_TOKEN}`,
+        authorization: `token ${this.config.REPO_TOKEN}`,
       },
     });
   }

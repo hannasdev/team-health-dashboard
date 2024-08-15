@@ -84,9 +84,9 @@ jobs:
       GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
       GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
       GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_OWNER: ${{ secrets.GITHUB_OWNER }}
-      GITHUB_REPO: ${{ secrets.GITHUB_REPO }}
+      REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+      REPO_OWNER: ${{ secrets.REPO_OWNER }}
+      REPO_REPO: ${{ secrets.REPO_REPO }}
       PORT: ${{ secrets.PORT }}
       CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}

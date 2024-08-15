@@ -377,9 +377,9 @@ services:
       - GOOGLE_SHEETS_ID=test-id
       - GOOGLE_SHEETS_CLIENT_EMAIL=test-user
       - GOOGLE_SHEETS_PRIVATE_KEY=test-key
-      - GITHUB_TOKEN=test-github-token
-      - GITHUB_OWNER=test-user
-      - GITHUB_REPO=test-org/test-repo
+      - REPO_TOKEN=test-github-token
+      - REPO_OWNER=test-user
+      - REPO_REPO=test-org/test-repo
       - CORS_ORIGIN=http://localhost:3000,null
     depends_on:
       - db-test

@@ -56,9 +56,9 @@ export class Config implements IConfig {
       GOOGLE_SHEETS_CLIENT_EMAIL: '',
       GOOGLE_SHEETS_PRIVATE_KEY: '',
       GOOGLE_SHEETS_ID: '',
-      GITHUB_TOKEN: '',
-      GITHUB_OWNER: '',
-      GITHUB_REPO: '',
+      REPO_TOKEN: '',
+      REPO_OWNER: '',
+      REPO_REPO: '',
       PORT: 3000,
       CORS_ORIGIN: '*',
       JWT_SECRET: 'your-secret-key', // Provide a safe default
@@ -76,9 +76,9 @@ export class Config implements IConfig {
       GOOGLE_SHEETS_CLIENT_EMAIL: process.env.GOOGLE_SHEETS_CLIENT_EMAIL,
       GOOGLE_SHEETS_PRIVATE_KEY: process.env.GOOGLE_SHEETS_PRIVATE_KEY,
       GOOGLE_SHEETS_ID: process.env.GOOGLE_SHEETS_ID,
-      GITHUB_TOKEN: process.env.GITHUB_TOKEN,
-      GITHUB_OWNER: process.env.GITHUB_OWNER,
-      GITHUB_REPO: process.env.GITHUB_REPO,
+      REPO_TOKEN: process.env.REPO_TOKEN,
+      REPO_OWNER: process.env.REPO_OWNER,
+      REPO_REPO: process.env.REPO_REPO,
       PORT: parseInt(process.env.PORT || '3000', 10),
       CORS_ORIGIN: process.env.CORS_ORIGIN,
       JWT_SECRET: process.env.JWT_SECRET,
@@ -110,16 +110,16 @@ export class Config implements IConfig {
     return this.config.GOOGLE_SHEETS_ID;
   }
 
-  public get GITHUB_TOKEN(): string {
-    return this.config.GITHUB_TOKEN;
+  public get REPO_TOKEN(): string {
+    return this.config.REPO_TOKEN;
   }
 
-  public get GITHUB_OWNER(): string {
-    return this.config.GITHUB_OWNER;
+  public get REPO_OWNER(): string {
+    return this.config.REPO_OWNER;
   }
 
-  public get GITHUB_REPO(): string {
-    return this.config.GITHUB_REPO;
+  public get REPO_REPO(): string {
+    return this.config.REPO_REPO;
   }
 
   public get PORT(): number {
@@ -163,9 +163,9 @@ export class Config implements IConfig {
       'GOOGLE_SHEETS_CLIENT_EMAIL',
       'GOOGLE_SHEETS_PRIVATE_KEY',
       'GOOGLE_SHEETS_ID',
-      'GITHUB_TOKEN',
-      'GITHUB_OWNER',
-      'GITHUB_REPO',
+      'REPO_TOKEN',
+      'REPO_OWNER',
+      'REPO_REPO',
       'JWT_SECRET',
     ];
 

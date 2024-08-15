@@ -12,7 +12,7 @@ console.log(
   'GOOGLE_SHEETS_API_KEY:',
   process.env.GOOGLE_SHEETS_API_KEY ? 'Set' : 'Not set',
 );
-console.log('GITHUB_TOKEN:', process.env.GITHUB_TOKEN ? 'Set' : 'Not set');
-console.log('GITHUB_OWNER:', process.env.GITHUB_OWNER);
-console.log('GITHUB_REPO:', process.env.GITHUB_REPO);
+console.log('REPO_TOKEN:', process.env.REPO_TOKEN ? 'Set' : 'Not set');
+console.log('REPO_OWNER:', process.env.REPO_OWNER);
+console.log('REPO_REPO:', process.env.REPO_REPO);
 console.log('CORS_ORIGIN:', process.env.CORS_ORIGIN || '*');
