@@ -57,24 +57,37 @@ jobs:
           --health-retries=5
     steps:
       - uses: actions/checkout@v3
+
       - name: Use Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20.16.0'
           cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
+
       - name: Download build artifacts
         uses: actions/download-artifact@v3
         with:
           name: dist
           path: dist
-      - name: Display structure of downloaded files
-        run: ls -R
+
+      - name: Debug environment
+        run: |
+          echo "DATABASE_URL: $DATABASE_URL"
+          echo "PORT: $PORT"
+          echo "LOG_LEVEL: $LOG_LEVEL"
+
+      - name: Verify MongoDB connection
+        run: |
+          mongosh --host localhost --port 27017 -u root -p example --eval "db.runCommand({ connectionStatus: 1 })"
+
       - name: Start application and wait for it to be ready
         run: |
           node dist/index.js &
           npx wait-on http://localhost:${{ secrets.PORT }}/health --timeout 60000
+
       - name: Run e2e tests
         run: |
           npm run test:e2e -- --forceExit || (cat logs/app.log && exit 1)
@@ -91,7 +104,7 @@ jobs:
       PORT: ${{ secrets.PORT }}
       CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      LOG_LEVEL: info
+      LOG_LEVEL: debug
       LOG_FORMAT: json
       LOG_FILE_PATH: './logs'
 
