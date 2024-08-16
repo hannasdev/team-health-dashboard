@@ -1,5 +1,7 @@
 // config/config.ts
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
 
 import { IConfig } from '../interfaces/index.js';
 
@@ -28,7 +30,7 @@ export class Config implements IConfig {
    * @param {Partial<IConfig>} [env] - Optional partial configuration to override defaults and environment variables.
    */
   private constructor(env?: Partial<IConfig>) {
-    dotenv.config(); // Load .env file if present
+    this.loadEnvFile();
     this.config = {
       ...this.loadDefaults(),
       ...this.loadFromEnv(),
@@ -49,6 +51,15 @@ export class Config implements IConfig {
       Config.instance = new Config(env);
     }
     return Config.instance;
+  }
+
+  private loadEnvFile(): void {
+    const envPath = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
+    const envFilePath = path.resolve(process.cwd(), envPath);
+
+    if (fs.existsSync(envFilePath)) {
+      dotenv.config({ path: envFilePath });
+    }
   }
 
   private loadDefaults(): IConfig {
@@ -169,11 +180,15 @@ export class Config implements IConfig {
       'JWT_SECRET',
     ];
 
-    requiredEnvVars.forEach(varName => {
-      if (!this.config[varName]) {
-        throw new Error(`Environment variable ${varName} is not set`);
-      }
-    });
+    const missingVars = requiredEnvVars.filter(
+      varName => !this.config[varName],
+    );
+
+    if (missingVars.length > 0) {
+      throw new Error(
+        `Missing required environment variables: ${missingVars.join(', ')}`,
+      );
+    }
   }
 
   /**
@@ -184,5 +199,9 @@ export class Config implements IConfig {
    */
   public static resetInstance(): void {
     Config.instance = null;
+  }
+
+  public getAllConfig(): IConfig {
+    return { ...this.config };
   }
 }

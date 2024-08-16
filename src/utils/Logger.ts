@@ -1,5 +1,6 @@
 // src/utils/Logger.ts
 import path from 'path';
+import fs from 'fs';
 
 import { injectable, inject } from 'inversify';
 import winston from 'winston';
@@ -18,6 +19,16 @@ export class Logger implements ILogger {
     @inject(TYPES.LogLevel) private logLevel: string,
     @inject(TYPES.LogFormat) private logFormat: string,
   ) {
+    const logDir = config.LOG_FILE_PATH || './logs';
+
+    // Ensure the log directory exists
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+
+    const errorLogPath = path.join(logDir, 'error.log');
+    const combinedLogPath = path.join(logDir, 'combined.log');
+
     this.logger = winston.createLogger({
       level: this.logLevel,
       format: winston.format.combine(
@@ -30,13 +41,21 @@ export class Logger implements ILogger {
       transports: [
         new winston.transports.Console(),
         new winston.transports.File({
-          filename: path.join(config.LOG_FILE_PATH, 'error.log'),
+          filename: errorLogPath,
           level: 'error',
         }),
         new winston.transports.File({
-          filename: path.join(config.LOG_FILE_PATH, 'combined.log'),
+          filename: combinedLogPath,
         }),
       ],
+    });
+
+    this.debug('Logger initialized', {
+      logLevel: this.logLevel,
+      logFormat: this.logFormat,
+      logDir,
+      errorLogPath,
+      combinedLogPath,
     });
   }
 
