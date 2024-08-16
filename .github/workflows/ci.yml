@@ -77,6 +77,15 @@ jobs:
           name: dist
           path: dist
 
+      - name: Install MongoDB Shell
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
+          wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-mongosh
+
       - name: Verify MongoDB connection
         run: |
           mongosh --host localhost --port 27017 -u root -p example --eval "db.runCommand({ ping: 1 })"
