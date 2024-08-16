@@ -2,8 +2,9 @@
 import { inject, injectable } from 'inversify';
 
 import { IProgressTracker } from '../../interfaces/IProgressTracker.js';
-import type { Logger } from '../../utils/Logger.js';
 import { TYPES } from '../../utils/types.js';
+
+import type { Logger } from '../../utils/Logger.js';
 
 @injectable()
 export class ProgressTracker implements IProgressTracker {

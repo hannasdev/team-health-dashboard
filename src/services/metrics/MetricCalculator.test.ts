@@ -1,5 +1,6 @@
-import type { IPullRequest } from '../../interfaces/index.js';
 import { MetricCalculator } from '../../services/metrics/MetricsCalculator.js';
+
+import type { IPullRequest } from '../../interfaces/index.js';
 
 describe('MetricCalculator', () => {
   let calculator: MetricCalculator;

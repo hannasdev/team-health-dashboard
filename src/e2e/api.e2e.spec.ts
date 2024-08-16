@@ -1,6 +1,6 @@
 // e2e/api.e2e.spec.ts
-import request from 'supertest';
 import EventSource from 'eventsource';
+import request from 'supertest';
 
 const apiEndpoint = process.env.API_URL || 'http://localhost:3000';
 

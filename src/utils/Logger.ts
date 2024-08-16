@@ -1,6 +1,6 @@
 // src/utils/Logger.ts
-import path from 'path';
 import fs from 'fs';
+import path from 'path';
 
 import { injectable, inject } from 'inversify';
 import winston from 'winston';

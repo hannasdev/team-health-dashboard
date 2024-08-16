@@ -1,18 +1,22 @@
 // src/app.ts
 
 import 'reflect-metadata';
+import bodyParser from 'body-parser';
 import cors from 'cors';
 import express, { Express, Request, Response, NextFunction } from 'express';
-import bodyParser from 'body-parser';
 import { inject, injectable } from 'inversify';
+
+import {
+  ILogger,
+  IConfig,
+  ITeamHealthDashboardApp,
+} from './interfaces/index.js';
+import { ErrorHandler } from './middleware/ErrorHandler.js';
 import authRouter from './routes/auth.js';
 import healthCheckRouter from './routes/healthCheck.js';
 import metricsRouter from './routes/metrics.js';
 import { IMongoDbClient } from './services/database/MongoDbClient.js';
-import { ILogger, IConfig } from './interfaces/index.js';
 import { TYPES } from './utils/types.js';
-import { ITeamHealthDashboardApp } from './interfaces/ITeamHealthDashboardApp.js';
-import { ErrorHandler } from './middleware/ErrorHandler.js';
 
 @injectable()
 export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {

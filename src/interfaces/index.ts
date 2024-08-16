@@ -19,6 +19,7 @@ export type { IGraphQLResponse } from './IGraphQLResponse.js';
 export type { IHealthCheckController } from './IHealthCheckController.js';
 export type { IJwtService } from './IJwtService.js';
 export type { ILogger } from './ILogger.js';
+export type { ILoggingService } from './ILoggingService.js';
 export type { IMetric } from './IMetricModel.js';
 export type { IMetricCalculator } from './IMetricCalculator.js';
 export type { IMetricsController } from './IMetricsController.js';

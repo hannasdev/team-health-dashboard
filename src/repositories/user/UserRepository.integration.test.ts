@@ -1,12 +1,12 @@
 // src/repositories/user/UserRepository.integration.test.ts
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Container } from 'inversify';
+import { MongoMemoryServer } from 'mongodb-memory-server';
 
+import { UserRepository } from './UserRepository.js';
 import { createMockLogger } from '../../__mocks__/mockFactories.js';
 import { Config } from '../../config/config.js';
 import { ILogger, IConfig } from '../../interfaces/index.js';
 import { User } from '../../models/User.js';
-import { UserRepository } from './UserRepository.js';
 import {
   MongoDbClient,
   IMongoDbClient,

@@ -3,6 +3,7 @@ import {
   createProgressCallback,
   ProgressTracker,
 } from '../../services/progress/ProgressTracker.js';
+
 import type { Logger } from '../../utils/Logger.js';
 
 describe('ProgressTracker', () => {
