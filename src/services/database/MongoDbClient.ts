@@ -1,6 +1,6 @@
 // src/services/database/MongoDbClient.ts
 import { injectable, inject } from 'inversify';
-import { MongoClient, Db } from 'mongodb';
+import { MongoClient, Db, MongoServerError } from 'mongodb';
 import { IConfig, ILogger } from '../../interfaces/index.js';
 import { TYPES } from '../../utils/types.js';
 
@@ -48,8 +48,16 @@ export class MongoDbClient implements IMongoDbClient {
 
         return;
       } catch (error) {
-        const errorMessage =
+        let errorMessage =
           error instanceof Error ? error.message : String(error);
+
+        if (error instanceof MongoServerError) {
+          errorMessage += ` (Code: ${error.code}, CodeName: ${error.codeName})`;
+          if (error.errmsg) {
+            errorMessage += ` Details: ${error.errmsg}`;
+          }
+        }
+
         this.logger.warn(
           `Failed to connect to the database (attempt ${attempt}/${maxRetries}): ${errorMessage}`,
         );
@@ -66,6 +74,7 @@ export class MongoDbClient implements IMongoDbClient {
       }
     }
   }
+
   getDb(): Db {
     if (!this.db) {
       throw new Error('Database not connected. Call connect() first.');
