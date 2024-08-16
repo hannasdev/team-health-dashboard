@@ -51,7 +51,7 @@ jobs:
         ports:
           - 27017:27017
         options: >-
-          --health-cmd="mongosh --eval \"db.runCommand({ ping: 1 })\"" 
+          --health-cmd="mongo --eval \"db.runCommand({ ping: 1 })\"" 
           --health-interval=10s 
           --health-timeout=5s 
           --health-retries=5
@@ -81,7 +81,7 @@ jobs:
 
       - name: Verify MongoDB connection
         run: |
-          mongosh --host localhost --port 27017 -u root -p example --eval "db.runCommand({ connectionStatus: 1 })"
+          mongo --host localhost --port 27017 -u root -p example --eval "db.runCommand({ connectionStatus: 1 })"
 
       - name: Start application and wait for it to be ready
         run: |
