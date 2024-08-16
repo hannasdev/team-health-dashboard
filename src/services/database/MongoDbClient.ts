@@ -30,6 +30,14 @@ export class MongoDbClient implements IMongoDbClient {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
+        this.logger.debug(
+          `Attempting to connect with DATABASE_URL: ${this.config.DATABASE_URL}`,
+        );
+
+        if (!this.config.DATABASE_URL) {
+          throw new Error('DATABASE_URL is not defined in the configuration');
+        }
+
         this.client = await MongoClient.connect(this.config.DATABASE_URL, {
           connectTimeoutMS: this.config.MONGO_CONNECT_TIMEOUT_MS,
           serverSelectionTimeoutMS:
@@ -37,6 +45,7 @@ export class MongoDbClient implements IMongoDbClient {
         });
         this.db = this.client.db();
         this.logger.info('Successfully connected to the database');
+
         return;
       } catch (error) {
         const errorMessage =
