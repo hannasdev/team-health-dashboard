@@ -97,9 +97,10 @@ jobs:
 
       - name: Run e2e tests
         run: |
-          npm run test:e2e -- --forceExit || (cat logs/app.log && exit 1)
+          npm run test:e2e -- --forceExit --detectOpenHandles || (cat app.log && kill $(cat app.pid) && exit 1)
+
     env:
-      DATABASE_URL: mongodb://root:example@localhost:27017/myapp?authSource=admin
+      DATABASE_URL: mongodb://root:example@127.0.0.1:27017/myapp?authSource=admin
       GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
       GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
       GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
@@ -111,7 +112,7 @@ jobs:
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       LOG_LEVEL: debug
       LOG_FORMAT: json
-      LOG_FILE_PATH: './logs'
+      API_URL: http://127.0.0.1:${{ secrets.PORT }}
 
   docker-build-and-push:
     needs: [build, test-unit, e2e-test]

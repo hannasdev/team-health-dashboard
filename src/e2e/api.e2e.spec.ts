@@ -2,7 +2,7 @@
 import request from 'supertest';
 import EventSource from 'eventsource';
 
-const apiEndpoint = 'http://app:3000';
+const apiEndpoint = process.env.API_URL || 'http://localhost:3000';
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
