@@ -4,3 +4,5 @@ docs/
 dist/
 node_modules/
 codebase.md
+.env
+.env.test
