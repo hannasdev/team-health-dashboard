@@ -47,14 +47,18 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mongodb:
-        image: mongo:latest
+        image: mongo:7.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: root
+          MONGO_INITDB_ROOT_PASSWORD: example
         ports:
           - 27017:27017
         options: >-
-          --health-cmd="mongo --quiet --eval 'db.runCommand({ ping: 1 })'" 
-          --health-interval=10s 
-          --health-timeout=5s 
+          --health-cmd="mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval=10s
+          --health-timeout=5s
           --health-retries=5
+          --health-start-period=20s
     steps:
       - uses: actions/checkout@v3
 
@@ -73,21 +77,9 @@ jobs:
           name: dist
           path: dist
 
-      - name: Debug MongoDB
-        run: |
-          docker ps
-          docker logs $(docker ps -q --filter name=mongodb)
-
-      - name: Install MongoDB client
-        run: |
-          wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | sudo apt-key add -
-          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-5.0.list
-          sudo apt-get update
-          sudo apt-get install -y mongodb-org-shell
-
       - name: Verify MongoDB connection
         run: |
-          mongo --host localhost --port 27017 -u root -p example --eval "db.runCommand({ ping: 1 })"
+          mongosh --host localhost --port 27017 -u root -p example --eval "db.runCommand({ ping: 1 })"
 
       - name: Start application and wait for it to be ready
         run: |
@@ -98,8 +90,6 @@ jobs:
         run: |
           npm run test:e2e -- --forceExit || (cat logs/app.log && exit 1)
     env:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
       DATABASE_URL: mongodb://root:example@localhost:27017/myapp?authSource=admin
       GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
       GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
