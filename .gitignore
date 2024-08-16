@@ -24,3 +24,6 @@ Thumbs.db
 coverage/
 
 solar-imprint.json
+
+# AI Digest
+codebase.md

@@ -3,3 +3,4 @@ package-lock.json
 docs/
 dist/
 node_modules/
+codebase.md
