@@ -39,8 +39,9 @@ FROM test AS unit-test
 
 # E2E Test Stage
 # - Similar to the unit test stage, but set up for E2E tests.
+# E2E Test Stage
 FROM test AS e2e-test 
-CMD ["node", "--experimental-vm-modules", "node_modules/.bin/jest", "--config", "jest.config.docker.js", "--testMatch", "**/*.e2e.spec.js"]
+CMD ["node", "--experimental-vm-modules", "node_modules/.bin/jest", "--config", "jest.config.docker.js", "--testMatch", "**/dist/e2e/**/*.e2e.spec.js"]
 
 # Production Stage 
 # - Builds a lean production image.

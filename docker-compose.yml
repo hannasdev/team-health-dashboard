@@ -105,6 +105,7 @@ services:
       - REPO_OWNER=test-user
       - REPO_REPO=test-org/test-repo
       - CORS_ORIGIN=http://localhost:3000,null
+      - API_URL=http://app:3000
     depends_on:
       - db-test
       - app
@@ -117,7 +118,8 @@ services:
       - -c
       - |
         npx wait-on http://app:3000/health --timeout 30000 &&
-        node --experimental-vm-modules node_modules/.bin/jest --forceExit ​--config jest.config.docker.js --testMatch "**/*.e2e.spec.js"
+        node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/e2e/**/*.e2e.spec.js" --forceExit
+
   # DB Test
   # - Similar to the db service, but for testing purposes.
   # - Uses a different volume for data and exposes port 27018.
