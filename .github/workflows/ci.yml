@@ -73,15 +73,21 @@ jobs:
           name: dist
           path: dist
 
-      - name: Debug environment
+      - name: Debug MongoDB
         run: |
-          echo "DATABASE_URL: $DATABASE_URL"
-          echo "PORT: $PORT"
-          echo "LOG_LEVEL: $LOG_LEVEL"
+          docker ps
+          docker logs $(docker ps -q --filter name=mongodb)
+
+      - name: Install MongoDB client
+        run: |
+          wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | sudo apt-key add -
+          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/5.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-5.0.list
+          sudo apt-get update
+          sudo apt-get install -y mongodb-org-shell
 
       - name: Verify MongoDB connection
         run: |
-          mongo --host localhost --port 27017 -u root -p example --eval "db.runCommand({ connectionStatus: 1 })"
+          mongosh --host localhost --port 27017 -u root -p example --eval "db.adminCommand('ping')"
 
       - name: Start application and wait for it to be ready
         run: |
