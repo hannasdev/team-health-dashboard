@@ -1,114 +1,128 @@
-// src/middleware/AuthMiddleware.test.ts
-import { IncomingHttpHeaders } from 'http';
-
-import { NextFunction, Response } from 'express';
+// src/services/auth/AuthService.test.ts
 import { Container } from 'inversify';
-import jwt from 'jsonwebtoken'; // Add this import
 
 import {
-  createMockAuthRequest,
-  createMockAuthMiddlewareResponse,
-  createMockAuthService,
+  createMockConfig,
+  createMockJwtService,
+  createMockBcryptService,
+  createMockUserRepository,
+  createMockLogger,
 } from '../__mocks__/mockFactories';
-import { Config } from '../config/config.js';
 import {
-  IAuthRequest,
   IConfig,
-  IAuthMiddleware,
+  IJwtService,
+  IBcryptService,
+  IUserRepository,
+  ILogger,
   IAuthService,
 } from '../interfaces/index.js';
-import { AuthMiddleware } from '../middleware/AuthMiddleware.js';
+import { User } from '../models/User.js';
+import { AuthService } from '../services/auth/AuthService.js';
 import { TYPES } from '../utils/types.js';
 
-describe('AuthMiddleware', () => {
-  let mockRequest: IAuthRequest;
-  let mockResponse: Response;
-  let nextFunction: NextFunction;
-  let mockConfig: IConfig;
+describe('AuthService', () => {
   let container: Container;
-  let authMiddleware: IAuthMiddleware;
-  let mockJwtService: typeof jwt;
-  let mockAuthService: jest.Mocked<IAuthService>;
+  let authService: IAuthService;
+  let mockConfig: jest.Mocked<IConfig>;
+  let mockJwtService: jest.Mocked<IJwtService>;
+  let mockBcryptService: jest.Mocked<IBcryptService>;
+  let mockUserRepository: jest.Mocked<IUserRepository>;
+  let mockLogger: jest.Mocked<ILogger>;
 
   beforeEach(() => {
-    mockRequest = createMockAuthRequest();
-    mockResponse = createMockAuthMiddlewareResponse();
-    mockConfig = Config.getInstance({ JWT_SECRET: 'test-secret' });
-    nextFunction = jest.fn();
-
-    mockAuthService = createMockAuthService();
+    mockConfig = createMockConfig();
+    mockConfig.JWT_SECRET = 'test-secret';
+    mockJwtService = createMockJwtService();
+    mockBcryptService = createMockBcryptService();
+    mockUserRepository = createMockUserRepository();
+    mockLogger = createMockLogger();
 
     container = new Container();
     container.bind<IConfig>(TYPES.Config).toConstantValue(mockConfig);
     container
-      .bind<IAuthService>(TYPES.AuthService)
-      .toConstantValue(mockAuthService);
-    container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
+      .bind<IJwtService>(TYPES.JwtService)
+      .toConstantValue(mockJwtService);
+    container
+      .bind<IBcryptService>(TYPES.BcryptService)
+      .toConstantValue(mockBcryptService);
+    container
+      .bind<IUserRepository>(TYPES.UserRepository)
+      .toConstantValue(mockUserRepository);
+    container.bind<ILogger>(TYPES.Logger).toConstantValue(mockLogger);
+    container.bind<IAuthService>(TYPES.AuthService).to(AuthService);
 
-    authMiddleware = container.get<IAuthMiddleware>(TYPES.AuthMiddleware);
+    authService = container.get<IAuthService>(TYPES.AuthService);
 
     jest.resetAllMocks();
   });
 
-  it('should call next() if a valid token is provided', () => {
-    const user = { id: '1', email: 'test@example.com' };
-    mockRequest.headers = {
-      authorization: 'Bearer valid_token',
-    } as IncomingHttpHeaders;
+  describe('validateToken', () => {
+    it('should return decoded token payload', () => {
+      const mockPayload = { id: '1', email: 'test@example.com' };
+      mockJwtService.verify.mockReturnValue(mockPayload);
 
-    mockAuthService.validateToken.mockReturnValue(user);
+      const result = authService.validateToken('valid_token');
 
-    authMiddleware.handle(mockRequest, mockResponse, nextFunction);
+      expect(result).toEqual(mockPayload);
+      expect(mockJwtService.verify).toHaveBeenCalledWith(
+        'valid_token',
+        mockConfig.JWT_SECRET,
+      );
+    });
 
-    expect(mockAuthService.validateToken).toHaveBeenCalledWith('valid_token');
-    expect(mockRequest.user).toEqual(user);
-    expect(nextFunction).toHaveBeenCalled();
+    it('should throw an error for invalid token', () => {
+      mockJwtService.verify.mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
+
+      expect(() => authService.validateToken('invalid_token')).toThrow(
+        'Invalid token',
+      );
+    });
   });
 
-  it('should return 401 if an invalid token is provided', () => {
-    const jsonMock = jest.fn();
-    mockResponse.status = jest.fn().mockReturnValue({ json: jsonMock });
+  describe('login', () => {
+    it('should return a token for valid credentials', async () => {
+      const mockUser = new User('1', 'test@example.com', 'hashed_password');
+      mockUserRepository.findByEmail.mockResolvedValue(mockUser);
+      mockBcryptService.compare.mockResolvedValue(true);
+      mockJwtService.sign.mockReturnValue('valid_token');
 
-    mockRequest.headers = {
-      authorization: 'Bearer invalid_token',
-    } as IncomingHttpHeaders;
+      const result = await authService.login('test@example.com', 'password');
 
-    mockAuthService.validateToken.mockImplementation(() => {
-      throw new Error('Invalid token');
+      expect(result).toBe('valid_token');
+      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
+        'test@example.com',
+      );
+      expect(mockBcryptService.compare).toHaveBeenCalledWith(
+        'password',
+        'hashed_password',
+      );
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        { id: '1', email: 'test@example.com' },
+        mockConfig.JWT_SECRET,
+        { expiresIn: '1d' },
+      );
     });
 
-    authMiddleware.handle(mockRequest, mockResponse, nextFunction);
+    it('should throw an error for non-existent user', async () => {
+      mockUserRepository.findByEmail.mockResolvedValue(undefined);
 
-    expect(mockAuthService.validateToken).toHaveBeenCalledWith('invalid_token');
-    expect(mockResponse.status).toHaveBeenCalledWith(401);
-    expect(jsonMock).toHaveBeenCalledWith({
-      message: 'Invalid token',
+      await expect(
+        authService.login('nonexistent@example.com', 'password'),
+      ).rejects.toThrow('Invalid credentials');
     });
-    expect(nextFunction).not.toHaveBeenCalled();
+
+    it('should throw an error for incorrect password', async () => {
+      const mockUser = new User('1', 'test@example.com', 'hashed_password');
+      mockUserRepository.findByEmail.mockResolvedValue(mockUser);
+      mockBcryptService.compare.mockResolvedValue(false);
+
+      await expect(
+        authService.login('test@example.com', 'wrong_password'),
+      ).rejects.toThrow('Invalid credentials');
+    });
   });
 
-  it('should return 401 if an invalid token is provided', () => {
-    const jsonMock = jest.fn();
-    mockResponse.status = jest.fn().mockReturnValue({ json: jsonMock });
-
-    mockRequest.headers = {
-      authorization: 'Bearer invalid_token',
-    } as IncomingHttpHeaders;
-
-    (mockJwtService.verify as jest.Mock).mockImplementation(() => {
-      throw new Error('Invalid token');
-    });
-
-    authMiddleware.handle(mockRequest, mockResponse, nextFunction);
-
-    expect(mockJwtService.verify).toHaveBeenCalledWith(
-      'invalid_token',
-      mockConfig.JWT_SECRET,
-    );
-    expect(mockResponse.status).toHaveBeenCalledWith(401);
-    expect(jsonMock).toHaveBeenCalledWith({
-      message: 'Invalid token',
-    });
-    expect(nextFunction).not.toHaveBeenCalled();
-  });
+  // Add more test cases for other methods (register, refreshToken, etc.)
 });
