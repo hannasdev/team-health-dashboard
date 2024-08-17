@@ -8,8 +8,13 @@
  * @module Container
  */
 
+import { GitHubAdapter } from './adapters/GitHubAdapter.js';
+import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter.js';
 import { container } from './appContainer.js';
 import { Config } from './config/config.js';
+import { AuthController } from './controllers/AuthController.js';
+import { HealthCheckController } from './controllers/HealthCheckController.js';
+import { MetricsController } from './controllers/MetricsController.js';
 import {
   IApplication,
   IAuthController,
@@ -25,6 +30,7 @@ import {
   IHealthCheckController,
   IJwtService,
   ILogger,
+  ILoggingService,
   IMetricCalculator,
   IMetricsController,
   IMetricsService,
@@ -38,31 +44,31 @@ import { GitHubRepository } from './repositories/github/GitHubRepository.js';
 import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository.js';
 import { UserRepository } from './repositories/user/UserRepository.js';
 import { CacheService } from './services/cache/CacheService.js';
-import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
-import { MetricsService } from './services/metrics/MetricsService.js';
-import { ProgressTracker } from './services/progress/ProgressTracker.js';
-import { BcryptService } from './utils/BcryptService.js';
-import { JwtService } from './utils/JwtService.js';
-import { Logger } from './utils/Logger.js';
-import { TYPES } from './utils/types.js';
-import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
 import {
   MongoDbClient,
   IMongoDbClient,
 } from './services/database/MongoDbClient.js';
-import { AuthController } from './controllers/AuthController.js';
-import { HealthCheckController } from './controllers/HealthCheckController.js';
-import { MetricsController } from './controllers/MetricsController.js';
-import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter.js';
-import { GitHubAdapter } from './adapters/GitHubAdapter.js';
+import { LoggingService } from './services/logging/LoggingService.js';
+import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
+import { MetricsService } from './services/metrics/MetricsService.js';
+import { ProgressTracker } from './services/progress/ProgressTracker.js';
+import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
+import { BcryptService } from './utils/BcryptService.js';
+import { JwtService } from './utils/JwtService.js';
+import { Logger } from './utils/Logger.js';
+import { TYPES } from './utils/types.js';
 
 const config = Config.getInstance();
 
 // 1. Configuration and Logging (Fundamental Dependencies)
 container.bind<IConfig>(TYPES.Config).toConstantValue(config);
-container.bind<ILogger>(TYPES.Logger).to(Logger);
+container.bind<ILogger>(TYPES.Logger).to(Logger).inSingletonScope();
 container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
 container.bind<string>(TYPES.LogFormat).toConstantValue(config.LOG_FORMAT);
+container
+  .bind<ILoggingService>(TYPES.LoggingService)
+  .to(LoggingService)
+  .inSingletonScope();
 
 // 2. Core Services and Utilities
 container
