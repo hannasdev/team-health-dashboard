@@ -2,47 +2,59 @@
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { TYPES } from '../utils/types.js';
-
-import type {
+import {
   IAuthRequest,
-  IConfig,
   IAuthMiddleware,
-  IJwtService,
+  IAuthService,
+  ILogger,
 } from '../interfaces/index.js';
+import { TYPES } from '../utils/types.js';
 
 @injectable()
 export class AuthMiddleware implements IAuthMiddleware {
   constructor(
-    @inject(TYPES.Config) private config: IConfig,
-    @inject(TYPES.JwtService) private jwtService: IJwtService,
+    @inject(TYPES.AuthService) private authService: IAuthService,
+    @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
-  public handle = (
+  public handle = async (
     req: IAuthRequest,
     res: Response,
     next: NextFunction,
-  ): void | Response => {
+  ): Promise<void | Response> => {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
-      res.status(401).json({ message: 'No token provided' });
-      return;
+      this.logger.warn('Authorization header missing');
+      return res.status(401).json({ message: 'No token provided' });
     }
 
     const [bearer, token] = authHeader.split(' ');
     if (bearer !== 'Bearer' || !token) {
-      res.status(401).json({ message: 'Invalid token format' });
-      return;
+      this.logger.warn('Invalid authorization header format');
+      return res.status(401).json({ message: 'Invalid token format' });
     }
 
     try {
-      const decoded = this.jwtService.verify(token, this.config.JWT_SECRET) as {
-        id: string;
-        email: string;
-      };
+      // Check if the token has been revoked
+      const isRevoked = await this.authService.isTokenRevoked(token);
+      if (isRevoked) {
+        this.logger.warn(
+          `Attempt to use revoked token: ${token.substring(0, 10)}...`,
+        );
+        return res.status(401).json({ message: 'Token has been revoked' });
+      }
+
+      const decoded = this.authService.validateToken(token);
       req.user = decoded;
+      this.logger.info(`User authenticated: ${decoded.email}`);
       next();
     } catch (error) {
+      this.logger.error(
+        `Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+      if (error instanceof Error && error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Token has expired' });
+      }
       res.status(401).json({ message: 'Invalid token' });
     }
   };

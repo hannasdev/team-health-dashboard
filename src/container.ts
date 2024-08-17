@@ -37,12 +37,14 @@ import {
   IProgressTracker,
   ITeamHealthDashboardApp,
   IUserRepository,
+  IAuthService,
 } from './interfaces/index.js';
 import { AuthMiddleware } from './middleware/AuthMiddleware.js';
 import { ErrorHandler } from './middleware/ErrorHandler.js';
 import { GitHubRepository } from './repositories/github/GitHubRepository.js';
 import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository.js';
 import { UserRepository } from './repositories/user/UserRepository.js';
+import { AuthService } from './services/auth/AuthService.js';
 import { CacheService } from './services/cache/CacheService.js';
 import {
   MongoDbClient,
@@ -113,6 +115,7 @@ container
 
 // 8.  Middleware (Can depend on services)
 container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
+container.bind<IAuthService>(TYPES.AuthService).to(AuthService);
 container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
 // ... bind other middleware
 

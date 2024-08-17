@@ -7,6 +7,7 @@ export const TYPES = {
   Application: Symbol.for('IApplication'),
   AuthController: Symbol.for('IAuthController'),
   AuthMiddleware: Symbol.for('IAuthMiddleware'),
+  AuthService: Symbol.for('IAuthService'),
   BcryptService: Symbol.for('IBcryptService'),
   CacheService: Symbol.for('ICacheService'),
   Config: Symbol.for('IConfig'),

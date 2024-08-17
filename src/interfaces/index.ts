@@ -2,6 +2,7 @@ export type { IApplication } from './IApplication.js';
 export type { IAuthController } from './IAuthController.js';
 export type { IAuthMiddleware } from './IAuthMiddleware.js';
 export type { IAuthRequest } from './IAuthRequest.js';
+export type { IAuthService } from './IAuthService.js';
 export type { IBcryptService } from './IBcryptService.js';
 export type { ICacheService } from './ICacheService.js';
 export type { IConfig } from './IConfig.js';

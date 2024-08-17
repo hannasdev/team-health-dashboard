@@ -5,6 +5,8 @@ import { Request, Response } from 'express';
 
 import {
   IAuthRequest,
+  IAuthService,
+  IBcryptService,
   ICacheService,
   IConfig,
   IFetchDataResult,
@@ -15,6 +17,7 @@ import {
   IGoogleSheetsRepository,
   IGoogleSheetsService,
   IGraphQLResponse,
+  IJwtService,
   ILogger,
   IMetric,
   IMetricCalculator,
@@ -377,3 +380,29 @@ export function createMockMetricsRequest(
 
   return mockRequest;
 }
+
+export function createMockJwtService(): jest.Mocked<IJwtService> {
+  return {
+    sign: jest.fn(),
+    verify: jest.fn(),
+  };
+}
+
+export function createMockBcryptService(): jest.Mocked<IBcryptService> {
+  return {
+    hash: jest.fn(),
+    compare: jest.fn(),
+  };
+}
+
+export const createMockAuthService = (): jest.Mocked<IAuthService> => ({
+  validateToken: jest.fn(),
+  generateToken: jest.fn(),
+  login: jest.fn(),
+  register: jest.fn(),
+  refreshToken: jest.fn(),
+  revokeToken: jest.fn(),
+  isTokenRevoked: jest.fn(),
+  initiatePasswordReset: jest.fn(),
+  resetPassword: jest.fn(),
+});
