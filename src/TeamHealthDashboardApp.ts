@@ -46,13 +46,16 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureCors(): void {
+    const allowedOrigins = this.config.CORS_ORIGIN.split(',').map(origin =>
+      origin.trim(),
+    );
+
     this.expressApp.use(
       cors({
         origin: (origin, callback) => {
-          const allowedOrigins = this.config.CORS_ORIGIN.split(',');
           if (
             !origin ||
-            allowedOrigins.indexOf(origin) !== -1 ||
+            allowedOrigins.includes(origin) ||
             allowedOrigins.includes('*')
           ) {
             callback(null, true);
@@ -62,8 +65,11 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
         },
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allowedHeaders: ['Content-Type', 'Authorization'],
+        credentials: true,
       }),
     );
+
+    this.expressApp.options('*', cors());
   }
 
   private configureMiddleware(): void {
