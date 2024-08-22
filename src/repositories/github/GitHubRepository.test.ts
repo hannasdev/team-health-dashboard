@@ -37,6 +37,7 @@ describe('GitHubRepository', () => {
     GOOGLE_SHEETS_PRIVATE_KEY: 'test-google-sheets-private-key',
     GOOGLE_SHEETS_CLIENT_EMAIL: 'test-client-email@example.com',
     GOOGLE_SHEETS_SHEET_ID: 'test-sheet-id',
+    REFRESH_TOKEN_SECRET: 'test-token-secret',
     MONGODB_URI: 'mongodb://localhost:27017/test-db',
     PORT: 3000,
     CORS_ORIGIN: 'http://localhost:3000',

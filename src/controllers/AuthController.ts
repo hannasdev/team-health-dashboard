@@ -69,6 +69,54 @@ export class AuthController implements IAuthController {
     }
   }
 
+  public async refreshToken(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    const { refreshToken } = req.body;
+    try {
+      const decoded = this.jwtService.verify(
+        refreshToken,
+        this.config.REFRESH_TOKEN_SECRET,
+      ) as { id: string; email: string }; // Add type assertion here
+
+      if (typeof decoded !== 'object' || !decoded.id) {
+        res.status(401).json({ message: 'Invalid refresh token' });
+        return;
+      }
+
+      const user = await this.userRepository.findById(decoded.id);
+      if (!user) {
+        res.status(401).json({ message: 'Invalid refresh token' });
+        return;
+      }
+      const { accessToken, refreshToken: newRefreshToken } =
+        this.generateTokens(user.id, user.email);
+      res.json({ accessToken, refreshToken: newRefreshToken });
+    } catch (error) {
+      this.logger.error('Error in refreshToken:', error as Error);
+      res.status(401).json({ message: 'Invalid refresh token' });
+    }
+  }
+
+  private generateTokens(
+    userId: string,
+    email: string,
+  ): { accessToken: string; refreshToken: string } {
+    const accessToken = this.jwtService.sign(
+      { id: userId, email },
+      this.config.JWT_SECRET,
+      { expiresIn: '15m' },
+    );
+    const refreshToken = this.jwtService.sign(
+      { id: userId },
+      this.config.REFRESH_TOKEN_SECRET,
+      { expiresIn: '7d' },
+    );
+    return { accessToken, refreshToken };
+  }
+
   private generateToken(userId: string, email: string): string {
     return this.jwtService.sign({ id: userId, email }, this.config.JWT_SECRET, {
       expiresIn: '1h',

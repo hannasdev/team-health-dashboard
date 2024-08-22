@@ -31,6 +31,18 @@ export class UserRepository implements IUserRepository {
     return new User(user._id.toString(), user.email, user.password);
   }
 
+  async findById(id: string): Promise<User | undefined> {
+    const user = await this.collection.findOne({ _id: new Object(id) });
+
+    if (!user) {
+      this.logger.debug(`User not found for id: ${id}`);
+      return undefined;
+    }
+
+    this.logger.debug(`User found for id: ${id}`);
+    return new User(user._id.toString(), user.email, user.password);
+  }
+
   async create(email: string, password: string): Promise<User> {
     const result = await this.collection.insertOne({ email, password });
 

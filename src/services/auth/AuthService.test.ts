@@ -21,7 +21,7 @@ describe('AuthService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockConfig = Config.getInstance({ JWT_SECRET: 'test-secret' });
+    mockConfig = Config.getInstance({});
     mockJwtService = createMockJwtService();
     mockBcryptService = createMockBcryptService();
     mockUserRepository = createMockUserRepository();
@@ -36,6 +36,38 @@ describe('AuthService', () => {
     );
   });
 
+  describe('generateAccessToken', () => {
+    it('should generate an access token with the given payload', () => {
+      const mockPayload = { id: '1', email: 'test@example.com' };
+      mockJwtService.sign.mockReturnValue('generated-access-token');
+
+      const accessToken = authService.generateAccessToken(mockPayload);
+
+      expect(accessToken).toBe('generated-access-token');
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        mockPayload,
+        'test-jwt-secret',
+        { expiresIn: '15m' },
+      );
+    });
+  });
+
+  describe('generateRefreshToken', () => {
+    it('should generate a refresh token with the given payload', () => {
+      const mockPayload = { id: '1' };
+      mockJwtService.sign.mockReturnValue('generated-refresh-token');
+
+      const refreshToken = authService.generateRefreshToken(mockPayload);
+
+      expect(refreshToken).toBe('generated-refresh-token');
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        mockPayload,
+        'test-jwt-refresh-secret',
+        { expiresIn: '7d' },
+      );
+    });
+  });
+
   describe('validateToken', () => {
     it('should return decoded token payload', () => {
       const mockPayload = { id: '1', email: 'test@example.com' };
@@ -46,7 +78,7 @@ describe('AuthService', () => {
       expect(result).toEqual(mockPayload);
       expect(mockJwtService.verify).toHaveBeenCalledWith(
         'valid-token',
-        'test-secret',
+        'test-jwt-secret',
       );
     });
 
@@ -61,22 +93,6 @@ describe('AuthService', () => {
     });
   });
 
-  describe('generateToken', () => {
-    it('should generate a token with the given payload', () => {
-      const mockPayload = { id: '1', email: 'test@example.com' };
-      mockJwtService.sign.mockReturnValue('generated-token');
-
-      const result = authService.generateToken(mockPayload);
-
-      expect(result).toBe('generated-token');
-      expect(mockJwtService.sign).toHaveBeenCalledWith(
-        mockPayload,
-        'test-secret',
-        { expiresIn: '1d' },
-      );
-    });
-  });
-
   describe('login', () => {
     it('should return a token for valid credentials', async () => {
       const mockUser = new User('1', 'test@example.com', 'hashed-password');
@@ -86,7 +102,15 @@ describe('AuthService', () => {
 
       const result = await authService.login('test@example.com', 'password');
 
-      expect(result).toBe('login-token');
+      expect(result).toEqual({
+        accessToken: 'login-token',
+        refreshToken: 'login-token',
+        user: {
+          email: 'test@example.com',
+          id: '1',
+          password: 'hashed-password',
+        },
+      });
       expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
         'test@example.com',
       );
@@ -96,8 +120,8 @@ describe('AuthService', () => {
       );
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         { id: '1', email: 'test@example.com' },
-        'test-secret',
-        { expiresIn: '1d' },
+        'test-jwt-secret',
+        { expiresIn: '15m' },
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Successful login for user: test@example.com',
@@ -139,7 +163,11 @@ describe('AuthService', () => {
 
       const result = await authService.register('new@example.com', 'password');
 
-      expect(result).toBe('register-token');
+      expect(result).toEqual({
+        accessToken: 'register-token',
+        refreshToken: 'register-token',
+        user: expect.any(User),
+      });
       expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
         'new@example.com',
       );
@@ -150,8 +178,13 @@ describe('AuthService', () => {
       );
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         { id: '1', email: 'new@example.com' },
-        'test-secret',
-        { expiresIn: '1d' },
+        'test-jwt-secret',
+        { expiresIn: '15m' },
+      );
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        { id: '1' },
+        'test-jwt-refresh-secret',
+        { expiresIn: '7d' },
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
         'New user registered: new@example.com',
@@ -176,22 +209,35 @@ describe('AuthService', () => {
   });
 
   describe('refreshToken', () => {
-    it('should return a new token for a valid token', async () => {
-      const mockPayload = { id: '1', email: 'test@example.com' };
-      mockJwtService.verify.mockReturnValue(mockPayload);
-      mockJwtService.sign.mockReturnValue('refreshed-token');
+    it('should return new tokens for a valid refresh token', async () => {
+      const mockUser = new User('1', 'test@example.com', 'hashed-password');
+      mockJwtService.verify.mockReturnValue({ id: '1' });
+      mockUserRepository.findById.mockResolvedValue(mockUser);
+      mockJwtService.sign
+        .mockReturnValueOnce('new-access-token')
+        .mockReturnValueOnce('new-refresh-token');
 
-      const result = await authService.refreshToken('valid-token');
+      const result = await authService.refreshToken('valid-refresh-token');
 
-      expect(result).toBe('refreshed-token');
+      expect(result).toEqual({
+        accessToken: 'new-access-token',
+        refreshToken: 'new-refresh-token',
+      });
       expect(mockJwtService.verify).toHaveBeenCalledWith(
-        'valid-token',
-        'test-secret',
+        'valid-refresh-token',
+        'test-jwt-refresh-secret',
+      );
+      expect(mockUserRepository.findById).toHaveBeenCalledWith('1');
+      expect(mockJwtService.sign).toHaveBeenCalledTimes(2);
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        { id: '1', email: 'test@example.com' },
+        'test-jwt-secret',
+        { expiresIn: '15m' },
       );
       expect(mockJwtService.sign).toHaveBeenCalledWith(
-        mockPayload,
-        'test-secret',
-        { expiresIn: '1d' },
+        { id: '1' },
+        'test-jwt-refresh-secret',
+        { expiresIn: '7d' },
       );
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Token refreshed for user: test@example.com',
@@ -204,7 +250,7 @@ describe('AuthService', () => {
       });
 
       await expect(authService.refreshToken('invalid-token')).rejects.toThrow(
-        'Invalid token',
+        'Invalid refresh token',
       );
     });
   });

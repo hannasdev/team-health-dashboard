@@ -22,6 +22,18 @@ export class AuthService implements IAuthService {
     @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
+  public generateAccessToken(payload: { id: string; email: string }): string {
+    return this.jwtService.sign(payload, this.config.JWT_SECRET, {
+      expiresIn: '15m', // Short-lived access token
+    });
+  }
+
+  public generateRefreshToken(payload: { id: string }): string {
+    return this.jwtService.sign(payload, this.config.REFRESH_TOKEN_SECRET, {
+      expiresIn: '7d', // Long-lived refresh token
+    });
+  }
+
   public validateToken(token: string): { id: string; email: string } {
     return this.jwtService.verify(token, this.config.JWT_SECRET) as {
       id: string;
@@ -29,23 +41,28 @@ export class AuthService implements IAuthService {
     };
   }
 
-  public generateToken(payload: { id: string; email: string }): string {
-    return this.jwtService.sign(payload, this.config.JWT_SECRET, {
-      expiresIn: '1d',
-    });
-  }
-
-  public async login(email: string, password: string): Promise<string> {
+  public async login(
+    email: string,
+    password: string,
+  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
     const user = await this.userRepository.findByEmail(email);
     if (!user || !(await this.bcryptService.compare(password, user.password))) {
       this.logger.warn(`Failed login attempt for email: ${email}`);
       throw new Error('Invalid credentials');
     }
     this.logger.info(`Successful login for user: ${email}`);
-    return this.generateToken({ id: user.id, email: user.email });
+    const accessToken = this.generateAccessToken({
+      id: user.id,
+      email: user.email,
+    });
+    const refreshToken = this.generateRefreshToken({ id: user.id });
+    return { user, accessToken, refreshToken };
   }
 
-  public async register(email: string, password: string): Promise<string> {
+  public async register(
+    email: string,
+    password: string,
+  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
     const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) {
       this.logger.warn(`Registration attempt with existing email: ${email}`);
@@ -54,13 +71,37 @@ export class AuthService implements IAuthService {
     const hashedPassword = await this.bcryptService.hash(password, 10);
     const newUser = await this.userRepository.create(email, hashedPassword);
     this.logger.info(`New user registered: ${email}`);
-    return this.generateToken({ id: newUser.id, email: newUser.email });
+    const accessToken = this.generateAccessToken({
+      id: newUser.id,
+      email: newUser.email,
+    });
+    const refreshToken = this.generateRefreshToken({ id: newUser.id });
+    return { user: newUser, accessToken, refreshToken };
   }
 
-  public async refreshToken(token: string): Promise<string> {
-    const decoded = this.validateToken(token);
-    this.logger.info(`Token refreshed for user: ${decoded.email}`);
-    return this.generateToken({ id: decoded.id, email: decoded.email });
+  public async refreshToken(
+    refreshToken: string,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    try {
+      const decoded = this.jwtService.verify(
+        refreshToken,
+        this.config.REFRESH_TOKEN_SECRET,
+      ) as { id: string };
+      const user = await this.userRepository.findById(decoded.id);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      const newAccessToken = this.generateAccessToken({
+        id: user.id,
+        email: user.email,
+      });
+      const newRefreshToken = this.generateRefreshToken({ id: user.id });
+      this.logger.info(`Token refreshed for user: ${user.email}`);
+      return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+    } catch (error) {
+      this.logger.error('Error refreshing token:', error as Error);
+      throw new Error('Invalid refresh token');
+    }
   }
 
   // We'll need to implement a token blacklist for proper revocation

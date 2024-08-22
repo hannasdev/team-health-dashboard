@@ -90,7 +90,15 @@ describe('AuthService', () => {
 
       const result = await authService.login('test@example.com', 'password');
 
-      expect(result).toBe('valid_token');
+      expect(result).toEqual({
+        accessToken: 'valid_token',
+        refreshToken: 'valid_token',
+        user: {
+          id: '1',
+          email: 'test@example.com',
+          password: 'hashed_password',
+        },
+      });
       expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
         'test@example.com',
       );
@@ -101,7 +109,7 @@ describe('AuthService', () => {
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         { id: '1', email: 'test@example.com' },
         mockConfig.JWT_SECRET,
-        { expiresIn: '1d' },
+        { expiresIn: '15m' },
       );
     });
 

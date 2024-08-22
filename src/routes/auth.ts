@@ -17,4 +17,8 @@ router.post('/register', (req: Request, res: Response, next: NextFunction) =>
   getAuthController().register(req, res, next),
 );
 
+router.post('/refresh', (req: Request, res: Response, next: NextFunction) =>
+  getAuthController().refreshToken(req, res, next),
+);
+
 export default router;

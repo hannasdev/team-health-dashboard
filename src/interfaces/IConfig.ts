@@ -9,6 +9,7 @@ export interface IConfig {
   PORT: number;
   CORS_ORIGIN: string;
   JWT_SECRET: string;
+  REFRESH_TOKEN_SECRET: string;
   DATABASE_URL: string;
   MONGO_CONNECT_TIMEOUT_MS: number;
   MONGO_SERVER_SELECTION_TIMEOUT_MS: number;

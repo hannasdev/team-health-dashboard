@@ -74,6 +74,7 @@ export class Config implements IConfig {
       PORT: 3000,
       CORS_ORIGIN: '*',
       JWT_SECRET: 'your-secret-key', // Provide a safe default
+      REFRESH_TOKEN_SECRET: 'refresh-token-key',
       DATABASE_URL: 'mongodb://localhost:27017/team-health-dashboard',
       MONGO_CONNECT_TIMEOUT_MS: 5000,
       MONGO_SERVER_SELECTION_TIMEOUT_MS: 5000,
@@ -94,6 +95,7 @@ export class Config implements IConfig {
       PORT: parseInt(process.env.PORT || '3000', 10),
       CORS_ORIGIN: process.env.CORS_ORIGIN,
       JWT_SECRET: process.env.JWT_SECRET,
+      REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET,
       DATABASE_URL: process.env.DATABASE_URL,
       MONGO_CONNECT_TIMEOUT_MS: parseInt(
         process.env.MONGO_CONNECT_TIMEOUT_MS || '5000',
@@ -146,6 +148,10 @@ export class Config implements IConfig {
     return this.config.JWT_SECRET;
   }
 
+  public get REFRESH_TOKEN_SECRET(): string {
+    return this.config.REFRESH_TOKEN_SECRET;
+  }
+
   public get DATABASE_URL(): string {
     return this.config.DATABASE_URL;
   }
@@ -179,6 +185,7 @@ export class Config implements IConfig {
       'REPO_OWNER',
       'REPO_REPO',
       'JWT_SECRET',
+      'REFRESH_TOKEN_SECRET',
     ];
 
     const missingVars = requiredEnvVars.filter(

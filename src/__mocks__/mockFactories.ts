@@ -56,6 +56,7 @@ export function createMockConfig(): jest.Mocked<IConfig> {
     PORT: 3000,
     CORS_ORIGIN: '*',
     JWT_SECRET: 'jwt_secret_test',
+    REFRESH_TOKEN_SECRET: 'refresh_token_test',
     DATABASE_URL: 'mongodb://localhost:27017/test_db',
     MONGO_CONNECT_TIMEOUT_MS: 1000,
     MONGO_SERVER_SELECTION_TIMEOUT_MS: 1000,
@@ -244,6 +245,7 @@ export function createMockUserRepository(): jest.Mocked<UserRepository> {
   return {
     findByEmail: jest.fn(),
     create: jest.fn(),
+    findById: jest.fn(),
   } as unknown as jest.Mocked<UserRepository>;
 }
 
@@ -397,7 +399,8 @@ export function createMockBcryptService(): jest.Mocked<IBcryptService> {
 
 export const createMockAuthService = (): jest.Mocked<IAuthService> => ({
   validateToken: jest.fn(),
-  generateToken: jest.fn(),
+  generateAccessToken: jest.fn(),
+  generateRefreshToken: jest.fn(),
   login: jest.fn(),
   register: jest.fn(),
   refreshToken: jest.fn(),
