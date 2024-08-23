@@ -38,8 +38,11 @@ export class AuthController implements IAuthController {
         res.status(401).json({ message: 'Invalid credentials' });
         return;
       }
-      const token = this.generateToken(user.id, user.email);
-      res.json({ token });
+      const { accessToken, refreshToken } = this.generateTokens(
+        user.id,
+        user.email,
+      );
+      res.json({ user, accessToken, refreshToken });
     } catch (error) {
       this.logger.error('Error in login:', error as Error);
       next(error);
@@ -60,9 +63,12 @@ export class AuthController implements IAuthController {
       }
       const hashedPassword = await this.bcryptService.hash(password, 10);
       const user = await this.userRepository.create(email, hashedPassword);
-      const token = this.generateToken(user.id, user.email);
+      const { accessToken, refreshToken } = this.generateTokens(
+        user.id,
+        user.email,
+      );
 
-      res.status(201).json({ token });
+      res.status(201).json({ user, accessToken, refreshToken });
     } catch (error) {
       this.logger.error('Error in register:', error as Error);
       next(error);
@@ -79,7 +85,7 @@ export class AuthController implements IAuthController {
       const decoded = this.jwtService.verify(
         refreshToken,
         this.config.REFRESH_TOKEN_SECRET,
-      ) as { id: string; email: string }; // Add type assertion here
+      ) as { id: string; email: string };
 
       if (typeof decoded !== 'object' || !decoded.id) {
         res.status(401).json({ message: 'Invalid refresh token' });
@@ -115,11 +121,5 @@ export class AuthController implements IAuthController {
       { expiresIn: '7d' },
     );
     return { accessToken, refreshToken };
-  }
-
-  private generateToken(userId: string, email: string): string {
-    return this.jwtService.sign({ id: userId, email }, this.config.JWT_SECRET, {
-      expiresIn: '1h',
-    });
   }
 }
