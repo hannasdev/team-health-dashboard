@@ -49,7 +49,7 @@ describe('AuthController', () => {
   });
 
   describe('register', () => {
-    it('should create a new user and return a token', async () => {
+    it('should create a new user and return an accessToken, refreshToken and user', async () => {
       const mockRequest = {
         body: { email: 'test@example.com', password: 'password123' },
       } as Request;
@@ -76,7 +76,12 @@ describe('AuthController', () => {
       );
       expect(mockResponse.status).toHaveBeenCalledWith(201);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        token: expect.any(String),
+        accessToken: expect.any(String),
+        refreshToken: expect.any(String),
+        user: {
+          email: 'test@example.com',
+          id: '1',
+        },
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -133,7 +138,7 @@ describe('AuthController', () => {
   });
 
   describe('login', () => {
-    it('should return a token for valid credentials', async () => {
+    it('should return a accessToken, refreshToken and user for valid credentials', async () => {
       const mockRequest = {
         body: { email: 'test@example.com', password: 'password123' },
       } as Request;
@@ -156,7 +161,12 @@ describe('AuthController', () => {
         'test@example.com',
       );
       expect(mockResponse.json).toHaveBeenCalledWith({
-        token: expect.any(String),
+        accessToken: expect.any(String),
+        refreshToken: expect.any(String),
+        user: {
+          email: 'test@example.com',
+          id: '1',
+        },
       });
       expect(mockNext).not.toHaveBeenCalled();
     });
