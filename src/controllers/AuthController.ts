@@ -42,7 +42,11 @@ export class AuthController implements IAuthController {
         user.id,
         user.email,
       );
-      res.json({ user, accessToken, refreshToken });
+      res.json({
+        user: { id: user.id, email: user.email },
+        accessToken,
+        refreshToken,
+      });
     } catch (error) {
       this.logger.error('Error in login:', error as Error);
       next(error);
@@ -68,7 +72,11 @@ export class AuthController implements IAuthController {
         user.email,
       );
 
-      res.status(201).json({ user, accessToken, refreshToken });
+      res.status(201).json({
+        user: { id: user.id, email: user.email },
+        accessToken,
+        refreshToken,
+      });
     } catch (error) {
       this.logger.error('Error in register:', error as Error);
       next(error);
@@ -99,7 +107,11 @@ export class AuthController implements IAuthController {
       }
       const { accessToken, refreshToken: newRefreshToken } =
         this.generateTokens(user.id, user.email);
-      res.json({ accessToken, refreshToken: newRefreshToken });
+      res.json({
+        user: { id: user.id, email: user.email },
+        accessToken,
+        refreshToken: newRefreshToken,
+      });
     } catch (error) {
       this.logger.error('Error in refreshToken:', error as Error);
       res.status(401).json({ message: 'Invalid refresh token' });
