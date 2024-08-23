@@ -61,7 +61,7 @@ describe('API E2E Tests', () => {
         password: 'testpassword',
       });
 
-      authToken = loginResponse.body.token;
+      authToken = loginResponse.body.accessToken;
     });
 
     afterAll(async () => {
@@ -215,7 +215,9 @@ describe('API E2E Tests', () => {
       });
 
       expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('token');
+      expect(response.body).toHaveProperty('accessToken');
+      expect(response.body).toHaveProperty('refreshToken');
+      expect(response.body).toHaveProperty('user');
     });
 
     it('should handle existing user registration', async () => {
@@ -243,7 +245,9 @@ describe('API E2E Tests', () => {
         .expect(200)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('token');
+      expect(response.body).toHaveProperty('accessToken');
+      expect(response.body).toHaveProperty('refreshToken');
+      expect(response.body).toHaveProperty('user');
     });
 
     it('should handle invalid login credentials', async () => {
@@ -259,6 +263,5 @@ describe('API E2E Tests', () => {
       expect(response.body).toHaveProperty('message', 'Invalid credentials');
     });
   });
-
-  // ... more tests for other endpoints ...
 });
+// ... more tests for other endpoints ...
