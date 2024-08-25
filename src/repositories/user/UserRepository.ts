@@ -49,4 +49,18 @@ export class UserRepository implements IUserRepository {
     this.logger.info(`New user created with email: ${email}`);
     return new User(result.insertedId.toString(), email, password);
   }
+
+  async updatePassword(id: string, newPassword: string): Promise<void> {
+    const result = await this.collection.updateOne(
+      { _id: new Object(id) },
+      { $set: { password: newPassword } },
+    );
+
+    if (result.modifiedCount === 0) {
+      this.logger.warn(`Failed to update password for user with id: ${id}`);
+      throw new Error('Failed to update password');
+    }
+
+    this.logger.info(`Password updated for user with id: ${id}`);
+  }
 }
