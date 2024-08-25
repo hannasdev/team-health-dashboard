@@ -71,7 +71,7 @@ describe('AuthMiddleware', () => {
     await authMiddleware.handle(req, res as any, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ message: 'No token provided' });
+    expect(res.json).toHaveBeenCalledWith({ error: 'No token provided' });
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -85,7 +85,7 @@ describe('AuthMiddleware', () => {
     await authMiddleware.handle(req, res as any, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid token format' });
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token format' });
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -102,7 +102,7 @@ describe('AuthMiddleware', () => {
 
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
-      message: 'Token has been revoked',
+      error: 'Token has been revoked',
     });
     expect(next).not.toHaveBeenCalled();
   });
@@ -122,7 +122,7 @@ describe('AuthMiddleware', () => {
     await authMiddleware.handle(req, res as any, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ message: 'Invalid token' });
+    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
     expect(next).not.toHaveBeenCalled();
   });
 
@@ -143,7 +143,7 @@ describe('AuthMiddleware', () => {
     await authMiddleware.handle(req, res as any, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ message: 'Token has expired' });
+    expect(res.json).toHaveBeenCalledWith({ error: 'Token has expired' });
     expect(next).not.toHaveBeenCalled();
   });
 

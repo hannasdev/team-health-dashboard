@@ -95,26 +95,22 @@ export class AuthService implements IAuthService {
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
-      // Use TokenBlacklistService to check if the token is blacklisted
       if (await this.tokenBlacklistService.isTokenBlacklisted(refreshToken)) {
         throw new InvalidRefreshTokenError('Refresh token has been revoked');
       }
 
-      // Use TokenService to validate the refresh token
       const decoded = this.tokenService.validateRefreshToken(refreshToken);
       const user = await this.userRepository.findById(decoded.id);
       if (!user) {
         throw new UserNotFoundError();
       }
 
-      // Use TokenService to decode the token
       const decodedToken = this.tokenService.decodeToken(refreshToken);
       await this.tokenBlacklistService.blacklistToken(
         refreshToken,
         decodedToken.exp * 1000,
       );
 
-      // Use TokenService to generate new tokens
       const newAccessToken = this.tokenService.generateAccessToken({
         id: user.id,
         email: user.email,
@@ -126,13 +122,17 @@ export class AuthService implements IAuthService {
       this.logger.info(`Token refreshed for user: ${user.email}`);
       return { accessToken: newAccessToken, refreshToken: newRefreshToken };
     } catch (error) {
-      if (error instanceof UserNotFoundError) {
-        throw error;
-      }
       this.logger.error(
         'Error refreshing token:',
         error instanceof Error ? error : new Error('Unknown error'),
       );
+
+      if (
+        error instanceof UserNotFoundError ||
+        error instanceof InvalidRefreshTokenError
+      ) {
+        throw error;
+      }
       throw new InvalidRefreshTokenError();
     }
   }

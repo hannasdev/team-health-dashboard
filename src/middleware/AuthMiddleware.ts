@@ -28,13 +28,13 @@ export class AuthMiddleware implements IAuthMiddleware {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       this.logger.warn('Authorization header missing');
-      return res.status(401).json({ message: 'No token provided' });
+      return res.status(401).json({ error: 'No token provided' });
     }
 
     const [bearer, token] = authHeader.split(' ');
     if (bearer !== 'Bearer' || !token) {
       this.logger.warn('Invalid authorization header format');
-      return res.status(401).json({ message: 'Invalid token format' });
+      return res.status(401).json({ error: 'Invalid token format' });
     }
 
     try {
@@ -44,7 +44,7 @@ export class AuthMiddleware implements IAuthMiddleware {
         this.logger.warn(
           `Attempt to use revoked token: ${token.substring(0, 10)}...`,
         );
-        return res.status(401).json({ message: 'Token has been revoked' });
+        return res.status(401).json({ error: 'Token has been revoked' });
       }
 
       const decoded = this.tokenService.validateAccessToken(token);
@@ -64,9 +64,9 @@ export class AuthMiddleware implements IAuthMiddleware {
         `Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
       if (error instanceof Error && error.name === 'TokenExpiredError') {
-        return res.status(401).json({ message: 'Token has expired' });
+        return res.status(401).json({ error: 'Token has expired' });
       }
-      res.status(401).json({ message: 'Invalid token' });
+      res.status(401).json({ error: 'Invalid token' });
     }
   };
 
