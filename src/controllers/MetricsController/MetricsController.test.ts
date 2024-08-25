@@ -8,9 +8,9 @@ import {
   createMockMetricsService,
   createMockMetricsRequest,
   createMockResponse,
-} from '../__mocks__/mockFactories.js';
-import { IMetricsService, ILogger } from '../interfaces/index.js';
-import { ProgressCallback } from '../types/index.js';
+} from '../../__mocks__/mockFactories.js';
+import { IMetricsService, ILogger } from '../../interfaces/index.js';
+import { ProgressCallback } from '../../types/index.js';
 
 describe('MetricsController', () => {
   let metricsController: MetricsController;
