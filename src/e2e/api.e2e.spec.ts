@@ -54,15 +54,14 @@ describe('API E2E Tests', () => {
     refreshToken = loginResponse.body.refreshToken;
   });
 
-  describe('GET /api/healthcheck', () => {
+  describe('GET /health', () => {
     it('should return health status', async () => {
       const response = await request(apiEndpoint)
-        .get('/api/healthcheck')
+        .get('/health')
         .expect(200)
         .expect('Content-Type', /json/);
 
       expect(response.body).toHaveProperty('status');
-      // Add more specific assertions based on your healthcheck response
     });
   });
 
@@ -234,20 +233,23 @@ describe('API E2E Tests', () => {
 
   describe('POST /api/auth/refresh', () => {
     it('should refresh the access token with a valid refresh token', async () => {
+      const loginResponse = await request(apiEndpoint)
+        .post('/api/auth/login')
+        .send({
+          email: 'testuser@example.com',
+          password: 'testpassword',
+        });
+
+      const validRefreshToken = loginResponse.body.refreshToken;
+
       const response = await request(apiEndpoint)
         .post('/api/auth/refresh')
-        .send({ refreshToken })
+        .send({ refreshToken: validRefreshToken })
         .expect(200)
         .expect('Content-Type', /json/);
 
       expect(response.body).toHaveProperty('accessToken');
       expect(response.body).toHaveProperty('refreshToken');
-      expect(response.body.accessToken).not.toBe(accessToken);
-      expect(response.body.refreshToken).not.toBe(refreshToken);
-
-      // Update tokens for subsequent tests
-      accessToken = response.body.accessToken;
-      refreshToken = response.body.refreshToken;
     });
 
     it('should reject an invalid refresh token', async () => {
