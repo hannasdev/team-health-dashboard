@@ -1,3 +1,5 @@
+// src/utils/JwtService.ts
+
 import { injectable } from 'inversify';
 import jwt from 'jsonwebtoken';
 
@@ -11,5 +13,9 @@ export class JwtService implements IJwtService {
 
   verify(token: string, secretOrPublicKey: string): object | string {
     return jwt.verify(token, secretOrPublicKey);
+  }
+
+  decode(token: string): any {
+    return jwt.decode(token);
   }
 }
