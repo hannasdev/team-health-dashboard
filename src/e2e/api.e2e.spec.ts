@@ -54,10 +54,10 @@ describe('API E2E Tests', () => {
     refreshToken = loginResponse.body.refreshToken;
   });
 
-  describe('GET /healthcheck', () => {
+  describe('GET /api/healthcheck', () => {
     it('should return health status', async () => {
       const response = await request(apiEndpoint)
-        .get('/healthcheck')
+        .get('/api/healthcheck')
         .expect(200)
         .expect('Content-Type', /json/);
 
@@ -66,25 +66,56 @@ describe('API E2E Tests', () => {
     });
   });
 
-  describe('GET /api/metrics authentication', () => {
+  describe('GET /api/metrics', () => {
     it('should deny access for unauthenticated users', async () => {
       const response = await request(apiEndpoint)
         .get('/api/metrics')
         .expect(401)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('message', 'Unauthorized');
+      expect(response.body).toHaveProperty('message', 'No token provided');
     });
 
-    it('should allow access for authenticated users', async () => {
-      const response = await request(apiEndpoint)
-        .get('/api/metrics')
-        .set('Authorization', `Bearer ${accessToken}`)
-        .expect(200)
-        .expect('Content-Type', 'text/event-stream');
+    it('should allow access for authenticated users and stream data', done => {
+      const timePeriod = 7;
+      const es = new EventSource(
+        `${apiEndpoint}/api/metrics?timePeriod=${timePeriod}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
 
-      // Since this is a streaming endpoint, we just check if the connection was established
-      expect(response.status).toBe(200);
+      let progressReceived = false;
+      let resultReceived = false;
+
+      const checkCompletion = () => {
+        if (progressReceived && resultReceived) {
+          es.close();
+          done();
+        }
+      };
+
+      es.onmessage = (event: MessageEvent) => {
+        const data = JSON.parse(event.data);
+        if (data.progress !== undefined) {
+          progressReceived = true;
+        }
+        if (data.success && Array.isArray(data.data)) {
+          resultReceived = true;
+        }
+        checkCompletion();
+      };
+
+      es.onerror = (err: Event) => {
+        es.close();
+        done(err);
+      };
+
+      // Add a timeout to close the connection if we don't receive a result
+      setTimeout(() => {
+        if (!resultReceived) {
+          es.close();
+          done(new Error('Test timed out without receiving a result'));
+        }
+      }, 30000); // Adjust timeout as needed
     });
   });
 
@@ -233,12 +264,12 @@ describe('API E2E Tests', () => {
   describe('Access token usage', () => {
     it('should access a protected route with the new access token', async () => {
       const response = await request(apiEndpoint)
-        .get('/healthcheck')
+        .get('/api/metrics')
         .set('Authorization', `Bearer ${accessToken}`)
-        .expect(200)
-        .expect('Content-Type', /json/);
+        .expect(200);
 
-      expect(response.body).toHaveProperty('status');
+      // Check for the start of the event stream
+      expect(response.headers['content-type']).toMatch(/^text\/event-stream/);
     });
 
     it('should reject an expired access token', async () => {
@@ -246,12 +277,12 @@ describe('API E2E Tests', () => {
       await wait(5000); // Assuming a short expiration time for testing purposes
 
       const response = await request(apiEndpoint)
-        .get('/healthcheck')
+        .get('/api/metrics')
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(401)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('message', 'Access token expired');
+      expect(response.body).toHaveProperty('message', 'Token has expired');
     });
   });
 });
