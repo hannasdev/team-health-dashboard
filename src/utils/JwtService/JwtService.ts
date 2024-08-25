@@ -3,7 +3,7 @@
 import { injectable } from 'inversify';
 import jwt from 'jsonwebtoken';
 
-import { IJwtService } from '../interfaces/index.js';
+import { IJwtService } from '../../interfaces/index.js';
 
 @injectable()
 export class JwtService implements IJwtService {

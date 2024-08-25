@@ -1,7 +1,7 @@
 // src/services/AuthService.ts
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../../utils/types.js';
-import {
+import type {
   IAuthService,
   IConfig,
   ITokenService,
@@ -53,12 +53,17 @@ export class AuthService implements IAuthService {
   }
 
   public async logout(refreshToken: string): Promise<void> {
-    const decodedToken = this.tokenService.decodeToken(refreshToken);
-    await this.tokenBlacklistService.blacklistToken(
-      refreshToken,
-      decodedToken.exp * 1000,
-    );
-    this.logger.info(`User logged out: ${decodedToken.id}`);
+    try {
+      const decodedToken = this.tokenService.decodeToken(refreshToken);
+      await this.tokenBlacklistService.blacklistToken(
+        refreshToken,
+        decodedToken.exp * 1000,
+      );
+      this.logger.info(`User logged out: ${decodedToken.id}`);
+    } catch (error) {
+      this.logger.error('Error during logout:', error as Error);
+      throw new Error('Failed to logout');
+    }
   }
 
   public async register(
@@ -90,22 +95,26 @@ export class AuthService implements IAuthService {
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
+      // Use TokenBlacklistService to check if the token is blacklisted
       if (await this.tokenBlacklistService.isTokenBlacklisted(refreshToken)) {
         throw new ForbiddenError('Refresh token has been revoked');
       }
 
+      // Use TokenService to validate the refresh token
       const decoded = this.tokenService.validateRefreshToken(refreshToken);
       const user = await this.userRepository.findById(decoded.id);
       if (!user) {
         throw new UserNotFoundError();
       }
 
+      // Use TokenService to decode the token
       const decodedToken = this.tokenService.decodeToken(refreshToken);
       await this.tokenBlacklistService.blacklistToken(
         refreshToken,
         decodedToken.exp * 1000,
       );
 
+      // Use TokenService to generate new tokens
       const newAccessToken = this.tokenService.generateAccessToken({
         id: user.id,
         email: user.email,

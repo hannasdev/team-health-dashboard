@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
 
-import { Cacheable, CacheableClass } from '../../utils/CacheDecorator.js';
+import { Cacheable, CacheableClass } from '../../utils/CacheDecorator';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -10,7 +10,7 @@ import type {
   ICacheService,
   IMetric,
   ILogger,
-} from '../../interfaces/index.js';
+} from '../../interfaces';
 import type { ProgressCallback } from '../../types/index.js';
 
 @injectable()

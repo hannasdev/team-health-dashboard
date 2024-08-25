@@ -58,9 +58,9 @@ import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
 import { MetricsService } from './services/metrics/MetricsService.js';
 import { ProgressTracker } from './services/progress/ProgressTracker.js';
 import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
-import { BcryptService } from './utils/BcryptService.js';
-import { JwtService } from './utils/JwtService.js';
-import { Logger } from './utils/Logger.js';
+import { BcryptService } from './utils/BcryptService';
+import { JwtService } from './utils/JwtService';
+import { Logger } from './utils/Logger';
 import { TYPES } from './utils/types.js';
 import { TokenBlacklistService } from './services/token/TokenBlacklistService.js';
 
@@ -125,7 +125,6 @@ container
 container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
 container.bind<IAuthService>(TYPES.AuthService).to(AuthService);
 container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
-// ... bind other middleware
 
 // 9. Application (Depends on middleware, routers, and potentially other services)
 container

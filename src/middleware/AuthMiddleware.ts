@@ -5,7 +5,8 @@ import { inject, injectable } from 'inversify';
 import {
   IAuthRequest,
   IAuthMiddleware,
-  IAuthService,
+  ITokenService,
+  ITokenBlacklistService,
   ILogger,
 } from '../interfaces/index.js';
 import { TYPES } from '../utils/types.js';
@@ -13,7 +14,9 @@ import { TYPES } from '../utils/types.js';
 @injectable()
 export class AuthMiddleware implements IAuthMiddleware {
   constructor(
-    @inject(TYPES.AuthService) private authService: IAuthService,
+    @inject(TYPES.TokenService) private tokenService: ITokenService,
+    @inject(TYPES.TokenBlacklistService)
+    private tokenBlacklistService: ITokenBlacklistService,
     @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
@@ -35,8 +38,8 @@ export class AuthMiddleware implements IAuthMiddleware {
     }
 
     try {
-      // Check if the token has been revoked
-      const isRevoked = await this.authService.isTokenRevoked(token);
+      const isRevoked =
+        await this.tokenBlacklistService.isTokenBlacklisted(token);
       if (isRevoked) {
         this.logger.warn(
           `Attempt to use revoked token: ${token.substring(0, 10)}...`,
@@ -44,7 +47,7 @@ export class AuthMiddleware implements IAuthMiddleware {
         return res.status(401).json({ message: 'Token has been revoked' });
       }
 
-      const decoded = this.authService.validateToken(token);
+      const decoded = this.tokenService.validateAccessToken(token);
 
       // Check if the token is about to expire
       const expirationThreshold = 5 * 60; // 5 minutes

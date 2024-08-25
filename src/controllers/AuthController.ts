@@ -3,15 +3,15 @@
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types.js';
-import {
+import type {
   IAuthController,
   IAuthService,
   IAuthRequest,
-} from '../interfaces/index.js';
+} from '../interfaces';
 import {
   createSuccessResponse,
   createErrorResponse,
-} from '../utils/ApiResponse.js';
+} from '../utils/ApiResponse';
 import { UnauthorizedError } from '../utils/errors.js';
 
 @injectable()

@@ -63,6 +63,9 @@ export function createMockConfig(): jest.Mocked<IConfig> {
     LOG_LEVEL: 'info',
     LOG_FORMAT: 'json',
     LOG_FILE_PATH: './test-logs',
+    BCRYPT_ROUNDS: 1,
+    ACCESS_TOKEN_EXPIRY: '15m',
+    REFRESH_TOKEN_EXPIRY: '1d',
   };
 }
 
@@ -387,6 +390,7 @@ export function createMockJwtService(): jest.Mocked<IJwtService> {
   return {
     sign: jest.fn(),
     verify: jest.fn(),
+    decode: jest.fn(),
   };
 }
 
@@ -398,14 +402,8 @@ export function createMockBcryptService(): jest.Mocked<IBcryptService> {
 }
 
 export const createMockAuthService = (): jest.Mocked<IAuthService> => ({
-  validateToken: jest.fn(),
-  generateAccessToken: jest.fn(),
-  generateRefreshToken: jest.fn(),
   login: jest.fn(),
   register: jest.fn(),
   refreshToken: jest.fn(),
-  revokeToken: jest.fn(),
-  isTokenRevoked: jest.fn(),
-  initiatePasswordReset: jest.fn(),
-  resetPassword: jest.fn(),
+  logout: jest.fn(),
 });
