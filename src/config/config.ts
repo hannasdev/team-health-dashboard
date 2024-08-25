@@ -180,15 +180,15 @@ export class Config implements IConfig {
   }
 
   public get ACCESS_TOKEN_EXPIRY(): string {
-    return process.env.ACCESS_TOKEN_EXPIRY || '15m';
+    return this.config.ACCESS_TOKEN_EXPIRY;
   }
 
   public get REFRESH_TOKEN_EXPIRY(): string {
-    return process.env.REFRESH_TOKEN_EXPIRY || '7d';
+    return this.config.REFRESH_TOKEN_EXPIRY;
   }
 
   public get BCRYPT_ROUNDS(): number {
-    return parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
+    return this.config.BCRYPT_ROUNDS;
   }
 
   private validate(): void {
