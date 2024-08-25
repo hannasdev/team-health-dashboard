@@ -4,11 +4,13 @@ Gathers information from your github repository and from your google sheet, to r
 
 ## APIs
 
-### Metrics
+### Public Endpoints
 
-`GET /api/metrics`
+- `GET /healthcheck`: Returns the current health status of the API.
 
-Retrieves all metrics data with real-time progress updates.
+### Protected Endpoints (Require Authentication)
+
+- `GET /api/metrics`: Streams metrics data with real-time progress updates.
 
 `Request`
 
@@ -76,7 +78,11 @@ data: {
 }
 ```
 
-### Registration
+### Authentication Endpoints
+
+- `POST /api/auth/register`: Registers a new user.
+- `POST /api/auth/login`: Authenticates a user and returns access and refresh tokens.
+- `POST /api/auth/refresh`: Refreshes an expired access token using a valid refresh token.
 
 `POST /api/auth/register`
 
