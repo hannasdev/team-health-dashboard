@@ -15,6 +15,10 @@ import {
   IJwtService,
 } from '../interfaces/index.js';
 
+function isError(error: unknown): error is Error {
+  return error instanceof Error;
+}
+
 describe('AuthController', () => {
   let authController: AuthController;
   let mockUserRepository: jest.Mocked<IUserRepository>;
@@ -218,6 +222,123 @@ describe('AuthController', () => {
         mockError,
       );
       expect(mockNext).toHaveBeenCalledWith(mockError);
+      expect(mockResponse.status).not.toHaveBeenCalled();
+      expect(mockResponse.json).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refreshToken', () => {
+    it('should return new access and refresh tokens for a valid refresh token', async () => {
+      const mockRequest = {
+        body: { refreshToken: 'validRefreshToken' },
+      } as Request;
+      const mockResponse = {
+        json: jest.fn(),
+      } as unknown as Response;
+
+      mockJwtService.verify.mockReturnValue({
+        id: '1',
+        email: 'test@example.com',
+      });
+      mockUserRepository.findById.mockResolvedValue({
+        id: '1',
+        email: 'test@example.com',
+        password: 'hashedPassword',
+      });
+
+      await authController.refreshToken(mockRequest, mockResponse, mockNext);
+
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        accessToken: expect.any(String),
+        refreshToken: expect.any(String),
+        user: {
+          id: '1',
+          email: 'test@example.com',
+        },
+      });
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it('should pass error to next function for an invalid refresh token', async () => {
+      const mockRequest = {
+        body: { refreshToken: 'invalidRefreshToken' },
+      } as Request;
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as unknown as Response;
+
+      const tokenError = new Error('Invalid refresh token');
+      mockJwtService.verify.mockImplementation(() => {
+        throw tokenError;
+      });
+
+      await authController.refreshToken(mockRequest, mockResponse, mockNext);
+
+      expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+      expect(mockNext).toHaveBeenCalledTimes(1);
+
+      const errorPassed = mockNext.mock.calls[0][0];
+
+      // Use the type guard to check if errorPassed is an Error
+      if (isError(errorPassed)) {
+        expect(errorPassed.message).toBe('Invalid refresh token');
+      } else {
+        fail('Expected an Error object to be passed to next');
+      }
+
+      expect(mockResponse.status).not.toHaveBeenCalled();
+      expect(mockResponse.json).not.toHaveBeenCalled();
+    });
+
+    it('should return 401 if user not found', async () => {
+      const mockRequest = {
+        body: { refreshToken: 'validRefreshToken' },
+      } as Request;
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as unknown as Response;
+
+      mockJwtService.verify.mockReturnValue({
+        id: '1',
+        email: 'test@example.com',
+      });
+      // CHANGED: Use undefined instead of null
+      mockUserRepository.findById.mockResolvedValue(undefined);
+
+      await authController.refreshToken(mockRequest, mockResponse, mockNext);
+
+      expect(mockResponse.status).toHaveBeenCalledWith(401);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        message: 'Invalid refresh token',
+      });
+      expect(mockNext).not.toHaveBeenCalled();
+    });
+
+    it('should pass unexpected errors to next function', async () => {
+      const mockRequest = {
+        body: { refreshToken: 'validRefreshToken' },
+      } as Request;
+      const mockResponse = {
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+      } as unknown as Response;
+
+      const mockError = new Error('Database error');
+      mockJwtService.verify.mockReturnValue({
+        id: '1',
+        email: 'test@example.com',
+      });
+      mockUserRepository.findById.mockRejectedValue(mockError);
+
+      await authController.refreshToken(mockRequest, mockResponse, mockNext);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error in refreshToken:',
+        mockError,
+      );
+      expect(mockNext).toHaveBeenCalledWith(mockError); // CHANGED: Expect error to be passed to next
       expect(mockResponse.status).not.toHaveBeenCalled();
       expect(mockResponse.json).not.toHaveBeenCalled();
     });

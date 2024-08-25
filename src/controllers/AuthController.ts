@@ -114,7 +114,7 @@ export class AuthController implements IAuthController {
       });
     } catch (error) {
       this.logger.error('Error in refreshToken:', error as Error);
-      res.status(401).json({ message: 'Invalid refresh token' });
+      next(error);
     }
   }
 

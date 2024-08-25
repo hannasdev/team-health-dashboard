@@ -45,6 +45,14 @@ export class AuthMiddleware implements IAuthMiddleware {
       }
 
       const decoded = this.authService.validateToken(token);
+
+      // Check if the token is about to expire
+      const expirationThreshold = 5 * 60; // 5 minutes
+      if (this.isTokenAboutToExpire(decoded, expirationThreshold)) {
+        // Set a custom header to indicate that the token is about to expire
+        res.setHeader('X-Token-Expiring', 'true');
+      }
+
       req.user = decoded;
       this.logger.info(`User authenticated: ${decoded.email}`);
       next();
@@ -58,4 +66,12 @@ export class AuthMiddleware implements IAuthMiddleware {
       res.status(401).json({ message: 'Invalid token' });
     }
   };
+
+  private isTokenAboutToExpire(
+    decoded: any,
+    thresholdSeconds: number,
+  ): boolean {
+    const currentTime = Math.floor(Date.now() / 1000);
+    return decoded.exp - currentTime < thresholdSeconds;
+  }
 }
