@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
 
-import { ILogger, ILoggingService } from '../../interfaces/index.js';
+import type { ILogger, ILoggingService } from '../../interfaces';
 import { TYPES } from '../../utils/types.js';
 
 @injectable()

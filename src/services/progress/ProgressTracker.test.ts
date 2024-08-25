@@ -4,7 +4,7 @@ import {
   ProgressTracker,
 } from '../../services/progress/ProgressTracker.js';
 
-import type { Logger } from '../../utils/Logger.js';
+import type { Logger } from '../../utils/Logger';
 
 describe('ProgressTracker', () => {
   let progressTracker: ProgressTracker;

@@ -2,7 +2,7 @@
 import { injectable, inject } from 'inversify';
 import { MongoClient, Db, MongoServerError } from 'mongodb';
 
-import { IConfig, ILogger } from '../../interfaces/index.js';
+import type { IConfig, ILogger } from '../../interfaces';
 import { TYPES } from '../../utils/types.js';
 
 export interface IMongoDbClient {

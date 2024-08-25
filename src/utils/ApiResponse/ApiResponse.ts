@@ -1,6 +1,6 @@
 // src/utils/ApiResponse.ts
 
-import type { IApiResponse } from '../../interfaces/index.js';
+import type { IApiResponse } from '../../interfaces';
 
 export function createSuccessResponse<T>(data: T): IApiResponse<T> {
   return { success: true, data };

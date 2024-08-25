@@ -6,7 +6,7 @@ import {
   createMockGoogleSheetsClient,
 } from '../../__mocks__/mockFactories.js';
 import { Config } from '../../config/config.js';
-import {
+import type {
   IGoogleSheetsClient,
   IConfig,
   ICacheService,
