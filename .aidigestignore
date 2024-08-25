@@ -6,3 +6,13 @@ node_modules/
 codebase.md
 .env
 .env.test
+.github
+/dist
+/public
+package-lock.json
+**/*.test.ts
+**/*.test.tsx
+*.tsbuildinfo
+*.md
+*.svg
+.aidigestignore
