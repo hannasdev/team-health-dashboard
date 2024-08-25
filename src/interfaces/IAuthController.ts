@@ -1,11 +1,15 @@
 // src/interfaces/IAuthController.ts
-import { Response, NextFunction } from 'express';
 
+import { Response, NextFunction } from 'express';
 import { IAuthRequest } from './IAuthRequest.js';
 
-interface IAuthController {
+export interface IAuthController {
   login(req: IAuthRequest, res: Response, next: NextFunction): Promise<void>;
   register(req: IAuthRequest, res: Response, next: NextFunction): Promise<void>;
+  refreshToken(
+    req: IAuthRequest,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void>;
+  logout(req: IAuthRequest, res: Response, next: NextFunction): Promise<void>;
 }
-
-export { IAuthController };

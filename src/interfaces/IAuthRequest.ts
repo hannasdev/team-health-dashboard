@@ -1,13 +1,12 @@
 // src/interfaces/IAuthRequest.ts
-import { IncomingHttpHeaders } from 'http';
 
 import { Request } from 'express';
 
 export interface IAuthRequest extends Request {
-  headers: IncomingHttpHeaders;
   user?: { id: string; email: string };
   body: {
-    email: string;
-    password: string;
+    email?: string;
+    password?: string;
+    refreshToken?: string; // Add this line
   };
 }

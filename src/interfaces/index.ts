@@ -29,3 +29,6 @@ export type { IProgressTracker } from './IProgressTracker.js';
 export type { IPullRequest } from './IPullRequest.js';
 export type { ITeamHealthDashboardApp } from './ITeamHealthDashboardApp.js';
 export type { IUserRepository } from './IUserRepository.js';
+export type { ITokenService } from './ITokenService.js';
+export type { ITokenBlacklistService } from './ITokenBlacklistService.js';
+export type { IApiResponse } from './IApiResponse.js';
