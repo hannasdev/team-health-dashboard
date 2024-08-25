@@ -2,7 +2,7 @@
 
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../../utils/types.js';
-import { ITokenService, IJwtService, IConfig } from '../../interfaces';
+import type { ITokenService, IJwtService, IConfig } from '../../interfaces';
 
 @injectable()
 export class TokenService implements ITokenService {

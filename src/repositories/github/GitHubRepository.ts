@@ -1,7 +1,7 @@
 // src/repositories/github/GitHubRepository.ts
 import { injectable, inject } from 'inversify';
 
-import { Cacheable, CacheableClass } from '../../utils/CacheDecorator';
+import { Cacheable, CacheableClass } from '../../utils/CacheDecorator/index.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {

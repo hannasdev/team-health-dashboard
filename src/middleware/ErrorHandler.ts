@@ -4,7 +4,7 @@ import { injectable, inject } from 'inversify';
 import { TYPES } from '../utils/types.js';
 import type { ILogger } from '../interfaces/index.js';
 import { AppError, UnauthorizedError } from '../utils/errors.js';
-import { createErrorResponse } from '../utils/ApiResponse';
+import { createErrorResponse } from '../utils/ApiResponse/index.js';
 
 @injectable()
 export class ErrorHandler {

@@ -1,1 +1,1 @@
-export { JwtService } from './JwtService';
+export { JwtService } from './JwtService.js';

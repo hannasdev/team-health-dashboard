@@ -1,1 +1,1 @@
-export { BcryptService } from './BcryptService';
+export { BcryptService } from './BcryptService.js';

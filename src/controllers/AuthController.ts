@@ -11,7 +11,7 @@ import type {
 import {
   createSuccessResponse,
   createErrorResponse,
-} from '../utils/ApiResponse';
+} from '../utils/ApiResponse/index.js';
 import { UnauthorizedError } from '../utils/errors.js';
 import { User } from 'models/User.js';
 

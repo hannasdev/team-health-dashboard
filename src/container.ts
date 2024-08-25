@@ -46,7 +46,7 @@ import { ErrorHandler } from './middleware/ErrorHandler.js';
 import { GitHubRepository } from './repositories/github/GitHubRepository.js';
 import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository.js';
 import { UserRepository } from './repositories/user/UserRepository.js';
-import { TokenService } from './services/token/TokenService';
+import { TokenService } from './services/token/index.js';
 import { AuthService } from './services/auth/AuthService.js';
 import { CacheService } from './services/cache/CacheService.js';
 import {
@@ -58,9 +58,9 @@ import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
 import { MetricsService } from './services/metrics/MetricsService.js';
 import { ProgressTracker } from './services/progress/ProgressTracker.js';
 import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
-import { BcryptService } from './utils/BcryptService';
-import { JwtService } from './utils/JwtService';
-import { Logger } from './utils/Logger';
+import { BcryptService } from './utils/BcryptService/index.js';
+import { JwtService } from './utils/JwtService/index.js';
+import { Logger } from './utils/Logger/index.js';
 import { TYPES } from './utils/types.js';
 import { TokenBlacklistService } from './services/token/TokenBlacklistService.js';
 

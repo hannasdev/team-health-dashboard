@@ -1,1 +1,1 @@
-export { Cacheable, CacheableClass } from './CacheDecorator';
+export { Cacheable, CacheableClass } from './CacheDecorator.js';

@@ -1,1 +1,1 @@
-export { createSuccessResponse, createErrorResponse } from './ApiResponse';
+export { createSuccessResponse, createErrorResponse } from './ApiResponse.js';
