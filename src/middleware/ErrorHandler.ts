@@ -1,10 +1,10 @@
 // src/middleware/ErrorHandler.ts
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
-
 import { TYPES } from '../utils/types.js';
-
 import type { ILogger } from '../interfaces/index.js';
+import { AppError, UnauthorizedError } from '../utils/errors.js';
+import { createErrorResponse } from '../utils/ApiResponse.js';
 
 @injectable()
 export class ErrorHandler {
@@ -18,31 +18,12 @@ export class ErrorHandler {
   ) => {
     this.logger.error('Error caught in error handler:', err);
 
-    let statusCode = 500;
-    let errorMessage = 'An unexpected error occurred';
-
-    if (err.name === 'TimeoutError') {
-      statusCode = 504;
-      errorMessage = 'Operation timed out';
-    } else if (err.name === 'SimulatedError') {
-      statusCode = 400;
-      errorMessage = 'Simulated error';
-    }
-
-    if (req.headers['content-type'] === 'text/event-stream') {
-      res.write(
-        `event: error\ndata: ${JSON.stringify({
-          success: false,
-          errors: [{ message: errorMessage }],
-          status: statusCode,
-        })}\n\n`,
-      );
-      res.end();
+    if (err instanceof AppError) {
+      res.status(err.statusCode).json(createErrorResponse(err.message));
+    } else if (err instanceof UnauthorizedError) {
+      res.status(401).json(createErrorResponse(err.message));
     } else {
-      res.status(statusCode).json({
-        success: false,
-        errors: [{ message: errorMessage }],
-      });
+      res.status(500).json(createErrorResponse('An unexpected error occurred'));
     }
   };
 }
