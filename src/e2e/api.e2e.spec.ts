@@ -50,8 +50,8 @@ describe('API E2E Tests', () => {
       password: 'testpassword',
     });
 
-    accessToken = loginResponse.body.accessToken;
-    refreshToken = loginResponse.body.refreshToken;
+    accessToken = loginResponse.body.data.accessToken;
+    refreshToken = loginResponse.body.data.refreshToken;
   });
 
   describe('GET /health', () => {
@@ -100,16 +100,17 @@ describe('API E2E Tests', () => {
 
       es.onmessage = (event: MessageEvent) => {
         const data = JSON.parse(event.data);
-        if (data.progress !== undefined) {
+        if (data.event === 'progress') {
           progressReceived = true;
         }
-        if (data.success && Array.isArray(data.data)) {
+        if (data.event === 'result') {
           resultReceived = true;
         }
         checkCompletion();
       };
 
       es.onerror = (err: Event) => {
+        console.error('EventSource error:', err);
         es.close();
         done(err);
       };
@@ -150,8 +151,8 @@ describe('API E2E Tests', () => {
             .post('/api/auth/refresh')
             .send({ refreshToken });
 
-          accessToken = refreshResponse.body.accessToken;
-          refreshToken = refreshResponse.body.refreshToken;
+          accessToken = refreshResponse.body.data.accessToken;
+          refreshToken = refreshResponse.body.data.refreshToken;
 
           // Restart the EventSource with the new token
           const newEs = new EventSource(
@@ -167,8 +168,9 @@ describe('API E2E Tests', () => {
             }
           };
 
-          newEs.onerror = err => {
-            newEs.close();
+          es.onerror = (err: Event) => {
+            console.error('EventSource error:', err);
+            es.close();
             done(err);
           };
         } else if (data.success) {
@@ -177,7 +179,8 @@ describe('API E2E Tests', () => {
         }
       };
 
-      es.onerror = err => {
+      es.onerror = (err: Event) => {
+        console.error('EventSource error:', err);
         es.close();
         done(err);
       };
