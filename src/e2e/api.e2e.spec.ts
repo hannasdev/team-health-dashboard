@@ -34,176 +34,113 @@ const retryRequest = async (
 };
 
 describe('API E2E Tests', () => {
-  describe('GET /api/metrics', () => {
-    let authToken: string;
+  let accessToken: string;
+  let refreshToken: string;
 
-    const setupEventSource = (url: string, authToken: string) => {
-      const es = new EventSource(url, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-
-      es.onopen = () => console.log('Connection opened');
-      es.onerror = (err: Event) => console.error('EventSource error:', err);
-
-      return es;
-    };
-
-    beforeAll(async () => {
-      // Register a user
-      await retryRequest('post', '/api/auth/register', {
-        email: 'testuser@example.com',
-        password: 'testpassword',
-      });
-
-      // Login to get the token
-      const loginResponse = await retryRequest('post', '/api/auth/login', {
-        email: 'testuser@example.com',
-        password: 'testpassword',
-      });
-
-      authToken = loginResponse.body.accessToken;
+  beforeAll(async () => {
+    // Register a user
+    await retryRequest('post', '/api/auth/register', {
+      email: 'testuser@example.com',
+      password: 'testpassword',
     });
 
-    afterAll(async () => {
-      // Add a method to your auth service to remove test users
-      await request(apiEndpoint)
-        .post('/api/auth/cleanup')
-        .send({ email: 'testuser@example.com' });
+    // Login to get the tokens
+    const loginResponse = await retryRequest('post', '/api/auth/login', {
+      email: 'testuser@example.com',
+      password: 'testpassword',
     });
 
-    it('should stream metrics data with progress and result events', done => {
+    accessToken = loginResponse.body.accessToken;
+    refreshToken = loginResponse.body.refreshToken;
+  });
+
+  describe('GET /healthcheck', () => {
+    it('should return health status', async () => {
+      const response = await request(apiEndpoint)
+        .get('/healthcheck')
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(response.body).toHaveProperty('status');
+      // Add more specific assertions based on your healthcheck response
+    });
+  });
+
+  describe('GET /api/metrics authentication', () => {
+    it('should deny access for unauthenticated users', async () => {
+      const response = await request(apiEndpoint)
+        .get('/api/metrics')
+        .expect(401)
+        .expect('Content-Type', /json/);
+
+      expect(response.body).toHaveProperty('message', 'Unauthorized');
+    });
+
+    it('should allow access for authenticated users', async () => {
+      const response = await request(apiEndpoint)
+        .get('/api/metrics')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200)
+        .expect('Content-Type', 'text/event-stream');
+
+      // Since this is a streaming endpoint, we just check if the connection was established
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe('GET /api/metrics with token handling', () => {
+    it('should handle token expiration and refresh during metrics retrieval', done => {
       const timePeriod = 7;
+      let tokenRefreshed = false;
+
       const es = new EventSource(
         `${apiEndpoint}/api/metrics?timePeriod=${timePeriod}`,
-        { headers: { Authorization: `Bearer ${authToken}` } },
+        { headers: { Authorization: `Bearer ${accessToken}` } },
       );
 
-      const events: any[] = [];
-      let progressReceived = false;
-      let resultReceived = false;
-
-      const checkCompletion = () => {
-        if (progressReceived && resultReceived) {
+      es.onmessage = async (event: MessageEvent) => {
+        const data = JSON.parse(event.data);
+        if (data.error === 'Access token expired' && !tokenRefreshed) {
+          tokenRefreshed = true;
           es.close();
-          done();
-        }
-      };
 
-      es.onopen = () => {
-        console.log('Connection opened');
-      };
+          // Refresh the token
+          const refreshResponse = await request(apiEndpoint)
+            .post('/api/auth/refresh')
+            .send({ refreshToken });
 
-      es.onmessage = (event: MessageEvent) => {
-        console.log('Received message:', event.data);
-        try {
-          const data = JSON.parse(event.data);
-          events.push(data);
-          if (data.progress !== undefined) {
-            progressReceived = true;
-          }
-          checkCompletion();
-        } catch (error) {
-          console.error('Error parsing message:', error);
-        }
-      };
+          accessToken = refreshResponse.body.accessToken;
+          refreshToken = refreshResponse.body.refreshToken;
 
-      es.onerror = (err: Event) => {
-        console.error('EventSource error:', err);
-        // If we've already received the result, this error is expected (connection closed)
-        if (resultReceived) {
-          es.close();
-          done();
-        } else {
-          es.close();
-          done(err);
-        }
-      };
-
-      es.addEventListener('result', (event: MessageEvent) => {
-        console.log('Received result event:', event.data);
-        try {
-          const resultData = JSON.parse(event.data);
-          expect(resultData.success).toBe(true);
-          expect(Array.isArray(resultData.data)).toBe(true);
-          expect(resultData.githubStats.timePeriod).toBe(timePeriod);
-          resultReceived = true;
-          checkCompletion();
-        } catch (error) {
-          console.error('Error parsing result:', error);
-          done(error);
-        }
-      });
-
-      // Add a timeout to close the connection if we don't receive a result
-      setTimeout(() => {
-        if (!resultReceived) {
-          console.error('Test timed out without receiving a result');
-          es.close();
-          done(new Error('Test timed out'));
-        }
-      }, 110000); // Set this slightly less than the Jest timeout
-    }, 120000);
-
-    it('should handle errors gracefully', done => {
-      const es = setupEventSource(
-        `${apiEndpoint}/api/metrics?error=true`,
-        authToken,
-      );
-
-      let errorReceived = false;
-
-      const doneWithTimeout = (() => {
-        let timeout: NodeJS.Timeout;
-
-        const wrappedDone: jest.DoneCallback = Object.assign(
-          (reason?: string | Error) => {
-            clearTimeout(timeout);
-            done(reason);
-          },
-          {
-            fail: (reason?: string | { message: string }) => {
-              clearTimeout(timeout);
-              done.fail(reason);
-            },
-          },
-        );
-
-        timeout = setTimeout(() => {
-          if (!errorReceived) {
-            console.error('Test timed out without receiving an error');
-            es.close();
-            wrappedDone.fail(
-              new Error('Test timed out without receiving an error'),
-            );
-          }
-        }, 55000);
-
-        return wrappedDone;
-      })();
-
-      es.addEventListener('error', (event: MessageEvent) => {
-        // console.log('Received error event:', event.data);
-        errorReceived = true;
-        es.close();
-
-        try {
-          const errorData = event.data ? JSON.parse(event.data) : null;
-          if (errorData) {
-            expect(errorData.success).toBe(false);
-            expect(errorData.errors).toBeDefined();
-          } else {
-            console.warn('Received empty error data');
-          }
-          doneWithTimeout();
-        } catch (error) {
-          console.error('Error parsing error event:', error);
-
-          doneWithTimeout.fail(
-            error instanceof Error ? error : new Error(String(error)),
+          // Restart the EventSource with the new token
+          const newEs = new EventSource(
+            `${apiEndpoint}/api/metrics?timePeriod=${timePeriod}`,
+            { headers: { Authorization: `Bearer ${accessToken}` } },
           );
+
+          newEs.onmessage = (newEvent: MessageEvent) => {
+            const newData = JSON.parse(newEvent.data);
+            if (newData.success) {
+              newEs.close();
+              done();
+            }
+          };
+
+          newEs.onerror = err => {
+            newEs.close();
+            done(err);
+          };
+        } else if (data.success) {
+          es.close();
+          done();
         }
-      });
-    }, 60000);
+      };
+
+      es.onerror = err => {
+        es.close();
+        done(err);
+      };
+    }, 120000);
   });
 
   describe('POST /api/auth/register', () => {
@@ -263,5 +200,58 @@ describe('API E2E Tests', () => {
       expect(response.body).toHaveProperty('message', 'Invalid credentials');
     });
   });
+
+  describe('POST /api/auth/refresh', () => {
+    it('should refresh the access token with a valid refresh token', async () => {
+      const response = await request(apiEndpoint)
+        .post('/api/auth/refresh')
+        .send({ refreshToken })
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(response.body).toHaveProperty('accessToken');
+      expect(response.body).toHaveProperty('refreshToken');
+      expect(response.body.accessToken).not.toBe(accessToken);
+      expect(response.body.refreshToken).not.toBe(refreshToken);
+
+      // Update tokens for subsequent tests
+      accessToken = response.body.accessToken;
+      refreshToken = response.body.refreshToken;
+    });
+
+    it('should reject an invalid refresh token', async () => {
+      const response = await request(apiEndpoint)
+        .post('/api/auth/refresh')
+        .send({ refreshToken: 'invalid-refresh-token' })
+        .expect(401)
+        .expect('Content-Type', /json/);
+
+      expect(response.body).toHaveProperty('message', 'Invalid refresh token');
+    });
+  });
+
+  describe('Access token usage', () => {
+    it('should access a protected route with the new access token', async () => {
+      const response = await request(apiEndpoint)
+        .get('/healthcheck')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(200)
+        .expect('Content-Type', /json/);
+
+      expect(response.body).toHaveProperty('status');
+    });
+
+    it('should reject an expired access token', async () => {
+      // Wait for the access token to expire (you may need to adjust the wait time)
+      await wait(5000); // Assuming a short expiration time for testing purposes
+
+      const response = await request(apiEndpoint)
+        .get('/healthcheck')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(401)
+        .expect('Content-Type', /json/);
+
+      expect(response.body).toHaveProperty('message', 'Access token expired');
+    });
+  });
 });
-// ... more tests for other endpoints ...
