@@ -81,6 +81,9 @@ export class Config implements IConfig {
       LOG_LEVEL: 'info',
       LOG_FORMAT: 'json',
       LOG_FILE_PATH: './logs',
+      ACCESS_TOKEN_EXPIRY: '15m',
+      REFRESH_TOKEN_EXPIRY: '7d',
+      BCRYPT_ROUNDS: 10,
     };
   }
 
@@ -174,6 +177,18 @@ export class Config implements IConfig {
 
   public get LOG_FILE_PATH(): string {
     return this.config.LOG_FILE_PATH;
+  }
+
+  public get ACCESS_TOKEN_EXPIRY(): string {
+    return process.env.ACCESS_TOKEN_EXPIRY || '15m';
+  }
+
+  public get REFRESH_TOKEN_EXPIRY(): string {
+    return process.env.REFRESH_TOKEN_EXPIRY || '7d';
+  }
+
+  public get BCRYPT_ROUNDS(): number {
+    return parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
   }
 
   private validate(): void {

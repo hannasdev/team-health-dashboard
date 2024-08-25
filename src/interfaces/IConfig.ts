@@ -1,4 +1,5 @@
 // src/interfaces/IConfig.ts
+
 export interface IConfig {
   GOOGLE_SHEETS_CLIENT_EMAIL: string;
   GOOGLE_SHEETS_PRIVATE_KEY: string;
@@ -16,4 +17,7 @@ export interface IConfig {
   LOG_LEVEL: string;
   LOG_FORMAT: string;
   LOG_FILE_PATH: string;
+  ACCESS_TOKEN_EXPIRY: string;
+  REFRESH_TOKEN_EXPIRY: string;
+  BCRYPT_ROUNDS: number;
 }
