@@ -2,17 +2,17 @@
 
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
-import { TYPES } from '../utils/types.js';
+import { TYPES } from '../../utils/types.js';
 import type {
   IAuthController,
   IAuthService,
   IAuthRequest,
-} from '../interfaces';
+} from '../../interfaces';
 import {
   createSuccessResponse,
   createErrorResponse,
-} from '../utils/ApiResponse/index.js';
-import { UnauthorizedError } from '../utils/errors.js';
+} from '../../utils/ApiResponse/index.js';
+import { UnauthorizedError } from '../../utils/errors.js';
 import { User } from 'models/User.js';
 
 @injectable()

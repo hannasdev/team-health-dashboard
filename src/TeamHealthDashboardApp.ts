@@ -1,4 +1,4 @@
-// src/app.ts
+// src/TeamHealthDashboardApp.ts
 
 import 'reflect-metadata';
 import bodyParser from 'body-parser';

@@ -1,19 +1,19 @@
 // src/controllers/AuthController.test.ts
 import { Container } from 'inversify';
 import { AuthController } from './AuthController';
-import { TYPES } from '../utils/types';
+import { TYPES } from '../../utils/types';
 import {
   createMockAuthService,
   createMockAuthRequest,
   createMockAuthControllerResponse,
   createMockLogger,
-} from '../__mocks__/mockFactories';
+} from '../../__mocks__/mockFactories';
 import {
   UnauthorizedError,
   UserAlreadyExistsError,
   InvalidRefreshTokenError,
-} from '../utils/errors';
-import { User } from '../models/User';
+} from '../../utils/errors';
+import { User } from '../../models/User';
 
 describe('AuthController', () => {
   let authController: AuthController;

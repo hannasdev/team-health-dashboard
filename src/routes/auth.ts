@@ -2,7 +2,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 
 import { container } from '../container.js';
-import { AuthController } from '../controllers/AuthController.js';
+import { AuthController } from '../controllers/AuthController/AuthController.js';
 import { TYPES } from '../utils/types.js';
 
 const router = Router();

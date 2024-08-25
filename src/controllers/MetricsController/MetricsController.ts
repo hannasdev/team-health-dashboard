@@ -2,14 +2,14 @@
 import { Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { ProgressCallback } from '../types/index.js';
-import { TYPES } from '../utils/types.js';
+import { ProgressCallback } from '../../types/index.js';
+import { TYPES } from '../../utils/types.js';
 
 import type {
   IMetricsService,
   IMetricsController,
   ILogger,
-} from '../interfaces/index.js';
+} from '../../interfaces/index.js';
 
 /**
  * MetricsController

@@ -12,9 +12,9 @@ import { GitHubAdapter } from './adapters/GitHubAdapter.js';
 import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter.js';
 import { container } from './appContainer.js';
 import { Config } from './config/config.js';
-import { AuthController } from './controllers/AuthController.js';
-import { HealthCheckController } from './controllers/HealthCheckController.js';
-import { MetricsController } from './controllers/MetricsController.js';
+import { AuthController } from './controllers/AuthController/AuthController.js';
+import { HealthCheckController } from './controllers/HealthCheckController/HealthCheckController.js';
+import { MetricsController } from './controllers/MetricsController/MetricsController.js';
 import type {
   IApplication,
   IAuthController,
