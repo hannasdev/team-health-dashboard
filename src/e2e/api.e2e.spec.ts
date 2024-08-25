@@ -72,14 +72,20 @@ describe('API E2E Tests', () => {
         .expect(401)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('message', 'No token provided');
+      expect(response.body).toHaveProperty('error', 'No token provided');
     });
 
     it('should allow access for authenticated users and stream data', done => {
       const timePeriod = 7;
       const es = new EventSource(
         `${apiEndpoint}/api/metrics?timePeriod=${timePeriod}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'text/event-stream',
+            'Cache-Control': 'no-cache',
+          },
+        },
       );
 
       let progressReceived = false;
@@ -125,9 +131,14 @@ describe('API E2E Tests', () => {
 
       const es = new EventSource(
         `${apiEndpoint}/api/metrics?timePeriod=${timePeriod}`,
-        { headers: { Authorization: `Bearer ${accessToken}` } },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'text/event-stream',
+            'Cache-Control': 'no-cache',
+          },
+        },
       );
-
       es.onmessage = async (event: MessageEvent) => {
         const data = JSON.parse(event.data);
         if (data.error === 'Access token expired' && !tokenRefreshed) {
@@ -194,10 +205,10 @@ describe('API E2E Tests', () => {
           email: 'testuser@example.com',
           password: 'testpassword',
         })
-        .expect(400)
+        .expect(409)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('message', 'User already exists');
+      expect(response.body).toHaveProperty('error', 'User already exists');
     });
   });
 
@@ -227,7 +238,7 @@ describe('API E2E Tests', () => {
         .expect(401)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('message', 'Invalid credentials');
+      expect(response.body).toHaveProperty('error', 'Invalid credentials');
     });
   });
 
@@ -259,7 +270,7 @@ describe('API E2E Tests', () => {
         .expect(401)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('message', 'Invalid refresh token');
+      expect(response.body).toHaveProperty('error', 'Invalid refresh token');
     });
   });
 
@@ -284,7 +295,7 @@ describe('API E2E Tests', () => {
         .expect(401)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('message', 'Token has expired');
+      expect(response.body).toHaveProperty('error', 'Token has expired');
     });
   });
 });
