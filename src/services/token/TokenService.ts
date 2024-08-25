@@ -2,7 +2,7 @@
 
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../../utils/types.js';
-import { ITokenService, IJwtService, IConfig } from '../../interfaces/index.js';
+import { ITokenService, IJwtService, IConfig } from '../../interfaces';
 
 @injectable()
 export class TokenService implements ITokenService {
@@ -29,10 +29,20 @@ export class TokenService implements ITokenService {
     });
   }
 
-  validateAccessToken(token: string): { id: string; email: string } {
-    return this.jwtService.verify(token, this.config.JWT_SECRET) as {
+  validateAccessToken(token: string): {
+    id: string;
+    email: string;
+    exp?: number;
+  } {
+    const decoded = this.jwtService.verify(token, this.config.JWT_SECRET) as {
       id: string;
       email: string;
+      exp?: number;
+    };
+    return {
+      id: decoded.id,
+      email: decoded.email,
+      exp: decoded.exp,
     };
   }
 

@@ -1,346 +1,302 @@
 // src/controllers/AuthController.test.ts
-import { Request, Response, NextFunction } from 'express';
-
+import { Container } from 'inversify';
+import { AuthController } from './AuthController';
+import { TYPES } from '../utils/types';
 import {
-  createMockUserRepository,
+  createMockAuthService,
+  createMockAuthRequest,
+  createMockAuthControllerResponse,
   createMockLogger,
-} from '../__mocks__/mockFactories.js';
-import { Config } from '../config/config.js';
-import { AuthController } from '../controllers/AuthController.js';
+} from '../__mocks__/mockFactories';
 import {
-  IConfig,
-  ILogger,
-  IUserRepository,
-  IBcryptService,
-  IJwtService,
-} from '../interfaces/index.js';
-
-function isError(error: unknown): error is Error {
-  return error instanceof Error;
-}
+  UnauthorizedError,
+  UserAlreadyExistsError,
+  InvalidRefreshTokenError,
+} from '../utils/errors';
+import { User } from '../models/User';
 
 describe('AuthController', () => {
   let authController: AuthController;
-  let mockUserRepository: jest.Mocked<IUserRepository>;
-  let mockConfig: IConfig;
-  let mockLogger: jest.Mocked<ILogger>;
-  let mockBcryptService: jest.Mocked<IBcryptService>;
-  let mockJwtService: jest.Mocked<IJwtService>;
-  let mockNext: jest.MockedFunction<NextFunction>;
+  let mockAuthService: ReturnType<typeof createMockAuthService>;
+  let mockLogger: ReturnType<typeof createMockLogger>;
+  let container: Container;
 
   beforeEach(() => {
-    mockUserRepository = createMockUserRepository();
-    mockConfig = Config.getInstance({ JWT_SECRET: 'test-secret' });
+    // Create mock instances
+    mockAuthService = createMockAuthService();
     mockLogger = createMockLogger();
-    mockBcryptService = {
-      hash: jest
-        .fn()
-        .mockImplementation(() => Promise.resolve('hashedPassword')),
-      compare: jest.fn().mockImplementation(() => Promise.resolve(false)),
-    };
-    mockJwtService = {
-      sign: jest.fn().mockReturnValue('mockToken'),
-      verify: jest.fn().mockReturnValue({ id: '1', email: 'test@example.com' }),
-    };
-    mockNext = jest.fn();
-    authController = new AuthController(
-      mockUserRepository,
-      mockConfig,
-      mockLogger,
-      mockBcryptService,
-      mockJwtService,
-    );
-  });
 
-  describe('register', () => {
-    it('should create a new user and return an accessToken, refreshToken and user', async () => {
-      const mockRequest = {
-        body: { email: 'test@example.com', password: 'password123' },
-      } as Request;
-      const mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      } as unknown as Response;
+    // Set up the DI container
+    container = new Container();
+    container.bind(TYPES.AuthService).toConstantValue(mockAuthService);
+    container.bind(TYPES.Logger).toConstantValue(mockLogger);
 
-      mockUserRepository.findByEmail.mockResolvedValue(undefined);
-      mockUserRepository.create.mockResolvedValue({
-        id: '1',
-        email: 'test@example.com',
-        password: 'hashedPassword',
-      });
-
-      await authController.register(mockRequest, mockResponse, mockNext);
-
-      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
-        'test@example.com',
-      );
-      expect(mockUserRepository.create).toHaveBeenCalledWith(
-        'test@example.com',
-        expect.any(String),
-      );
-      expect(mockResponse.status).toHaveBeenCalledWith(201);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        accessToken: expect.any(String),
-        refreshToken: expect.any(String),
-        user: {
-          email: 'test@example.com',
-          id: '1',
-        },
-      });
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it('should return 400 if user already exists', async () => {
-      const mockRequest = {
-        body: { email: 'existing@example.com', password: 'password123' },
-      } as Request;
-      const mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      } as unknown as Response;
-
-      mockUserRepository.findByEmail.mockResolvedValue({
-        id: '1',
-        email: 'existing@example.com',
-        password: 'hashedPassword',
-      });
-
-      await authController.register(mockRequest, mockResponse, mockNext);
-
-      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
-        'existing@example.com',
-      );
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'User already exists',
-      });
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it('should handle errors and call next with the error', async () => {
-      const mockRequest = {
-        body: { email: 'test@example.com', password: 'password123' },
-      } as Request;
-      const mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      } as unknown as Response;
-
-      const mockError = new Error('Database error');
-      mockUserRepository.findByEmail.mockRejectedValue(mockError);
-
-      await authController.register(mockRequest, mockResponse, mockNext);
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error in register:',
-        mockError,
-      );
-      expect(mockNext).toHaveBeenCalledWith(mockError);
-      expect(mockResponse.status).not.toHaveBeenCalled();
-      expect(mockResponse.json).not.toHaveBeenCalled();
-    });
+    // Create an instance of AuthController
+    authController = container.resolve(AuthController);
   });
 
   describe('login', () => {
-    it('should return a accessToken, refreshToken and user for valid credentials', async () => {
-      const mockRequest = {
+    it('should successfully log in a user', async () => {
+      const req = createMockAuthRequest({
         body: { email: 'test@example.com', password: 'password123' },
-      } as Request;
-      const mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      } as unknown as Response;
-
-      mockUserRepository.findByEmail.mockResolvedValue({
-        id: '1',
-        email: 'test@example.com',
-        password: 'hashedPassword',
       });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
 
-      mockBcryptService.compare.mockImplementation(() => Promise.resolve(true));
+      const mockLoginResult = {
+        user: new User('123', 'test@example.com', 'hashedPassword'),
+        accessToken: 'access_token',
+        refreshToken: 'refresh_token',
+      };
+      mockAuthService.login.mockResolvedValue(mockLoginResult);
 
-      await authController.login(mockRequest, mockResponse, mockNext);
+      await authController.login(req, res as any, next);
 
-      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
+      expect(mockAuthService.login).toHaveBeenCalledWith(
         'test@example.com',
+        'password123',
       );
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        accessToken: expect.any(String),
-        refreshToken: expect.any(String),
-        user: {
-          email: 'test@example.com',
-          id: '1',
-        },
-      });
-      expect(mockNext).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            accessToken: 'access_token',
+            refreshToken: 'refresh_token',
+            user: expect.objectContaining({
+              id: '123',
+              email: 'test@example.com',
+            }),
+          }),
+        }),
+      );
+      // Ensure password is not in the response
+      expect(res.json).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            user: expect.objectContaining({
+              password: expect.any(String),
+            }),
+          }),
+        }),
+      );
+      expect(next).not.toHaveBeenCalled();
     });
 
-    it('should return 401 for invalid credentials', async () => {
-      const mockRequest = {
+    it('should handle login failure', async () => {
+      const req = createMockAuthRequest({
         body: { email: 'test@example.com', password: 'wrongpassword' },
-      } as Request;
-      const mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      } as unknown as Response;
-
-      mockUserRepository.findByEmail.mockResolvedValue({
-        id: '1',
-        email: 'test@example.com',
-        password: 'hashedPassword',
       });
-      mockBcryptService.compare.mockResolvedValueOnce(false);
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
 
-      await authController.login(mockRequest, mockResponse, mockNext);
-
-      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(
-        'test@example.com',
+      mockAuthService.login.mockRejectedValue(
+        new UnauthorizedError('Invalid credentials'),
       );
-      expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Invalid credentials',
-      });
-      expect(mockNext).not.toHaveBeenCalled();
+
+      await authController.login(req, res as any, next);
+
+      expect(mockAuthService.login).toHaveBeenCalledWith(
+        'test@example.com',
+        'wrongpassword',
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
     });
 
-    it('should handle errors and call next with the error', async () => {
-      const mockRequest = {
-        body: { email: 'test@example.com', password: 'password123' },
-      } as Request;
-      const mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      } as unknown as Response;
+    it('should handle missing email or password', async () => {
+      const req = createMockAuthRequest({ body: {} });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
 
-      const mockError = new Error('Database error');
-      mockUserRepository.findByEmail.mockRejectedValue(mockError);
+      await authController.login(req, res as any, next);
 
-      await authController.login(mockRequest, mockResponse, mockNext);
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(mockAuthService.login).not.toHaveBeenCalled();
+    });
+  });
 
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error in login:',
-        mockError,
+  describe('register', () => {
+    it('should successfully register a new user', async () => {
+      const req = createMockAuthRequest({
+        body: { email: 'newuser@example.com', password: 'newpassword123' },
+      });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
+
+      const mockRegisterResult = {
+        user: new User('456', 'newuser@example.com', 'hashedPassword'),
+        accessToken: 'new_access_token',
+        refreshToken: 'new_refresh_token',
+      };
+      mockAuthService.register.mockResolvedValue(mockRegisterResult);
+
+      await authController.register(req, res as any, next);
+
+      expect(mockAuthService.register).toHaveBeenCalledWith(
+        'newuser@example.com',
+        'newpassword123',
       );
-      expect(mockNext).toHaveBeenCalledWith(mockError);
-      expect(mockResponse.status).not.toHaveBeenCalled();
-      expect(mockResponse.json).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: expect.objectContaining({
+            accessToken: 'new_access_token',
+            refreshToken: 'new_refresh_token',
+            user: expect.objectContaining({
+              id: '456',
+              email: 'newuser@example.com',
+            }),
+          }),
+        }),
+      );
+      // Ensure password is not in the response
+      expect(res.json).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            user: expect.objectContaining({
+              password: expect.any(String),
+            }),
+          }),
+        }),
+      );
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should handle registration failure due to existing user', async () => {
+      const req = createMockAuthRequest({
+        body: { email: 'existing@example.com', password: 'password123' },
+      });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
+
+      mockAuthService.register.mockRejectedValue(new UserAlreadyExistsError());
+
+      await authController.register(req, res as any, next);
+
+      expect(mockAuthService.register).toHaveBeenCalledWith(
+        'existing@example.com',
+        'password123',
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(UserAlreadyExistsError));
+    });
+
+    it('should handle missing email or password during registration', async () => {
+      const req = createMockAuthRequest({ body: {} });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
+
+      await authController.register(req, res as any, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(mockAuthService.register).not.toHaveBeenCalled();
     });
   });
 
   describe('refreshToken', () => {
-    it('should return new access and refresh tokens for a valid refresh token', async () => {
-      const mockRequest = {
-        body: { refreshToken: 'validRefreshToken' },
-      } as Request;
-      const mockResponse = {
-        json: jest.fn(),
-      } as unknown as Response;
-
-      mockJwtService.verify.mockReturnValue({
-        id: '1',
-        email: 'test@example.com',
+    it('should successfully refresh tokens', async () => {
+      const req = createMockAuthRequest({
+        body: { refreshToken: 'valid_refresh_token' },
       });
-      mockUserRepository.findById.mockResolvedValue({
-        id: '1',
-        email: 'test@example.com',
-        password: 'hashedPassword',
-      });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
 
-      await authController.refreshToken(mockRequest, mockResponse, mockNext);
+      const mockRefreshResult = {
+        accessToken: 'new_access_token',
+        refreshToken: 'new_refresh_token',
+      };
+      mockAuthService.refreshToken.mockResolvedValue(mockRefreshResult);
 
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        accessToken: expect.any(String),
-        refreshToken: expect.any(String),
-        user: {
-          id: '1',
-          email: 'test@example.com',
-        },
-      });
-      expect(mockNext).not.toHaveBeenCalled();
-    });
+      await authController.refreshToken(req, res as any, next);
 
-    it('should pass error to next function for an invalid refresh token', async () => {
-      const mockRequest = {
-        body: { refreshToken: 'invalidRefreshToken' },
-      } as Request;
-      const mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      } as unknown as Response;
-
-      const tokenError = new Error('Invalid refresh token');
-      mockJwtService.verify.mockImplementation(() => {
-        throw tokenError;
-      });
-
-      await authController.refreshToken(mockRequest, mockResponse, mockNext);
-
-      expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
-      expect(mockNext).toHaveBeenCalledTimes(1);
-
-      const errorPassed = mockNext.mock.calls[0][0];
-
-      // Use the type guard to check if errorPassed is an Error
-      if (isError(errorPassed)) {
-        expect(errorPassed.message).toBe('Invalid refresh token');
-      } else {
-        fail('Expected an Error object to be passed to next');
-      }
-
-      expect(mockResponse.status).not.toHaveBeenCalled();
-      expect(mockResponse.json).not.toHaveBeenCalled();
-    });
-
-    it('should return 401 if user not found', async () => {
-      const mockRequest = {
-        body: { refreshToken: 'validRefreshToken' },
-      } as Request;
-      const mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      } as unknown as Response;
-
-      mockJwtService.verify.mockReturnValue({
-        id: '1',
-        email: 'test@example.com',
-      });
-      // CHANGED: Use undefined instead of null
-      mockUserRepository.findById.mockResolvedValue(undefined);
-
-      await authController.refreshToken(mockRequest, mockResponse, mockNext);
-
-      expect(mockResponse.status).toHaveBeenCalledWith(401);
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        message: 'Invalid refresh token',
-      });
-      expect(mockNext).not.toHaveBeenCalled();
-    });
-
-    it('should pass unexpected errors to next function', async () => {
-      const mockRequest = {
-        body: { refreshToken: 'validRefreshToken' },
-      } as Request;
-      const mockResponse = {
-        status: jest.fn().mockReturnThis(),
-        json: jest.fn(),
-      } as unknown as Response;
-
-      const mockError = new Error('Database error');
-      mockJwtService.verify.mockReturnValue({
-        id: '1',
-        email: 'test@example.com',
-      });
-      mockUserRepository.findById.mockRejectedValue(mockError);
-
-      await authController.refreshToken(mockRequest, mockResponse, mockNext);
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error in refreshToken:',
-        mockError,
+      expect(mockAuthService.refreshToken).toHaveBeenCalledWith(
+        'valid_refresh_token',
       );
-      expect(mockNext).toHaveBeenCalledWith(mockError); // CHANGED: Expect error to be passed to next
-      expect(mockResponse.status).not.toHaveBeenCalled();
-      expect(mockResponse.json).not.toHaveBeenCalled();
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: true,
+          data: mockRefreshResult,
+        }),
+      );
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should handle refresh token failure', async () => {
+      const req = createMockAuthRequest({
+        body: { refreshToken: 'invalid_refresh_token' },
+      });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
+
+      mockAuthService.refreshToken.mockRejectedValue(
+        new InvalidRefreshTokenError(),
+      );
+
+      await authController.refreshToken(req, res as any, next);
+
+      expect(mockAuthService.refreshToken).toHaveBeenCalledWith(
+        'invalid_refresh_token',
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(InvalidRefreshTokenError));
+    });
+
+    it('should handle missing refresh token', async () => {
+      const req = createMockAuthRequest({ body: {} });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
+
+      await authController.refreshToken(req, res as any, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(mockAuthService.refreshToken).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('logout', () => {
+    it('should successfully log out a user', async () => {
+      const req = createMockAuthRequest({
+        body: { refreshToken: 'valid_refresh_token' },
+      });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
+
+      mockAuthService.logout.mockResolvedValue(undefined);
+
+      await authController.logout(req, res as any, next);
+
+      expect(mockAuthService.logout).toHaveBeenCalledWith(
+        'valid_refresh_token',
+      );
+      expect(res.status).toHaveBeenCalledWith(204);
+      expect(res.send).toHaveBeenCalled();
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should handle logout failure', async () => {
+      const req = createMockAuthRequest({
+        body: { refreshToken: 'invalid_refresh_token' },
+      });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
+
+      mockAuthService.logout.mockRejectedValue(new Error('Logout failed'));
+
+      await authController.logout(req, res as any, next);
+
+      expect(mockAuthService.logout).toHaveBeenCalledWith(
+        'invalid_refresh_token',
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+    });
+
+    it('should handle missing refresh token during logout', async () => {
+      const req = createMockAuthRequest({ body: {} });
+      const res = createMockAuthControllerResponse();
+      const next = jest.fn();
+
+      await authController.logout(req, res as any, next);
+
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(mockAuthService.logout).not.toHaveBeenCalled();
     });
   });
 });

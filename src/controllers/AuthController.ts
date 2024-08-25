@@ -13,6 +13,7 @@ import {
   createErrorResponse,
 } from '../utils/ApiResponse';
 import { UnauthorizedError } from '../utils/errors.js';
+import { User } from 'models/User.js';
 
 @injectable()
 export class AuthController implements IAuthController {
@@ -29,7 +30,12 @@ export class AuthController implements IAuthController {
         throw new UnauthorizedError('Email and password are required');
       }
       const result = await this.authService.login(email, password);
-      res.json(createSuccessResponse(result));
+      res.json(
+        createSuccessResponse({
+          ...result,
+          user: this.sanitizeUser(result.user),
+        }),
+      );
     } catch (error) {
       next(error);
     }
@@ -46,7 +52,12 @@ export class AuthController implements IAuthController {
         throw new UnauthorizedError('Email and password are required');
       }
       const result = await this.authService.register(email, password);
-      res.status(201).json(createSuccessResponse(result));
+      res.status(201).json(
+        createSuccessResponse({
+          ...result,
+          user: this.sanitizeUser(result.user),
+        }),
+      );
     } catch (error) {
       next(error);
     }
@@ -84,5 +95,10 @@ export class AuthController implements IAuthController {
     } catch (error) {
       next(error);
     }
+  }
+
+  private sanitizeUser(user: User): Omit<User, 'password'> {
+    const { password, ...sanitizedUser } = user;
+    return sanitizedUser;
   }
 }

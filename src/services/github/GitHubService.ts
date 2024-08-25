@@ -12,7 +12,7 @@ import type {
   IPullRequest,
   IMetric,
   ILogger,
-} from '../../interfaces/index.js';
+} from '../../interfaces';
 import type { ProgressCallback } from '../../types/index.js';
 
 /**

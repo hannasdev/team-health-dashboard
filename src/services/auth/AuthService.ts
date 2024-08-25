@@ -9,7 +9,7 @@ import type {
   IBcryptService,
   IUserRepository,
   ILogger,
-} from '../../interfaces/index.js';
+} from '../../interfaces';
 import { User } from '../../models/User.js';
 import {
   ForbiddenError,
@@ -97,7 +97,7 @@ export class AuthService implements IAuthService {
     try {
       // Use TokenBlacklistService to check if the token is blacklisted
       if (await this.tokenBlacklistService.isTokenBlacklisted(refreshToken)) {
-        throw new ForbiddenError('Refresh token has been revoked');
+        throw new InvalidRefreshTokenError('Refresh token has been revoked');
       }
 
       // Use TokenService to validate the refresh token
@@ -126,10 +126,7 @@ export class AuthService implements IAuthService {
       this.logger.info(`Token refreshed for user: ${user.email}`);
       return { accessToken: newAccessToken, refreshToken: newRefreshToken };
     } catch (error) {
-      if (
-        error instanceof ForbiddenError ||
-        error instanceof UserNotFoundError
-      ) {
+      if (error instanceof UserNotFoundError) {
         throw error;
       }
       this.logger.error(

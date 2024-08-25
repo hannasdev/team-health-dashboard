@@ -6,7 +6,7 @@ import {
   createMockMetricCalculator,
   createMockProgressTracker,
 } from '../../__mocks__/mockFactories.js';
-import {
+import type {
   IGitHubRepository,
   IMetricCalculator,
   IProgressTracker,
@@ -14,7 +14,7 @@ import {
   IMetric,
   IPullRequest,
   IGitHubService,
-} from '../../interfaces/index.js';
+} from '../../interfaces';
 import { GitHubService } from '../../services/github/GitHubService.js';
 import { ProgressCallback } from '../../types/index.js';
 import { TYPES } from '../../utils/types.js';

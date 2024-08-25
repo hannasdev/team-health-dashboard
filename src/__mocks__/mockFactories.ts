@@ -24,8 +24,11 @@ import type {
   IMetricsService,
   IProgressTracker,
   IPullRequest,
+  ITokenBlacklistService,
+  ITokenService,
 } from '../interfaces/index.js';
 import { UserRepository } from '../repositories/user/UserRepository.js';
+import { User } from '../models/User';
 
 export const createMockGoogleSheetsClient =
   (): jest.Mocked<IGoogleSheetsClient> => ({
@@ -255,11 +258,11 @@ export function createMockUserRepository(): jest.Mocked<UserRepository> {
 export function createMockAuthRequest(
   overrides: Partial<IAuthRequest> = {},
 ): IAuthRequest {
-  const req: Partial<IAuthRequest> = {
-    headers: {} as IncomingHttpHeaders,
+  return {
+    headers: {},
+    user: undefined,
     ...overrides,
-  };
-  return req as IAuthRequest;
+  } as IAuthRequest;
 }
 
 export function createMockExpressRequest(
@@ -272,24 +275,22 @@ export function createMockExpressRequest(
   return req as Request;
 }
 
-export const createMockAuthControllerResponse = () => {
-  const json = jest.fn();
-  const status = jest.fn().mockReturnThis();
-  const res: Partial<Response> = {
-    status,
-    json,
+export function createMockAuthControllerResponse() {
+  return {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn().mockReturnThis(),
+    send: jest.fn().mockReturnThis(),
   };
-  return res as Response;
-};
+}
 
-export const createMockAuthMiddlewareResponse = () => {
-  const json = jest.fn().mockReturnThis();
+export function createMockAuthMiddlewareResponse() {
   const res: Partial<Response> = {
-    status: jest.fn().mockReturnValue({ json }),
-    json,
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn().mockReturnThis(),
+    setHeader: jest.fn().mockReturnThis(),
   };
-  return res as Response;
-};
+  return res;
+}
 
 export const createMockGitHubRepository =
   (): jest.Mocked<IGitHubRepository> => ({
@@ -401,9 +402,46 @@ export function createMockBcryptService(): jest.Mocked<IBcryptService> {
   };
 }
 
-export const createMockAuthService = (): jest.Mocked<IAuthService> => ({
-  login: jest.fn(),
-  register: jest.fn(),
-  refreshToken: jest.fn(),
-  logout: jest.fn(),
-});
+export function createMockAuthService(): jest.Mocked<IAuthService> {
+  return {
+    login: jest.fn().mockResolvedValue({
+      user: new User('mock-id', 'mock@example.com', 'mock-hashed-password'),
+      accessToken: 'mock-access-token',
+      refreshToken: 'mock-refresh-token',
+    }),
+    register: jest.fn().mockResolvedValue({
+      user: new User('mock-id', 'mock@example.com', 'mock-hashed-password'),
+      accessToken: 'mock-access-token',
+      refreshToken: 'mock-refresh-token',
+    }),
+    refreshToken: jest.fn().mockResolvedValue({
+      accessToken: 'mock-new-access-token',
+      refreshToken: 'mock-new-refresh-token',
+    }),
+    logout: jest.fn().mockResolvedValue(undefined),
+  };
+}
+
+export function createMockTokenService(): jest.Mocked<ITokenService> {
+  return {
+    generateAccessToken: jest.fn(),
+    generateRefreshToken: jest.fn(),
+    generatePasswordResetToken: jest.fn(),
+    validateAccessToken: jest.fn().mockReturnValue({
+      id: 'default-id',
+      email: 'default@example.com',
+      exp: Math.floor(Date.now() / 1000) + 3600, // Default to 1 hour from now
+    }),
+    validateRefreshToken: jest.fn(),
+    validatePasswordResetToken: jest.fn(),
+    decodeToken: jest.fn(),
+  };
+}
+
+export function createMockTokenBlacklistService(): jest.Mocked<ITokenBlacklistService> {
+  return {
+    blacklistToken: jest.fn(),
+    isTokenBlacklisted: jest.fn(),
+    revokeAllUserTokens: jest.fn(),
+  };
+}

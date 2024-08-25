@@ -1,8 +1,8 @@
 import { Container, injectable } from 'inversify';
 
-import { ICacheService } from '../interfaces/ICacheService.js';
-import { Cacheable, CacheableClass } from '../utils/CacheDecorator.js';
-import { TYPES } from '../utils/types.js';
+import type { ICacheService } from '../../interfaces';
+import { Cacheable, CacheableClass } from './CacheDecorator.js';
+import { TYPES } from '../../utils/types.js';
 
 @injectable()
 class TestClass extends CacheableClass {
