@@ -19,6 +19,7 @@ import {
   IApplication,
   IAuthController,
   IAuthMiddleware,
+  IAuthService,
   IBcryptService,
   ICacheService,
   IConfig,
@@ -36,14 +37,16 @@ import {
   IMetricsService,
   IProgressTracker,
   ITeamHealthDashboardApp,
+  ITokenBlacklistService,
+  ITokenService,
   IUserRepository,
-  IAuthService,
 } from './interfaces/index.js';
 import { AuthMiddleware } from './middleware/AuthMiddleware.js';
 import { ErrorHandler } from './middleware/ErrorHandler.js';
 import { GitHubRepository } from './repositories/github/GitHubRepository.js';
 import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository.js';
 import { UserRepository } from './repositories/user/UserRepository.js';
+import { TokenService } from './services/token/TokenService';
 import { AuthService } from './services/auth/AuthService.js';
 import { CacheService } from './services/cache/CacheService.js';
 import {
@@ -59,6 +62,7 @@ import { BcryptService } from './utils/BcryptService.js';
 import { JwtService } from './utils/JwtService.js';
 import { Logger } from './utils/Logger.js';
 import { TYPES } from './utils/types.js';
+import { TokenBlacklistService } from './services/token/TokenBlacklistService.js';
 
 const config = Config.getInstance();
 
@@ -71,6 +75,10 @@ container
   .bind<ILoggingService>(TYPES.LoggingService)
   .to(LoggingService)
   .inSingletonScope();
+container.bind<ITokenService>(TYPES.TokenService).to(TokenService);
+container
+  .bind<ITokenBlacklistService>(TYPES.TokenBlacklistService)
+  .to(TokenBlacklistService);
 
 // 2. Core Services and Utilities
 container
