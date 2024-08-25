@@ -6,7 +6,7 @@ import { injectable, inject } from 'inversify';
 import winston from 'winston';
 
 import { Config } from '../../config/config.js';
-import { ILogger } from '../../interfaces/ILogger.js';
+import type { ILogger } from '../../interfaces/ILogger.js';
 import { TYPES } from '../../utils/types.js';
 
 const config = Config.getInstance();

@@ -1,17 +1,15 @@
 // src/services/progress/ProgressTracker.ts
 import { inject, injectable } from 'inversify';
 
-import { IProgressTracker } from '../../interfaces';
+import type { IProgressTracker, ILogger } from '../../interfaces';
 import { TYPES } from '../../utils/types.js';
-
-import type { Logger } from '../../utils/Logger';
 
 @injectable()
 export class ProgressTracker implements IProgressTracker {
   private lastReportTime: number = 0;
   private reportInterval: number = 1000; // 1 second
 
-  constructor(@inject(TYPES.Logger) private logger: Logger) {}
+  constructor(@inject(TYPES.Logger) private logger: ILogger) {}
 
   trackProgress(current: number, total: number, message: string): void {
     const now = Date.now();

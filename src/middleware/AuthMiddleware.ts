@@ -2,13 +2,13 @@
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import {
+import type {
   IAuthRequest,
   IAuthMiddleware,
   ITokenService,
   ITokenBlacklistService,
   ILogger,
-} from '../interfaces/index.js';
+} from '../interfaces';
 import { TYPES } from '../utils/types.js';
 
 @injectable()

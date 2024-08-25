@@ -15,7 +15,7 @@ import { Config } from './config/config.js';
 import { AuthController } from './controllers/AuthController.js';
 import { HealthCheckController } from './controllers/HealthCheckController.js';
 import { MetricsController } from './controllers/MetricsController.js';
-import {
+import type {
   IApplication,
   IAuthController,
   IAuthMiddleware,
