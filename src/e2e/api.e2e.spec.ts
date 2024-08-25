@@ -182,9 +182,9 @@ describe('API E2E Tests', () => {
       });
 
       expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('accessToken');
-      expect(response.body).toHaveProperty('refreshToken');
-      expect(response.body).toHaveProperty('user');
+      expect(response.body.data).toHaveProperty('accessToken');
+      expect(response.body.data).toHaveProperty('refreshToken');
+      expect(response.body.data).toHaveProperty('user');
     });
 
     it('should handle existing user registration', async () => {
@@ -212,9 +212,9 @@ describe('API E2E Tests', () => {
         .expect(200)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('accessToken');
-      expect(response.body).toHaveProperty('refreshToken');
-      expect(response.body).toHaveProperty('user');
+      expect(response.body.data).toHaveProperty('accessToken');
+      expect(response.body.data).toHaveProperty('refreshToken');
+      expect(response.body.data).toHaveProperty('user');
     });
 
     it('should handle invalid login credentials', async () => {
@@ -248,8 +248,8 @@ describe('API E2E Tests', () => {
         .expect(200)
         .expect('Content-Type', /json/);
 
-      expect(response.body).toHaveProperty('accessToken');
-      expect(response.body).toHaveProperty('refreshToken');
+      expect(response.body.data).toHaveProperty('accessToken');
+      expect(response.body.data).toHaveProperty('refreshToken');
     });
 
     it('should reject an invalid refresh token', async () => {
