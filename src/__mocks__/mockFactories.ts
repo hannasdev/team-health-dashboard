@@ -3,6 +3,9 @@ import { IncomingHttpHeaders } from 'http';
 
 import { Request, Response } from 'express';
 
+import { User } from '../models/User';
+import { UserRepository } from '../repositories/user/UserRepository.js';
+
 import type {
   IAuthRequest,
   IAuthService,
@@ -22,13 +25,12 @@ import type {
   IMetric,
   IMetricCalculator,
   IMetricsService,
+  IMongoDbClient,
   IProgressTracker,
   IPullRequest,
   ITokenBlacklistService,
   ITokenService,
 } from '../interfaces/index.js';
-import { UserRepository } from '../repositories/user/UserRepository.js';
-import { User } from '../models/User';
 
 export const createMockGoogleSheetsClient =
   (): jest.Mocked<IGoogleSheetsClient> => ({
@@ -443,5 +445,14 @@ export function createMockTokenBlacklistService(): jest.Mocked<ITokenBlacklistSe
     blacklistToken: jest.fn(),
     isTokenBlacklisted: jest.fn(),
     revokeAllUserTokens: jest.fn(),
+    _testOnly_triggerCleanup: jest.fn(),
+  };
+}
+
+export function createMockMongoDbClient(): jest.Mocked<IMongoDbClient> {
+  return {
+    connect: jest.fn(),
+    getDb: jest.fn(),
+    close: jest.fn(),
   };
 }

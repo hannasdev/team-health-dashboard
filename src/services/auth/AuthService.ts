@@ -1,6 +1,16 @@
 // src/services/AuthService.ts
 import { inject, injectable } from 'inversify';
+
+import { User } from '../../models/User.js';
+import {
+  InvalidCredentialsError,
+  UserAlreadyExistsError,
+  UserNotFoundError,
+  InvalidRefreshTokenError,
+  InvalidResetTokenError,
+} from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
+
 import type {
   IAuthService,
   IConfig,
@@ -10,15 +20,6 @@ import type {
   IUserRepository,
   ILogger,
 } from '../../interfaces';
-import { User } from '../../models/User.js';
-import {
-  ForbiddenError,
-  InvalidCredentialsError,
-  UserAlreadyExistsError,
-  UserNotFoundError,
-  InvalidRefreshTokenError,
-  InvalidResetTokenError,
-} from '../../utils/errors.js';
 
 @injectable()
 export class AuthService implements IAuthService {
@@ -95,13 +96,20 @@ export class AuthService implements IAuthService {
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
+      this.logger.debug(
+        `Attempting to refresh token: ${refreshToken.substring(0, 10)}...`,
+      );
+
       if (await this.tokenBlacklistService.isTokenBlacklisted(refreshToken)) {
         throw new InvalidRefreshTokenError('Refresh token has been revoked');
       }
 
       const decoded = this.tokenService.validateRefreshToken(refreshToken);
+      this.logger.debug(`Refresh token decoded: ${JSON.stringify(decoded)}`);
+
       const user = await this.userRepository.findById(decoded.id);
       if (!user) {
+        this.logger.warn(`User not found for id: ${decoded.id}`);
         throw new UserNotFoundError();
       }
 

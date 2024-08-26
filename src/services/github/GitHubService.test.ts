@@ -6,6 +6,10 @@ import {
   createMockMetricCalculator,
   createMockProgressTracker,
 } from '../../__mocks__/mockFactories.js';
+import { GitHubService } from '../../services/github/GitHubService.js';
+import { ProgressCallback } from '../../types/index.js';
+import { TYPES } from '../../utils/types.js';
+
 import type {
   IGitHubRepository,
   IMetricCalculator,
@@ -15,9 +19,6 @@ import type {
   IPullRequest,
   IGitHubService,
 } from '../../interfaces';
-import { GitHubService } from '../../services/github/GitHubService.js';
-import { ProgressCallback } from '../../types/index.js';
-import { TYPES } from '../../utils/types.js';
 
 describe('GitHubService', () => {
   let container: Container;

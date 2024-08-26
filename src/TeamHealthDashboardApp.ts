@@ -6,17 +6,18 @@ import cors from 'cors';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import {
-  ILogger,
-  IConfig,
-  ITeamHealthDashboardApp,
-} from './interfaces/index.js';
 import { ErrorHandler } from './middleware/ErrorHandler.js';
 import authRouter from './routes/auth.js';
 import healthCheckRouter from './routes/healthCheck.js';
 import metricsRouter from './routes/metrics.js';
-import { IMongoDbClient } from './services/database/MongoDbClient.js';
 import { TYPES } from './utils/types.js';
+
+import type {
+  ILogger,
+  IConfig,
+  ITeamHealthDashboardApp,
+  IMongoDbClient,
+} from './interfaces/index.js';
 
 @injectable()
 export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {

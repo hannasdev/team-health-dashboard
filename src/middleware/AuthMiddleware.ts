@@ -2,6 +2,8 @@
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
+import { TYPES } from '../utils/types.js';
+
 import type {
   IAuthRequest,
   IAuthMiddleware,
@@ -9,7 +11,6 @@ import type {
   ITokenBlacklistService,
   ILogger,
 } from '../interfaces';
-import { TYPES } from '../utils/types.js';
 
 @injectable()
 export class AuthMiddleware implements IAuthMiddleware {
@@ -48,6 +49,13 @@ export class AuthMiddleware implements IAuthMiddleware {
       }
 
       const decoded = this.tokenService.validateAccessToken(token);
+
+      if (req.headers.accept === 'text/event-stream') {
+        // For SSE requests, allow the connection even if the token is about to expire
+        req.user = decoded;
+        next();
+        return;
+      }
 
       // Check if the token is about to expire
       const expirationThreshold = 5 * 60; // 5 minutes

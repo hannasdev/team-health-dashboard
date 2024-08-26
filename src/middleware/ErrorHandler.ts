@@ -1,10 +1,12 @@
 // src/middleware/ErrorHandler.ts
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
-import { TYPES } from '../utils/types.js';
-import type { ILogger } from '../interfaces/index.js';
-import { AppError, UnauthorizedError } from '../utils/errors.js';
+
 import { createErrorResponse } from '../utils/ApiResponse/index.js';
+import { AppError, UnauthorizedError } from '../utils/errors.js';
+import { TYPES } from '../utils/types.js';
+
+import type { ILogger } from '../interfaces/index.js';
 
 @injectable()
 export class ErrorHandler {

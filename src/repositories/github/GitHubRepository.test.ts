@@ -8,7 +8,11 @@ import {
   createMockGitHubClient,
 } from '../../__mocks__/mockFactories.js';
 import { Config } from '../../config/config.js';
-import {
+import { GitHubRepository } from '../../repositories/github/GitHubRepository.js';
+import { ProgressCallback } from '../../types/index.js';
+import { TYPES } from '../../utils/types.js';
+
+import type {
   IGraphQLResponse,
   IGitHubClient,
   IConfig,
@@ -17,9 +21,6 @@ import {
   IPullRequest,
   IGitHubRepository,
 } from '../../interfaces/index.js';
-import { GitHubRepository } from '../../repositories/github/GitHubRepository.js';
-import { ProgressCallback } from '../../types/index.js';
-import { TYPES } from '../../utils/types.js';
 
 describe('GitHubRepository', () => {
   let container: Container;

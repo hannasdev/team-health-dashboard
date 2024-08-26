@@ -1,8 +1,9 @@
 // src/services/progress/ProgressTracker.ts
 import { inject, injectable } from 'inversify';
 
-import type { IProgressTracker, ILogger } from '../../interfaces';
 import { TYPES } from '../../utils/types.js';
+
+import type { IProgressTracker, ILogger } from '../../interfaces';
 
 @injectable()
 export class ProgressTracker implements IProgressTracker {

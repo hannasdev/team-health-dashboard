@@ -1,8 +1,8 @@
 // src/middleware/AuthMiddleware.test.ts
 
 import { Container } from 'inversify';
+
 import { AuthMiddleware } from './AuthMiddleware';
-import { TYPES } from '../utils/types';
 import {
   createMockTokenService,
   createMockTokenBlacklistService,
@@ -11,6 +11,7 @@ import {
   createMockAuthMiddlewareResponse,
 } from '../__mocks__/mockFactories';
 import { UnauthorizedError } from '../utils/errors';
+import { TYPES } from '../utils/types';
 
 describe('AuthMiddleware', () => {
   let authMiddleware: AuthMiddleware;

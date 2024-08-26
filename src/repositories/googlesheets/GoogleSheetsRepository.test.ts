@@ -6,6 +6,10 @@ import {
   createMockGoogleSheetsClient,
 } from '../../__mocks__/mockFactories.js';
 import { Config } from '../../config/config.js';
+import { GoogleSheetsRepository } from '../../repositories/googlesheets/GoogleSheetsRepository.js';
+import { ProgressCallback } from '../../types/index.js';
+import { TYPES } from '../../utils/types.js';
+
 import type {
   IGoogleSheetsClient,
   IConfig,
@@ -14,9 +18,6 @@ import type {
   IMetric,
   IGoogleSheetsRepository,
 } from '../../interfaces/index.js';
-import { GoogleSheetsRepository } from '../../repositories/googlesheets/GoogleSheetsRepository.js';
-import { ProgressCallback } from '../../types/index.js';
-import { TYPES } from '../../utils/types.js';
 
 describe('GoogleSheetsRepository', () => {
   let container: Container;

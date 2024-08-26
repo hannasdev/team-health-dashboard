@@ -15,6 +15,26 @@ import { Config } from './config/config.js';
 import { AuthController } from './controllers/AuthController/AuthController.js';
 import { HealthCheckController } from './controllers/HealthCheckController/HealthCheckController.js';
 import { MetricsController } from './controllers/MetricsController/MetricsController.js';
+import { AuthMiddleware } from './middleware/AuthMiddleware.js';
+import { ErrorHandler } from './middleware/ErrorHandler.js';
+import { GitHubRepository } from './repositories/github/GitHubRepository.js';
+import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository.js';
+import { UserRepository } from './repositories/user/UserRepository.js';
+import { AuthService } from './services/auth/AuthService.js';
+import { CacheService } from './services/cache/CacheService.js';
+import { MongoDbClient } from './services/database/MongoDbClient.js';
+import { LoggingService } from './services/logging/LoggingService.js';
+import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
+import { MetricsService } from './services/metrics/MetricsService.js';
+import { ProgressTracker } from './services/progress/ProgressTracker.js';
+import TokenBlacklistService from './services/TokenBlacklistService/index.js';
+import { TokenService } from './services/TokenService/index.js';
+import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
+import { BcryptService } from './utils/BcryptService/index.js';
+import { JwtService } from './utils/JwtService/index.js';
+import { Logger } from './utils/Logger/index.js';
+import { TYPES } from './utils/types.js';
+
 import type {
   IApplication,
   IAuthController,
@@ -40,29 +60,8 @@ import type {
   ITokenBlacklistService,
   ITokenService,
   IUserRepository,
-} from './interfaces/index.js';
-import { AuthMiddleware } from './middleware/AuthMiddleware.js';
-import { ErrorHandler } from './middleware/ErrorHandler.js';
-import { GitHubRepository } from './repositories/github/GitHubRepository.js';
-import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository.js';
-import { UserRepository } from './repositories/user/UserRepository.js';
-import { TokenService } from './services/token/index.js';
-import { AuthService } from './services/auth/AuthService.js';
-import { CacheService } from './services/cache/CacheService.js';
-import {
-  MongoDbClient,
   IMongoDbClient,
-} from './services/database/MongoDbClient.js';
-import { LoggingService } from './services/logging/LoggingService.js';
-import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
-import { MetricsService } from './services/metrics/MetricsService.js';
-import { ProgressTracker } from './services/progress/ProgressTracker.js';
-import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
-import { BcryptService } from './utils/BcryptService/index.js';
-import { JwtService } from './utils/JwtService/index.js';
-import { Logger } from './utils/Logger/index.js';
-import { TYPES } from './utils/types.js';
-import { TokenBlacklistService } from './services/token/TokenBlacklistService.js';
+} from './interfaces/index.js';
 
 const config = Config.getInstance();
 

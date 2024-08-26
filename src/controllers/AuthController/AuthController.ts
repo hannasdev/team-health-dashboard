@@ -2,18 +2,21 @@
 
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
-import { TYPES } from '../../utils/types.js';
-import type {
-  IAuthController,
-  IAuthService,
-  IAuthRequest,
-} from '../../interfaces';
+
+import { User } from 'models/User.js';
+
 import {
   createSuccessResponse,
   createErrorResponse,
 } from '../../utils/ApiResponse/index.js';
 import { UnauthorizedError } from '../../utils/errors.js';
-import { User } from 'models/User.js';
+import { TYPES } from '../../utils/types.js';
+
+import type {
+  IAuthController,
+  IAuthService,
+  IAuthRequest,
+} from '../../interfaces';
 
 @injectable()
 export class AuthController implements IAuthController {

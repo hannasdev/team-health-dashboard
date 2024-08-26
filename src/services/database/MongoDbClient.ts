@@ -2,14 +2,9 @@
 import { injectable, inject } from 'inversify';
 import { MongoClient, Db, MongoServerError } from 'mongodb';
 
-import type { IConfig, ILogger } from '../../interfaces';
 import { TYPES } from '../../utils/types.js';
 
-export interface IMongoDbClient {
-  connect(): Promise<void>;
-  getDb(): Db;
-  close(): Promise<void>;
-}
+import type { IConfig, ILogger, IMongoDbClient } from '../../interfaces';
 
 @injectable()
 export class MongoDbClient implements IMongoDbClient {

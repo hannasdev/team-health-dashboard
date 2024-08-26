@@ -1,9 +1,8 @@
 // src/services/auth/AuthService.test.ts
 
 import { Container } from 'inversify';
+
 import { AuthService } from './AuthService';
-import { Config } from '../../config/config';
-import { TYPES } from '../../utils/types';
 import {
   createMockConfig,
   createMockTokenService,
@@ -12,6 +11,7 @@ import {
   createMockUserRepository,
   createMockLogger,
 } from '../../__mocks__/mockFactories';
+import { Config } from '../../config/config';
 import { User } from '../../models/User';
 import {
   InvalidCredentialsError,
@@ -19,6 +19,7 @@ import {
   UserNotFoundError,
   InvalidRefreshTokenError,
 } from '../../utils/errors';
+import { TYPES } from '../../utils/types';
 
 describe('AuthService', () => {
   let authService: AuthService;
