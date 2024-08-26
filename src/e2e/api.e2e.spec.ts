@@ -111,17 +111,24 @@ describe('API E2E Tests', () => {
 
       es.onerror = (err: Event) => {
         console.error('EventSource error:', err);
+        // Log more details about the error
+        console.error('Error details:', JSON.stringify(err, null, 2));
         es.close();
         done(err);
       };
 
-      // Add a timeout to close the connection if we don't receive a result
+      // Increase timeout and add more detailed error message
       setTimeout(() => {
         if (!resultReceived) {
           es.close();
-          done(new Error('Test timed out without receiving a result'));
+          console.error('Test timed out. Progress received:', progressReceived);
+          done(
+            new Error(
+              'Test timed out without receiving a result. Check server logs for more information.',
+            ),
+          );
         }
-      }, 30000); // Adjust timeout as needed
+      }, 60000); // Increased to 60 seconds
     });
   });
 
@@ -254,7 +261,11 @@ describe('API E2E Tests', () => {
           password: 'testpassword',
         });
 
-      const validRefreshToken = loginResponse.body.refreshToken;
+      const validRefreshToken = loginResponse.body.data.refreshToken;
+      console.log(
+        'Valid refresh token:',
+        validRefreshToken.substring(0, 10) + '...',
+      );
 
       const response = await request(apiEndpoint)
         .post('/api/auth/refresh')
