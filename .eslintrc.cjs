@@ -19,6 +19,7 @@ module.exports = {
     '.eslintrc.cjs',
     'build',
     'e2e/**', // Ignore E2E test files
+    '*.d.ts',
   ],
   parser: '@typescript-eslint/parser',
   parserOptions: {
