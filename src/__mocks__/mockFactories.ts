@@ -406,21 +406,41 @@ export function createMockBcryptService(): jest.Mocked<IBcryptService> {
 
 export function createMockAuthService(): jest.Mocked<IAuthService> {
   return {
-    login: jest.fn().mockResolvedValue({
-      user: new User('mock-id', 'mock@example.com', 'mock-hashed-password'),
-      accessToken: 'mock-access-token',
-      refreshToken: 'mock-refresh-token',
+    login: jest.fn().mockImplementation((email, password) => {
+      if (email === 'test@example.com' && password === 'password123') {
+        return Promise.resolve({
+          user: { id: '1', email },
+          accessToken: 'mock-access-token',
+          refreshToken: 'mock-refresh-token',
+        });
+      }
+      return Promise.reject(new Error('Invalid credentials'));
     }),
-    register: jest.fn().mockResolvedValue({
-      user: new User('mock-id', 'mock@example.com', 'mock-hashed-password'),
-      accessToken: 'mock-access-token',
-      refreshToken: 'mock-refresh-token',
+    register: jest.fn().mockImplementation((email, password) => {
+      if (email === 'existing@example.com') {
+        return Promise.reject(new Error('User already exists'));
+      }
+      return Promise.resolve({
+        user: { id: '2', email },
+        accessToken: 'mock-access-token',
+        refreshToken: 'mock-refresh-token',
+      });
     }),
-    refreshToken: jest.fn().mockResolvedValue({
-      accessToken: 'mock-new-access-token',
-      refreshToken: 'mock-new-refresh-token',
+    refreshToken: jest.fn().mockImplementation(refreshToken => {
+      if (refreshToken === 'valid-refresh-token') {
+        return Promise.resolve({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+        });
+      }
+      return Promise.reject(new Error('Invalid refresh token'));
     }),
-    logout: jest.fn().mockResolvedValue(undefined),
+    logout: jest.fn().mockImplementation(refreshToken => {
+      if (refreshToken === 'valid-refresh-token') {
+        return Promise.resolve();
+      }
+      return Promise.reject(new Error('Invalid refresh token'));
+    }),
   };
 }
 
@@ -451,8 +471,8 @@ export function createMockTokenBlacklistService(): jest.Mocked<ITokenBlacklistSe
 
 export function createMockMongoDbClient(): jest.Mocked<IMongoDbClient> {
   return {
-    connect: jest.fn(),
-    getDb: jest.fn(),
-    close: jest.fn(),
+    connect: jest.fn().mockResolvedValue(undefined),
+    getDb: jest.fn().mockReturnValue({}),
+    close: jest.fn().mockResolvedValue(undefined),
   };
 }
