@@ -10,6 +10,7 @@ import {
   createMockResponse,
 } from '../../__mocks__/mockFactories.js';
 import { ProgressCallback } from '../../types/index.js';
+import { AppError } from '../../utils/errors.js';
 
 import type { IMetricsService, ILogger } from '../../interfaces/index.js';
 
@@ -116,12 +117,10 @@ describe('MetricsController', () => {
       );
     });
 
-    it('should send "error" event with details on failure', async () => {
-      const mockErrorMessage = 'Something went wrong!';
+    it('should send "error" event with AppError details', async () => {
+      const mockError = new AppError(400, 'Bad Request');
 
-      mockMetricsService.getAllMetrics.mockRejectedValue(
-        new Error(mockErrorMessage),
-      );
+      mockMetricsService.getAllMetrics.mockRejectedValue(mockError);
 
       await metricsController.getAllMetrics(
         mockRequest as Request,
@@ -140,14 +139,14 @@ describe('MetricsController', () => {
             errors: [
               {
                 source: 'MetricsController',
-                message: mockErrorMessage,
+                message: 'Bad Request',
               },
             ],
-            status: 500,
+            status: 400,
           }),
         ),
       );
-      expect(mockNext).toHaveBeenCalledWith(expect.any(Error));
+      expect(mockNext).toHaveBeenCalledWith(mockError);
     });
 
     it('should always call res.end() on success', async () => {

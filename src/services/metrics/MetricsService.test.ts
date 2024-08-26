@@ -9,6 +9,7 @@ import {
   createMockPullRequest,
 } from '../../__mocks__/mockFactories.js';
 import { MetricsService } from '../../services/metrics/MetricsService.js';
+import { AppError } from '../../utils/errors.js';
 
 import type {
   IMetricsService,
@@ -141,16 +142,9 @@ describe('MetricsService', () => {
 
       const mockProgressCallback = jest.fn();
 
-      const result = await metricsService.getAllMetrics(mockProgressCallback);
-
-      expect(result.metrics).toHaveLength(0);
-      expect(result.errors).toHaveLength(2);
-      expect(result.errors).toEqual(
-        expect.arrayContaining([
-          { source: 'Google Sheets', message: 'Google Sheets API error' },
-          { source: 'GitHub', message: 'GitHub API error' },
-        ]),
-      );
+      await expect(
+        metricsService.getAllMetrics(mockProgressCallback),
+      ).rejects.toThrow(AppError);
 
       expect(mockProgressCallback).toHaveBeenCalledTimes(2);
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
@@ -176,7 +170,7 @@ describe('MetricsService', () => {
       );
       mockGitHubRepository.fetchPullRequests.mockRejectedValue(gitHubError);
 
-      await metricsService.getAllMetrics();
+      await expect(metricsService.getAllMetrics()).rejects.toThrow(AppError);
 
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error fetching Google Sheets data:',
@@ -283,18 +277,16 @@ describe('MetricsService', () => {
 
       jest.runAllTimers();
 
-      const result = await getAllMetricsPromise;
+      await expect(getAllMetricsPromise).rejects.toThrow(AppError);
 
-      expect(result.metrics).toHaveLength(0);
-      expect(result.errors).toHaveLength(2);
-      expect(result.errors[0]).toEqual({
-        source: 'Google Sheets',
-        message: 'Timeout',
-      });
-      expect(result.errors[1]).toEqual({
-        source: 'GitHub',
-        message: 'Timeout',
-      });
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching Google Sheets data:',
+        timeoutError,
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching GitHub data:',
+        timeoutError,
+      );
 
       jest.useRealTimers();
     });

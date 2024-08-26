@@ -1,5 +1,4 @@
 // src/middleware/AuthMiddleware.test.ts
-
 import { Container } from 'inversify';
 
 import { AuthMiddleware } from './AuthMiddleware';
@@ -64,19 +63,18 @@ describe('AuthMiddleware', () => {
     });
   });
 
-  it('should return 401 if no token is provided', async () => {
+  it('should call next() with UnauthorizedError if no token is provided', async () => {
     const req = createMockAuthRequest();
     const res = createMockAuthMiddlewareResponse();
     const next = jest.fn();
 
     await authMiddleware.handle(req, res as any, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'No token provided' });
-    expect(next).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    expect(next.mock.calls[0][0].message).toBe('No token provided');
   });
 
-  it('should return 401 if token format is invalid', async () => {
+  it('should call next() with UnauthorizedError if token format is invalid', async () => {
     const req = createMockAuthRequest({
       headers: { authorization: 'InvalidFormat token' },
     });
@@ -85,12 +83,11 @@ describe('AuthMiddleware', () => {
 
     await authMiddleware.handle(req, res as any, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token format' });
-    expect(next).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    expect(next.mock.calls[0][0].message).toBe('Invalid token format');
   });
 
-  it('should return 401 if token has been revoked', async () => {
+  it('should call next() with UnauthorizedError if token has been revoked', async () => {
     const req = createMockAuthRequest({
       headers: { authorization: 'Bearer revoked_token' },
     });
@@ -101,14 +98,11 @@ describe('AuthMiddleware', () => {
 
     await authMiddleware.handle(req, res as any, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({
-      error: 'Token has been revoked',
-    });
-    expect(next).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    expect(next.mock.calls[0][0].message).toBe('Token has been revoked');
   });
 
-  it('should return 401 if token is invalid', async () => {
+  it('should call next() with UnauthorizedError if token is invalid', async () => {
     const req = createMockAuthRequest({
       headers: { authorization: 'Bearer invalid_token' },
     });
@@ -122,12 +116,11 @@ describe('AuthMiddleware', () => {
 
     await authMiddleware.handle(req, res as any, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Invalid token' });
-    expect(next).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    expect(next.mock.calls[0][0].message).toBe('Invalid token');
   });
 
-  it('should return 401 if token has expired', async () => {
+  it('should call next() with UnauthorizedError if token has expired', async () => {
     const req = createMockAuthRequest({
       headers: { authorization: 'Bearer expired_token' },
     });
@@ -143,9 +136,8 @@ describe('AuthMiddleware', () => {
 
     await authMiddleware.handle(req, res as any, next);
 
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: 'Token has expired' });
-    expect(next).not.toHaveBeenCalled();
+    expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    expect(next.mock.calls[0][0].message).toBe('Token has expired');
   });
 
   it('should set X-Token-Expiring header if token is about to expire', async () => {
