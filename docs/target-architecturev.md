@@ -156,7 +156,7 @@ App --> SecurityHeadersMiddleware
         <<implements IGoogleSheetsClient>>
     }
 
-    class LoggingService {
+    class Logger {
         +info(message: string, meta?: object)
         +error(message: string, error?: Error, meta?: object)
         +warn(message: string, meta?: object)
@@ -170,9 +170,9 @@ App --> SecurityHeadersMiddleware
         +save()
     }
 
-    MetricsService --> LoggingService
-    AuthService --> LoggingService
-    HealthCheckService --> LoggingService
+    MetricsService --> Logger
+    AuthService --> Logger
+    HealthCheckService --> Logger
     App --> ConfigService
     MetricsService --> ConfigService
     AuthService --> ConfigService
