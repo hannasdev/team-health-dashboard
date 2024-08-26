@@ -22,7 +22,6 @@ export const TYPES = {
   LogFormat: Symbol.for('LogFormat'),
   LogLevel: Symbol.for('LogLevel'),
   Logger: Symbol.for('ILogger'),
-  LoggingService: Symbol.for('ILoggingService'),
   MetricCalculator: Symbol.for('IMetricCalculator'),
   MetricsController: Symbol.for('IMetricsController'),
   MetricsService: Symbol.for('IMetricsService'),

@@ -23,7 +23,6 @@ import { UserRepository } from './repositories/user/UserRepository.js';
 import { AuthService } from './services/auth/AuthService.js';
 import { CacheService } from './services/cache/CacheService.js';
 import { MongoDbClient } from './services/database/MongoDbClient.js';
-import { LoggingService } from './services/logging/LoggingService.js';
 import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
 import { MetricsService } from './services/metrics/MetricsService.js';
 import { ProgressTracker } from './services/progress/ProgressTracker.js';
@@ -51,7 +50,6 @@ import type {
   IHealthCheckController,
   IJwtService,
   ILogger,
-  ILoggingService,
   IMetricCalculator,
   IMetricsController,
   IMetricsService,
@@ -70,10 +68,6 @@ container.bind<IConfig>(TYPES.Config).toConstantValue(config);
 container.bind<ILogger>(TYPES.Logger).to(Logger).inSingletonScope();
 container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
 container.bind<string>(TYPES.LogFormat).toConstantValue(config.LOG_FORMAT);
-container
-  .bind<ILoggingService>(TYPES.LoggingService)
-  .to(LoggingService)
-  .inSingletonScope();
 container.bind<ITokenService>(TYPES.TokenService).to(TokenService);
 container
   .bind<ITokenBlacklistService>(TYPES.TokenBlacklistService)
