@@ -1,6 +1,5 @@
 // src/utils/CacheDecorator.ts
 import { inject, injectable } from 'inversify';
-import 'reflect-metadata';
 
 import { TYPES } from '../../utils/types.js';
 
