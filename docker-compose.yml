@@ -118,7 +118,7 @@ services:
       - -c
       - |
         npx wait-on http://app:3000/health --timeout 30000 &&
-        node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/e2e/**/*.e2e.spec.js" --forceExit
+        node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/__tests__/e2e/**/*.e2e.spec.js" --forceExit  --detectOpenHandles
 
   # DB Test
   # - Similar to the db service, but for testing purposes.

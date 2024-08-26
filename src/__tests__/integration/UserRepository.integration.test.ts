@@ -2,10 +2,10 @@
 import { Container } from 'inversify';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 
-import { UserRepository } from './UserRepository.js';
 import { createMockLogger } from '../../__mocks__/mockFactories.js';
 import { Config } from '../../config/config.js';
 import { User } from '../../models/User.js';
+import { UserRepository } from '../../repositories/user/UserRepository.js';
 import { MongoDbClient } from '../../services/database/MongoDbClient.js';
 import { TYPES } from '../../utils/types.js';
 

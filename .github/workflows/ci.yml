@@ -106,7 +106,7 @@ jobs:
       - name: Run e2e tests
         run: |
           npm run build
-          node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/e2e/**/*.e2e.spec.js" --forceExit --detectOpenHandles || (cat logs/app.log && kill $(cat app.pid) && exit 1)
+          node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/__tests__/e2e/**/*.e2e.spec.js" --forceExit --detectOpenHandles || (cat logs/app.log && kill $(cat app.pid) && exit 1)
 
       - name: Display logs
         if: always()

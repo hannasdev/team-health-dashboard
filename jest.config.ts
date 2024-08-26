@@ -15,8 +15,27 @@ const config: Config = {
       displayName: 'unit',
       testMatch: ['<rootDir>/src/**/*.test.ts'],
       testEnvironment: 'node',
-      testPathIgnorePatterns: ['<rootDir>/src/e2e/', '<rootDir>/dist'],
-      setupFiles: ['<rootDir>/src/setupTests.ts'],
+      testPathIgnorePatterns: [
+        '<rootDir>/src/__tests__/e2e/',
+        '<rootDir>/dist',
+        '<rootDir>/src/__tests__/integration/auth.integration.test.ts',
+      ],
+      setupFiles: ['<rootDir>/src/__tests__/setupTests.ts'],
+      modulePathIgnorePatterns: ['<rootDir>/dist/'],
+      moduleNameMapper: {
+        '^(\\.{1,2}/.*)\\.js$': '$1',
+      },
+      transform: {
+        '^.+\\.ts$': ['ts-jest', { useESM: true }],
+      },
+    },
+    {
+      displayName: 'integration',
+      testMatch: [
+        '<rootDir>/src/__tests__/integration/**/*.integration.test.ts',
+      ],
+      testEnvironment: 'node',
+      setupFiles: ['<rootDir>/src/__tests__/setupTests.ts'],
       modulePathIgnorePatterns: ['<rootDir>/dist/'],
       moduleNameMapper: {
         '^(\\.{1,2}/.*)\\.js$': '$1',
@@ -27,9 +46,9 @@ const config: Config = {
     },
     {
       displayName: 'e2e',
-      testMatch: ['<rootDir>/src/e2e/**/*.e2e.test.ts'],
+      testMatch: ['<rootDir>/src/__tests__/e2e/**/*.e2e.test.ts'],
       testEnvironment: 'node',
-      setupFiles: ['<rootDir>/src/setupTests.ts'],
+      setupFiles: ['<rootDir>/src/__tests__/setupTests.ts'],
       testPathIgnorePatterns: ['<rootDir>/dist/'],
       transformIgnorePatterns: ['node_modules/(?!(@octokit)/)'],
       modulePathIgnorePatterns: ['<rootDir>/dist/'],
