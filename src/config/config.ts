@@ -76,8 +76,8 @@ export class Config implements IConfig {
       JWT_SECRET: 'your-secret-key', // Provide a safe default
       REFRESH_TOKEN_SECRET: 'refresh-token-key',
       DATABASE_URL: 'mongodb://localhost:27017/team-health-dashboard',
-      MONGO_CONNECT_TIMEOUT_MS: 5000,
-      MONGO_SERVER_SELECTION_TIMEOUT_MS: 5000,
+      MONGO_CONNECT_TIMEOUT_MS: 10000,
+      MONGO_SERVER_SELECTION_TIMEOUT_MS: 10000,
       LOG_LEVEL: 'info',
       LOG_FORMAT: 'json',
       LOG_FILE_PATH: './logs',
