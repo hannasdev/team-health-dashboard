@@ -1,8 +1,13 @@
 // src/services/token/TokenService.ts
-
 import { inject, injectable } from 'inversify';
+
 import { TYPES } from '../../utils/types.js';
-import type { ITokenService, IJwtService, IConfig } from '../../interfaces';
+
+import type {
+  ITokenService,
+  IJwtService,
+  IConfig,
+} from '../../interfaces/index.js';
 
 @injectable()
 export class TokenService implements ITokenService {
@@ -62,3 +67,5 @@ export class TokenService implements ITokenService {
     return this.jwtService.decode(token);
   }
 }
+
+export default TokenService;

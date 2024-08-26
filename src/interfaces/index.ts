@@ -1,3 +1,4 @@
+export type { IApiResponse } from './IApiResponse.js';
 export type { IApplication } from './IApplication.js';
 export type { IAuthController } from './IAuthController.js';
 export type { IAuthMiddleware } from './IAuthMiddleware.js';
@@ -25,10 +26,10 @@ export type { IMetric } from './IMetricModel.js';
 export type { IMetricCalculator } from './IMetricCalculator.js';
 export type { IMetricsController } from './IMetricsController.js';
 export type { IMetricsService } from './IMetricsService.js';
+export type { IMongoDbClient } from './IMongoDbClient.js';
 export type { IProgressTracker } from './IProgressTracker.js';
 export type { IPullRequest } from './IPullRequest.js';
 export type { ITeamHealthDashboardApp } from './ITeamHealthDashboardApp.js';
-export type { IUserRepository } from './IUserRepository.js';
-export type { ITokenService } from './ITokenService.js';
 export type { ITokenBlacklistService } from './ITokenBlacklistService.js';
-export type { IApiResponse } from './IApiResponse.js';
+export type { ITokenService } from './ITokenService.js';
+export type { IUserRepository } from './IUserRepository.js';

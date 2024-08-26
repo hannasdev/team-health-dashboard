@@ -1,13 +1,14 @@
 // src/services/token/TokenService.test.ts
 
-import { Config } from '../../config/config';
+import { Container } from 'inversify';
+
 import { TokenService } from './TokenService';
 import {
   createMockJwtService,
   createMockConfig,
 } from '../../__mocks__/mockFactories';
+import { Config } from '../../config/config';
 import { TYPES } from '../../utils/types';
-import { Container } from 'inversify';
 
 describe('TokenService', () => {
   let tokenService: TokenService;
