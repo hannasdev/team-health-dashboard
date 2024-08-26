@@ -4,5 +4,5 @@ import { Express } from 'express';
 
 export interface ITeamHealthDashboardApp {
   expressApp: Express;
-  initialize(): Promise<void>;
+  initialize(config: { skipDatabaseConnection?: boolean }): Promise<void>;
 }

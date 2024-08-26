@@ -1,12 +1,9 @@
 // src/TeamHealthDashboardApp.ts
-
-import 'reflect-metadata';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { ErrorHandler } from './middleware/ErrorHandler.js';
 import authRouter from './routes/auth.js';
 import healthCheckRouter from './routes/healthCheck.js';
 import metricsRouter from './routes/metrics.js';
@@ -17,6 +14,7 @@ import type {
   IConfig,
   ITeamHealthDashboardApp,
   IMongoDbClient,
+  IErrorHandler,
 } from './interfaces/index.js';
 
 @injectable()
@@ -27,7 +25,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     @inject(TYPES.Config) private config: IConfig,
     @inject(TYPES.MongoDbClient) private mongoDbClient: IMongoDbClient,
     @inject(TYPES.Logger) private logger: ILogger,
-    @inject(TYPES.ErrorHandler) private errorHandler: ErrorHandler,
+    @inject(TYPES.ErrorHandler) private errorHandler: IErrorHandler,
   ) {
     this.expressApp = express();
     this.configureCors();
@@ -36,13 +34,21 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     this.configureErrorHandling();
   }
 
-  public async initialize(): Promise<void> {
-    try {
-      await this.mongoDbClient.connect();
-      this.logger.info('Database connection established');
-    } catch (error) {
-      this.logger.error('Failed to connect to the database', error as Error);
-      throw error;
+  public async initialize(
+    options: { skipDatabaseConnection?: boolean } = {},
+  ): Promise<void> {
+    if (!options.skipDatabaseConnection) {
+      try {
+        await this.mongoDbClient.connect();
+        this.logger.info('Database connection established');
+      } catch (error) {
+        this.logger.error('Failed to connect to the database', error as Error);
+        throw error;
+      }
+    } else {
+      this.logger.info(
+        'Skipping database connection as per initialization options',
+      );
     }
   }
 
@@ -89,17 +95,6 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureErrorHandling(): void {
-    // Use the ErrorHandler middleware
     this.expressApp.use(this.errorHandler.handle);
-
-    // Keep the default error handler as a fallback
-    this.expressApp.use(
-      (err: Error, req: Request, res: Response, _next: NextFunction) => {
-        this.logger.error('Unhandled error', err);
-        res
-          .status(500)
-          .json({ message: 'Internal server error', error: err.message });
-      },
-    );
   }
 }
