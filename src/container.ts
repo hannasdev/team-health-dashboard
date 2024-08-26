@@ -8,9 +8,11 @@
  * @module Container
  */
 
+import { Container } from 'inversify';
+
 import { GitHubAdapter } from './adapters/GitHubAdapter.js';
 import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter.js';
-import { container } from './appContainer.js';
+import { container as appContainer } from './appContainer.js';
 import { Config } from './config/config.js';
 import { AuthController } from './controllers/AuthController/AuthController.js';
 import { HealthCheckController } from './controllers/HealthCheckController/HealthCheckController.js';
@@ -63,66 +65,93 @@ import type {
 
 const config = Config.getInstance();
 
-// 1. Configuration and Logging (Fundamental Dependencies)
-container.bind<IConfig>(TYPES.Config).toConstantValue(config);
-container.bind<ILogger>(TYPES.Logger).to(Logger).inSingletonScope();
-container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
-container.bind<string>(TYPES.LogFormat).toConstantValue(config.LOG_FORMAT);
-container.bind<ITokenService>(TYPES.TokenService).to(TokenService);
-container
-  .bind<ITokenBlacklistService>(TYPES.TokenBlacklistService)
-  .to(TokenBlacklistService);
+export function setupContainer(
+  overrides?: Partial<Record<symbol, any>>,
+): Container {
+  const container = appContainer.createChild();
 
-// 2. Core Services and Utilities
-container
-  .bind<ITeamHealthDashboardApp>(TYPES.TeamHealthDashboardApp)
-  .to(TeamHealthDashboardApp);
-container.bind<ICacheService>(TYPES.CacheService).to(CacheService); // Often used by other services
-container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
-container.bind<IBcryptService>(TYPES.BcryptService).to(BcryptService);
-container.bind<IJwtService>(TYPES.JwtService).to(JwtService);
-container
-  .bind<IMongoDbClient>(TYPES.MongoDbClient)
-  .to(MongoDbClient)
-  .inSingletonScope();
+  // 1. Configuration and Logging (Fundamental Dependencies)
+  container.bind<IConfig>(TYPES.Config).toConstantValue(config);
+  container.bind<ILogger>(TYPES.Logger).to(Logger).inSingletonScope();
+  container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
+  container.bind<string>(TYPES.LogFormat).toConstantValue(config.LOG_FORMAT);
+  container.bind<ITokenService>(TYPES.TokenService).to(TokenService);
+  container
+    .bind<ITokenBlacklistService>(TYPES.TokenBlacklistService)
+    .to(TokenBlacklistService);
 
-// 3. Adapters (Clients for external services)
-container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
-container
-  .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
-  .to(GoogleSheetsAdapter);
+  // 2. Core Services and Utilities
+  container
+    .bind<ITeamHealthDashboardApp>(TYPES.TeamHealthDashboardApp)
+    .to(TeamHealthDashboardApp);
+  container.bind<ICacheService>(TYPES.CacheService).to(CacheService); // Often used by other services
+  container.bind<IProgressTracker>(TYPES.ProgressTracker).to(ProgressTracker);
+  container.bind<IBcryptService>(TYPES.BcryptService).to(BcryptService);
+  container.bind<IJwtService>(TYPES.JwtService).to(JwtService);
+  container
+    .bind<IMongoDbClient>(TYPES.MongoDbClient)
+    .to(MongoDbClient)
+    .inSingletonScope();
 
-// 3. Repositories (Depend on config, logger, and potentially cache)
-container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
-container.bind<IGitHubRepository>(TYPES.GitHubRepository).to(GitHubRepository);
-container
-  .bind<IGoogleSheetsRepository>(TYPES.GoogleSheetsRepository)
-  .to(GoogleSheetsRepository);
+  // 3. Adapters (Clients for external services)
+  container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
+  container
+    .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
+    .to(GoogleSheetsAdapter);
 
-// 4. Metric Calculation (Can depend on repositories and other services)
-container.bind<IMetricCalculator>(TYPES.MetricCalculator).to(MetricCalculator);
+  // 3. Repositories (Depend on config, logger, and potentially cache)
+  container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
+  container
+    .bind<IGitHubRepository>(TYPES.GitHubRepository)
+    .to(GitHubRepository);
+  container
+    .bind<IGoogleSheetsRepository>(TYPES.GoogleSheetsRepository)
+    .to(GoogleSheetsRepository);
 
-// 6.  Services (Depend on repositories, metric calculators, and other services)
-container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService);
+  // 4. Metric Calculation (Can depend on repositories and other services)
+  container
+    .bind<IMetricCalculator>(TYPES.MetricCalculator)
+    .to(MetricCalculator);
 
-// 7.  Controllers (Depend on services)
-container
-  .bind<IHealthCheckController>(TYPES.HealthCheckController)
-  .to(HealthCheckController);
-container.bind<IAuthController>(TYPES.AuthController).to(AuthController);
-container
-  .bind<IMetricsController>(TYPES.MetricsController)
-  .to(MetricsController);
+  // 6.  Services (Depend on repositories, metric calculators, and other services)
+  container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService);
 
-// 8.  Middleware (Can depend on services)
-container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
-container.bind<IAuthService>(TYPES.AuthService).to(AuthService);
-container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
+  // 7.  Controllers (Depend on services)
+  container
+    .bind<IHealthCheckController>(TYPES.HealthCheckController)
+    .to(HealthCheckController);
+  container.bind<IAuthController>(TYPES.AuthController).to(AuthController);
+  container
+    .bind<IMetricsController>(TYPES.MetricsController)
+    .to(MetricsController);
 
-// 9. Application (Depends on middleware, routers, and potentially other services)
-container
-  .bind<IApplication>(TYPES.Application)
-  .to(TeamHealthDashboardApp)
-  .inSingletonScope();
+  // 8.  Middleware (Can depend on services)
+  container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
+  container.bind<IAuthService>(TYPES.AuthService).to(AuthService);
+  container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
+
+  // 9. Application (Depends on middleware, routers, and potentially other services)
+  container
+    .bind<IApplication>(TYPES.Application)
+    .to(TeamHealthDashboardApp)
+    .inSingletonScope();
+
+  // Override bindings if provided
+  if (overrides) {
+    Object.entries(overrides).forEach(([key, value]) => {
+      const symbolKey = Symbol.for(key);
+      if (container.isBound(symbolKey)) {
+        container.rebind(symbolKey).toConstantValue(value);
+      } else {
+        container.bind(symbolKey).toConstantValue(value);
+      }
+    });
+  }
+
+  return container;
+}
+
+// Create and export the default container
+const container = setupContainer();
 
 export { container };
