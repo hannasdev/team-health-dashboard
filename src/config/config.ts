@@ -4,7 +4,9 @@ import path from 'path';
 
 import dotenv from 'dotenv';
 
-import { IConfig } from '../interfaces/index.js';
+import { AppError } from '../utils/errors.js';
+
+import type { IConfig } from '../interfaces/index.js';
 
 /**
  * @class Config
@@ -208,7 +210,8 @@ export class Config implements IConfig {
     );
 
     if (missingVars.length > 0) {
-      throw new Error(
+      throw new AppError(
+        500,
         `Missing required environment variables: ${missingVars.join(', ')}`,
       );
     }

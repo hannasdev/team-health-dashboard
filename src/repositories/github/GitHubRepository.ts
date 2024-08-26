@@ -2,6 +2,7 @@
 import { injectable, inject } from 'inversify';
 
 import { Cacheable, CacheableClass } from '../../utils/CacheDecorator/index.js';
+import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -115,10 +116,9 @@ export class GitHubRepository
       };
     } catch (error) {
       this.logger.error('Error fetching pull requests:', error as Error);
-      throw new Error(
-        `Failed to fetch pull requests: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
+      throw new AppError(
+        500,
+        `Failed to fetch pull requests: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }

@@ -1,6 +1,8 @@
 // src/services/cache/CacheService.ts
 import { injectable } from 'inversify';
 
+import { AppError } from '../../utils/errors.js';
+
 import type { ICacheService } from '../../interfaces/index.js';
 
 @injectable()
@@ -24,11 +26,7 @@ export class CacheService implements ICacheService {
 
   async set<T>(key: string, value: T, ttl?: number): Promise<void> {
     if (this.cache.size >= this.maxSize) {
-      // Remove the oldest item if we're at capacity
-      const oldestKey = this.cache.keys().next().value;
-      if (oldestKey !== undefined) {
-        this.cache.delete(oldestKey);
-      }
+      throw new AppError(507, 'Cache capacity exceeded');
     }
     const expiry = ttl ? Date.now() + ttl * 1000 : Infinity;
     this.cache.set(key, { value, expiry });

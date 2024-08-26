@@ -2,6 +2,7 @@
 import { graphql } from '@octokit/graphql';
 import { injectable, inject } from 'inversify';
 
+import { AppError } from '../utils/errors.js';
 import { TYPES } from '../utils/types.js';
 
 import type { IGitHubClient, IConfig } from '../interfaces/index.js';
@@ -25,7 +26,8 @@ export class GitHubAdapter implements IGitHubClient {
     try {
       return await this.graphqlWithAuth<T>(query, variables);
     } catch (error) {
-      throw new Error(
+      throw new AppError(
+        502,
         `GitHub GraphQL query failed: ${(error as Error).message}`,
       );
     }

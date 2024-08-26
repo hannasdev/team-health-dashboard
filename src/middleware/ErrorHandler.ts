@@ -19,6 +19,7 @@ export class ErrorHandler {
     next: NextFunction,
   ) => {
     this.logger.error('Error caught in error handler:', err);
+    console.error('Stack trace:', err.stack); // Add this line for more detailed logging
 
     if (err instanceof AppError) {
       res.status(err.statusCode).json(createErrorResponse(err.message));

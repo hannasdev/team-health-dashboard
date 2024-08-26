@@ -2,6 +2,7 @@
 import { injectable, inject } from 'inversify';
 import { MongoClient, Db, MongoServerError } from 'mongodb';
 
+import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type { IConfig, ILogger, IMongoDbClient } from '../../interfaces';
@@ -62,7 +63,10 @@ export class MongoDbClient implements IMongoDbClient {
           this.logger.error(
             `Max retries reached. Failed to connect to the database: ${errorMessage}`,
           );
-          throw error;
+          throw new AppError(
+            500,
+            `Database connection failed: ${errorMessage}`,
+          );
         }
 
         // Wait before retrying
@@ -73,7 +77,7 @@ export class MongoDbClient implements IMongoDbClient {
 
   getDb(): Db {
     if (!this.db) {
-      throw new Error('Database not connected. Call connect() first.');
+      throw new AppError(500, 'Database not connected. Call connect() first.');
     }
     return this.db;
   }

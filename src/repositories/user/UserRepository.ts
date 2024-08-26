@@ -3,6 +3,7 @@ import { injectable, inject } from 'inversify';
 import { Collection } from 'mongodb';
 
 import { User } from '../../models/User.js';
+import { UserNotFoundError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -39,7 +40,7 @@ export class UserRepository implements IUserRepository {
 
     if (!user) {
       this.logger.debug(`User not found for id: ${id}`);
-      return undefined;
+      throw new UserNotFoundError(`User not found for id: ${id}`);
     }
 
     this.logger.debug(`User found for id: ${id}`);
@@ -61,7 +62,9 @@ export class UserRepository implements IUserRepository {
 
     if (result.modifiedCount === 0) {
       this.logger.warn(`Failed to update password for user with id: ${id}`);
-      throw new Error('Failed to update password');
+      throw new UserNotFoundError(
+        `Failed to update password for user with id: ${id}`,
+      );
     }
 
     this.logger.info(`Password updated for user with id: ${id}`);

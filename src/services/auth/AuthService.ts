@@ -135,10 +135,7 @@ export class AuthService implements IAuthService {
         error instanceof Error ? error : new Error('Unknown error'),
       );
 
-      if (
-        error instanceof UserNotFoundError ||
-        error instanceof InvalidRefreshTokenError
-      ) {
+      if (error instanceof UserNotFoundError) {
         throw error;
       }
       throw new InvalidRefreshTokenError();

@@ -3,6 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { ProgressCallback } from '../../types/index.js';
+import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -104,10 +105,13 @@ export class MetricsController implements IMetricsController {
           errors: [
             {
               source: 'MetricsController',
-              message: error.message || 'An unknown error occurred',
+              message:
+                error instanceof AppError
+                  ? error.message
+                  : 'An unknown error occurred',
             },
           ],
-          status: 500,
+          status: error instanceof AppError ? error.statusCode : 500,
         });
         next(error);
       }
@@ -135,7 +139,11 @@ export class MetricsController implements IMetricsController {
         endResponse();
       }
     } catch (error) {
-      handleError(error as Error);
+      handleError(
+        error instanceof Error
+          ? error
+          : new AppError(500, 'Unknown error occurred'),
+      );
     } finally {
       clearTimeout(timeout);
     }

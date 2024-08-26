@@ -2,6 +2,7 @@
 import { injectable, inject } from 'inversify';
 
 import { ProgressCallback } from '../../types/index.js';
+import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -67,6 +68,11 @@ export class MetricsService implements IMetricsService {
         source: 'GitHub',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
+    }
+
+    if (errors.length === 2) {
+      // If both data sources failed, throw an AppError
+      throw new AppError(500, 'Failed to fetch data from all sources');
     }
 
     const uniqueMetrics = this.deduplicateMetrics(allMetrics);

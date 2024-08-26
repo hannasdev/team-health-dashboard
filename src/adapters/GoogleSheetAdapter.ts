@@ -3,6 +3,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import { injectable, inject } from 'inversify';
 
+import { AppError } from '../utils/errors.js';
 import { TYPES } from '../utils/types.js';
 
 import type { IGoogleSheetsClient, IConfig } from '../interfaces/index.js';
@@ -33,7 +34,8 @@ export class GoogleSheetsAdapter implements IGoogleSheetsClient {
         range,
       });
     } catch (error) {
-      throw new Error(
+      throw new AppError(
+        502,
         `Failed to fetch Google Sheets data: ${(error as Error).message}`,
       );
     }

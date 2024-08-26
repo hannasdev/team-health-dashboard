@@ -2,6 +2,7 @@
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
+import { UnauthorizedError } from '../utils/errors.js';
 import { TYPES } from '../utils/types.js';
 
 import type {
@@ -29,13 +30,13 @@ export class AuthMiddleware implements IAuthMiddleware {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
       this.logger.warn('Authorization header missing');
-      return res.status(401).json({ error: 'No token provided' });
+      return next(new UnauthorizedError('No token provided'));
     }
 
     const [bearer, token] = authHeader.split(' ');
     if (bearer !== 'Bearer' || !token) {
       this.logger.warn('Invalid authorization header format');
-      return res.status(401).json({ error: 'Invalid token format' });
+      return next(new UnauthorizedError('Invalid token format'));
     }
 
     try {
@@ -45,7 +46,7 @@ export class AuthMiddleware implements IAuthMiddleware {
         this.logger.warn(
           `Attempt to use revoked token: ${token.substring(0, 10)}...`,
         );
-        return res.status(401).json({ error: 'Token has been revoked' });
+        return next(new UnauthorizedError('Token has been revoked'));
       }
 
       const decoded = this.tokenService.validateAccessToken(token);
@@ -72,9 +73,9 @@ export class AuthMiddleware implements IAuthMiddleware {
         `Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
       if (error instanceof Error && error.name === 'TokenExpiredError') {
-        return res.status(401).json({ error: 'Token has expired' });
+        return next(new UnauthorizedError('Token has expired'));
       }
-      res.status(401).json({ error: 'Invalid token' });
+      return next(new UnauthorizedError('Invalid token'));
     }
   };
 

@@ -1,6 +1,7 @@
 // src/services/token/TokenService.ts
 import { inject, injectable } from 'inversify';
 
+import { UnauthorizedError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -39,28 +40,43 @@ export class TokenService implements ITokenService {
     email: string;
     exp?: number;
   } {
-    const decoded = this.jwtService.verify(token, this.config.JWT_SECRET) as {
-      id: string;
-      email: string;
-      exp?: number;
-    };
-    return {
-      id: decoded.id,
-      email: decoded.email,
-      exp: decoded.exp,
-    };
+    try {
+      const decoded = this.jwtService.verify(token, this.config.JWT_SECRET) as {
+        id: string;
+        email: string;
+        exp?: number;
+      };
+      return {
+        id: decoded.id,
+        email: decoded.email,
+        exp: decoded.exp,
+      };
+    } catch (error) {
+      throw new UnauthorizedError('Invalid access token');
+    }
   }
 
   validateRefreshToken(token: string): { id: string } {
-    return this.jwtService.verify(token, this.config.REFRESH_TOKEN_SECRET) as {
-      id: string;
-    };
+    try {
+      return this.jwtService.verify(
+        token,
+        this.config.REFRESH_TOKEN_SECRET,
+      ) as {
+        id: string;
+      };
+    } catch (error) {
+      throw new UnauthorizedError('Invalid refresh token');
+    }
   }
 
   validatePasswordResetToken(token: string): { id: string } {
-    return this.jwtService.verify(token, this.config.JWT_SECRET) as {
-      id: string;
-    };
+    try {
+      return this.jwtService.verify(token, this.config.JWT_SECRET) as {
+        id: string;
+      };
+    } catch (error) {
+      throw new UnauthorizedError('Invalid password reset token');
+    }
   }
 
   decodeToken(token: string): any {

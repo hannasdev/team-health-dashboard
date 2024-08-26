@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
 
+import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -29,7 +30,7 @@ export class HealthCheckController implements IHealthCheckController {
       res.status(200).json({ status });
     } catch (error) {
       this.logger.error('Health check failed', error as Error);
-      res.status(500).json({ status: 'ERROR', message: 'Health check failed' });
+      throw new AppError(503, 'Health check failed');
     }
   }
 }

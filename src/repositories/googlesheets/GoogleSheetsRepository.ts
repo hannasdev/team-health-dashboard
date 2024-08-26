@@ -1,6 +1,7 @@
 import { injectable, inject } from 'inversify';
 
 import { Cacheable, CacheableClass } from '../../utils/CacheDecorator/index.js';
+import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -108,10 +109,9 @@ export class GoogleSheetsRepository
         error as Error,
       );
       progressCallback?.(100, 100, 'Error fetching data from Google Sheets');
-      throw new Error(
-        `Failed to fetch data from Google Sheets: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
+      throw new AppError(
+        500,
+        `Failed to fetch data from Google Sheets: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
