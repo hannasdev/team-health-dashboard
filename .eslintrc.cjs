@@ -20,6 +20,8 @@ module.exports = {
     'build',
     'e2e/**', // Ignore E2E test files
     '*.d.ts',
+    'jest.config.ts',
+    'jest.config.docker.js',
   ],
   parser: '@typescript-eslint/parser',
   parserOptions: {
