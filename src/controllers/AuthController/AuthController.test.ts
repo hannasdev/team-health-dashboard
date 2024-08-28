@@ -7,7 +7,7 @@ import {
   createMockAuthRequest,
   createMockAuthControllerResponse,
   createMockLogger,
-} from '../../__mocks__/mockFactories';
+} from '../../__mocks__/index.js';
 import { User } from '../../models/User';
 import {
   UnauthorizedError,

@@ -9,7 +9,10 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '../../utils/ApiResponse/index.js';
-import { UnauthorizedError, AppError } from '../../utils/errors.js';
+import {
+  UnauthorizedError,
+  InvalidRefreshTokenError,
+} from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -86,7 +89,11 @@ export class AuthController implements IAuthController {
       const result = await this.authService.refreshToken(refreshToken);
       res.json(createSuccessResponse(result));
     } catch (error) {
-      next(error);
+      if (error instanceof InvalidRefreshTokenError) {
+        res.status(401).json(createErrorResponse(error.message, 401));
+      } else {
+        next(error);
+      }
     }
   }
 
