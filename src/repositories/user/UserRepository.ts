@@ -1,6 +1,6 @@
 // src/repositories/user/UserRepository.ts
 import { injectable, inject } from 'inversify';
-import { Collection } from 'mongodb';
+import { Collection, ObjectId } from 'mongodb';
 
 import { User } from '../../models/User.js';
 import { UserNotFoundError } from '../../utils/errors.js';
@@ -36,7 +36,15 @@ export class UserRepository implements IUserRepository {
   }
 
   async findById(id: string): Promise<User | undefined> {
-    const user = await this.collection.findOne({ _id: new Object(id) });
+    let objectId: ObjectId;
+    try {
+      objectId = new ObjectId(id);
+    } catch (error) {
+      this.logger.debug(`Invalid ObjectId: ${id}`);
+      throw new UserNotFoundError(`User not found for id: ${id}`);
+    }
+
+    const user = await this.collection.findOne({ _id: objectId });
 
     if (!user) {
       this.logger.debug(`User not found for id: ${id}`);
