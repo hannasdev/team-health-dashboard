@@ -26,17 +26,20 @@ export class AuthMiddleware implements IAuthMiddleware {
     req: IAuthRequest,
     res: Response,
     next: NextFunction,
-  ): Promise<void | Response> => {
+  ): Promise<void> => {
     const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      this.logger.warn('Authorization header missing');
-      return next(new UnauthorizedError('No token provided'));
+    if (!authHeader || typeof authHeader !== 'string') {
+      this.logger.warn('Authorization header missing or invalid');
+      next(new UnauthorizedError('No valid token provided'));
+      return;
     }
 
-    const [bearer, token] = authHeader.split(' ');
+    const [bearer, token] = authHeader!.split(' ');
+
     if (bearer !== 'Bearer' || !token) {
       this.logger.warn('Invalid authorization header format');
-      return next(new UnauthorizedError('Invalid token format'));
+      next(new UnauthorizedError('Invalid token format'));
+      return;
     }
 
     try {
@@ -46,7 +49,8 @@ export class AuthMiddleware implements IAuthMiddleware {
         this.logger.warn(
           `Attempt to use revoked token: ${token.substring(0, 10)}...`,
         );
-        return next(new UnauthorizedError('Token has been revoked'));
+        next(new UnauthorizedError('Token has been revoked'));
+        return;
       }
 
       const decoded = this.tokenService.validateAccessToken(token);
@@ -73,9 +77,9 @@ export class AuthMiddleware implements IAuthMiddleware {
         `Authentication error: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
       if (error instanceof Error && error.name === 'TokenExpiredError') {
-        return next(new UnauthorizedError('Token has expired'));
+        next(new UnauthorizedError('Token has expired'));
       }
-      return next(new UnauthorizedError('Invalid token'));
+      next(new UnauthorizedError('Invalid token'));
     }
   };
 

@@ -8,7 +8,7 @@ import {
   createMockLogger,
   createMockAuthRequest,
   createMockAuthMiddlewareResponse,
-} from '../__mocks__/mockFactories';
+} from '../__mocks__/index.js';
 import { UnauthorizedError } from '../utils/errors';
 import { TYPES } from '../utils/types';
 
