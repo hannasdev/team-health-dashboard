@@ -96,10 +96,6 @@ export class AuthService implements IAuthService {
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
-      this.logger.debug(
-        `Attempting to refresh token: ${refreshToken.substring(0, 10)}...`,
-      );
-
       if (await this.tokenBlacklistService.isTokenBlacklisted(refreshToken)) {
         throw new InvalidRefreshTokenError('Refresh token has been revoked');
       }
@@ -110,13 +106,12 @@ export class AuthService implements IAuthService {
       const user = await this.userRepository.findById(decoded.id);
       if (!user) {
         this.logger.warn(`User not found for id: ${decoded.id}`);
-        throw new UserNotFoundError();
+        throw new InvalidRefreshTokenError('Invalid refresh token');
       }
 
-      const decodedToken = this.tokenService.decodeToken(refreshToken);
       await this.tokenBlacklistService.blacklistToken(
         refreshToken,
-        decodedToken.exp * 1000,
+        decoded.exp * 1000,
       );
 
       const newAccessToken = this.tokenService.generateAccessToken({
@@ -136,9 +131,9 @@ export class AuthService implements IAuthService {
       );
 
       if (error instanceof UserNotFoundError) {
-        throw error;
+        throw new InvalidRefreshTokenError('Invalid refresh token');
       }
-      throw new InvalidRefreshTokenError();
+      throw error;
     }
   }
 
@@ -182,5 +177,16 @@ export class AuthService implements IAuthService {
       );
       throw new InvalidResetTokenError();
     }
+  }
+
+  public async getShortLivedAccessToken(
+    userId: string,
+    userEmail: string,
+    expiresIn: string = '1s',
+  ): Promise<string> {
+    return this.tokenService.generateAccessToken(
+      { id: userId, email: userEmail },
+      expiresIn,
+    );
   }
 }

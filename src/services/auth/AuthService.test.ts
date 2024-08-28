@@ -10,7 +10,7 @@ import {
   createMockBcryptService,
   createMockUserRepository,
   createMockLogger,
-} from '../../__mocks__/mockFactories';
+} from '../../__mocks__/index.js';
 import { Config } from '../../config/config';
 import { User } from '../../models/User';
 import {
@@ -168,7 +168,10 @@ describe('AuthService', () => {
       const newRefreshToken = 'new_refresh_token';
 
       mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
-      mockTokenService.validateRefreshToken.mockReturnValue({ id: userId });
+      mockTokenService.validateRefreshToken.mockReturnValue({
+        id: userId,
+        exp: 10,
+      });
       mockUserRepository.findById.mockResolvedValue(user);
       mockTokenService.decodeToken.mockReturnValue({
         exp: Date.now() / 1000 + 3600,
@@ -211,6 +214,7 @@ describe('AuthService', () => {
       mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
       mockTokenService.validateRefreshToken.mockReturnValue({
         id: 'nonexistent_id',
+        exp: 10,
       });
       mockUserRepository.findById.mockResolvedValue(undefined);
 
