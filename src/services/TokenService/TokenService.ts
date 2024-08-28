@@ -17,9 +17,12 @@ export class TokenService implements ITokenService {
     @inject(TYPES.Config) private config: IConfig,
   ) {}
 
-  generateAccessToken(payload: { id: string; email: string }): string {
+  generateAccessToken(
+    payload: { id: string; email: string },
+    expiresIn?: string | number,
+  ): string {
     return this.jwtService.sign(payload, this.config.JWT_SECRET, {
-      expiresIn: this.config.ACCESS_TOKEN_EXPIRY,
+      expiresIn: expiresIn || this.config.ACCESS_TOKEN_EXPIRY,
     });
   }
 
@@ -38,13 +41,13 @@ export class TokenService implements ITokenService {
   validateAccessToken(token: string): {
     id: string;
     email: string;
-    exp?: number;
+    exp: number;
   } {
     try {
       const decoded = this.jwtService.verify(token, this.config.JWT_SECRET) as {
         id: string;
         email: string;
-        exp?: number;
+        exp: number;
       };
       return {
         id: decoded.id,
@@ -56,14 +59,13 @@ export class TokenService implements ITokenService {
     }
   }
 
-  validateRefreshToken(token: string): { id: string } {
+  validateRefreshToken(token: string): { id: string; exp: number } {
     try {
-      return this.jwtService.verify(
+      const decoded = this.jwtService.verify(
         token,
         this.config.REFRESH_TOKEN_SECRET,
-      ) as {
-        id: string;
-      };
+      ) as { id: string; exp: number };
+      return { id: decoded.id, exp: decoded.exp };
     } catch (error) {
       throw new UnauthorizedError('Invalid refresh token');
     }

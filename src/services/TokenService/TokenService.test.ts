@@ -6,7 +6,7 @@ import { TokenService } from './TokenService';
 import {
   createMockJwtService,
   createMockConfig,
-} from '../../__mocks__/mockFactories';
+} from '../../__mocks__/index.js';
 import { Config } from '../../config/config';
 import { TYPES } from '../../utils/types';
 
