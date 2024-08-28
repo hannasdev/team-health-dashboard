@@ -6,6 +6,7 @@ services:
   # - Sets environment variables and uses an .env file.
   # - Has a healthcheck that curls localhost:3000/health.
   # - Uses a named volume for node_modules.
+  # Production App
   app:
     build:
       context: .
@@ -17,7 +18,6 @@ services:
         condition: service_healthy
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=mongodb://root:example@db:27017/myapp?authSource=admin
     env_file:
       - .env
     deploy:
@@ -27,7 +27,7 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://app:3000/health']
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 10s
       retries: 5
@@ -35,12 +35,7 @@ services:
     volumes:
       - node_modules:/app/node_modules
 
-  # DB
-  # - Uses MongoDB 7.0 image.
-  # - Sets up volumes for persistent data and initialization script.
-  # - Has a healthcheck.
-  # - Sets environment variables for root username and password.
-  # - Exposes port 27017.
+  # Production Database
   db:
     image: mongo:7.0
     volumes:
@@ -64,71 +59,44 @@ services:
     ports:
       - '27017:27017'
 
-  # Unit Test Runner
-  # - Builds using the Dockerfile, targeting the unit-test stage.
-  # - Runs Jest for unit tests.
-  unit-test-runner:
+  # Test App
+  app-test:
     build:
       context: .
-      target: unit-test
-    networks:
-      - app-network
+      dockerfile: Dockerfile
+    ports:
+      - '3001:3000'
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+    env_file:
+      - .env.e2e
     deploy:
       resources:
         limits:
           memory: 2G
-    command:
-      - sh
-      - -c
-      - |
-        node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js
-
-  # E2E Test Runner
-  # - Builds using the Dockerfile, targeting the e2e-test stage.
-  # - Uses environment variables from .env.test file and sets additional ones.
-  # - Depends on db-test and app services.
-  # - Waits for the app to be healthy before running e2e tests.
-  e2e-test-runner:
-    build:
-      context: .
-      target: e2e-test
     networks:
-      - app-network
-    env_file:
-      - .env.test
-    environment:
-      - DATABASE_URL=mongodb://root:example@db-test:27017/myapp-test?authSource=admin
-      - GOOGLE_SHEETS_ID=test-id
-      - GOOGLE_SHEETS_CLIENT_EMAIL=test-user
-      - GOOGLE_SHEETS_PRIVATE_KEY=test-key
-      - REPO_TOKEN=test-github-token
-      - REPO_OWNER=test-user
-      - REPO_REPO=test-org/test-repo
-      - CORS_ORIGIN=http://localhost:3000,null
-      - API_URL=http://app:3000
-    depends_on:
-      - db-test
-      - app
-    deploy:
-      resources:
-        limits:
-          memory: 3G
-    command:
-      - sh
-      - -c
-      - |
-        npx wait-on http://app:3000/health --timeout 30000 &&
-        node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/__tests__/e2e/**/*.e2e.spec.js" --forceExit  --detectOpenHandles
+      - test-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    volumes:
+      - node_modules_test:/app/node_modules
 
-  # DB Test
-  # - Similar to the db service, but for testing purposes.
-  # - Uses a different volume for data and exposes port 27018.
+  # Test Database
   db-test:
     image: mongo:7.0
     volumes:
       - mongodb_test_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
     command: mongod --bind_ip_all
+    networks:
+      - test-network
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
@@ -144,11 +112,56 @@ services:
     ports:
       - '27018:27017'
 
+  # Unit Test Runner
+  unit-test-runner:
+    build:
+      context: .
+      target: unit-test
+    networks:
+      - test-network
+    env_file:
+      - .env.test
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    command: node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js
+
+  # E2E Test Runner
+  e2e-test-runner:
+    build:
+      context: .
+      target: e2e-test
+    networks:
+      - test-network
+    env_file:
+      - .env.e2e
+    depends_on:
+      db-test:
+        condition: service_healthy
+      app-test:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+    command: >
+      /bin/bash -c '
+      echo "Starting E2E test runner..." &&
+      echo "Waiting for app-test to be ready..." &&
+      /home/nodejs/wait-for-it.sh app-test:3000 -t 120 &&
+      echo "App-test is ready. Running E2E tests..." &&
+      node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/__tests__/e2e/**/*.e2e.spec.js" --forceExit --detectOpenHandles --runInBand --verbose
+      '
+
 volumes:
   mongodb_data:
   mongodb_test_data:
   node_modules:
+  node_modules_test:
 
 networks:
   app-network:
+    driver: bridge
+  test-network:
     driver: bridge

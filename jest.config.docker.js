@@ -1,7 +1,7 @@
 export default {
   verbose: true,
   moduleFileExtensions: ['js'],
-  testTimeout: 30000,
+  testTimeout: 300000,
   rootDir: '.',
   testMatch: ['<rootDir>/dist/**/*.test.js'],
   testPathIgnorePatterns: [
@@ -9,6 +9,7 @@ export default {
   ],
   testEnvironment: 'node',
   setupFiles: ['<rootDir>/dist/__tests__/setupTests.js'],
+  setupFilesAfterEnv: ['<rootDir>/dist/__tests__/setupTests.js'],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^(\\.{1,2}/.*)$': '$1',

@@ -2,8 +2,13 @@
 # - Creates a base image with Node.js 20.16.0 on Alpine Linux.
 # - Sets up a working directory at /home/nodejs/app with proper permissions.
 FROM node:20.16.0-alpine AS base
+RUN apk add --no-cache curl bash
 RUN mkdir -p /home/nodejs/app && chown -R node:node /home/nodejs
 WORKDIR /home/nodejs/app
+
+# Add wait-for-it script (as root) and modify it to use sh
+ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /usr/local/bin/wait-for-it.sh
+RUN chmod 755 /usr/local/bin/wait-for-it.sh
 
 # Dependencies Stage
 # - Builds upon the base image.
@@ -39,8 +44,9 @@ FROM test AS unit-test
 
 # E2E Test Stage
 # - Similar to the unit test stage, but set up for E2E tests.
-# E2E Test Stage
 FROM test AS e2e-test 
+# Copy wait-for-it script from base stage and ensure it has correct permissions
+COPY --from=base --chown=node:node /usr/local/bin/wait-for-it.sh /home/nodejs/wait-for-it.sh
 CMD ["node", "--experimental-vm-modules", "node_modules/.bin/jest", "--config", "jest.config.docker.js", "--testMatch", "**/dist/__tests__/e2e/**/*.e2e.spec.js", "--detectOpenHandles"]
 
 # Production Stage 
