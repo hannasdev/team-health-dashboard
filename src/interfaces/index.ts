@@ -28,6 +28,7 @@ export type { IMetricsService } from './IMetricsService.js';
 export type { IMongoDbClient } from './IMongoDbClient.js';
 export type { IProgressTracker } from './IProgressTracker.js';
 export type { IPullRequest } from './IPullRequest.js';
+export type { ISSEService } from './ISSEService.js';
 export type { ITeamHealthDashboardApp } from './ITeamHealthDashboardApp.js';
 export type { ITokenBlacklistService } from './ITokenBlacklistService.js';
 export type { ITokenService } from './ITokenService.js';

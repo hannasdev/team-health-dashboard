@@ -27,6 +27,7 @@ export const TYPES = {
   MetricsService: Symbol.for('IMetricsService'),
   MongoDbClient: Symbol.for('MongoDbClient'),
   ProgressTracker: Symbol.for('IProgressTracker'),
+  SSEService: Symbol.for('ISSEService'),
   TeamHealthDashboardApp: Symbol.for('ITeamHealthDashboardApp'),
   TokenBlacklistService: Symbol.for('ITokenBlacklistService'),
   TokenService: Symbol.for('ITokenService'),

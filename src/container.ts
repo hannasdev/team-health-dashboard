@@ -34,9 +34,11 @@ import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
 import { BcryptService } from './utils/BcryptService/index.js';
 import { JwtService } from './utils/JwtService/index.js';
 import { Logger } from './utils/Logger/index.js';
+import { SSEService } from './utils/SSEService/SSEService.js';
 import { TYPES } from './utils/types.js';
 
 import type {
+  ISSEService,
   IApplication,
   IAuthController,
   IAuthMiddleware,
@@ -67,6 +69,7 @@ const config = Config.getInstance();
 
 export function setupContainer(
   overrides?: Partial<Record<symbol, any>>,
+  isTestMode = false,
 ): Container {
   const container = appContainer.createChild();
 
@@ -135,6 +138,12 @@ export function setupContainer(
     .bind<IApplication>(TYPES.Application)
     .to(TeamHealthDashboardApp)
     .inSingletonScope();
+  container.bind<ISSEService>(TYPES.SSEService).to(SSEService);
+
+  if (isTestMode) {
+    // Add any test-specific bindings or overrides here
+    // For example, you might want to use in-memory implementations of certain services
+  }
 
   // Override bindings if provided
   if (overrides) {
