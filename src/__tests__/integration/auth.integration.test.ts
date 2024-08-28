@@ -3,14 +3,12 @@ import { Container } from 'inversify';
 import request from 'supertest';
 
 import {
+  createMockAuthService,
+  createMockLogger,
   MockMongoDbClient,
   MockGitHubAdapter,
   MockGoogleSheetsAdapter,
-} from '../../__mocks__/mockAdapters.js';
-import {
-  createMockAuthService,
-  createMockLogger,
-} from '../../__mocks__/mockFactories.js';
+} from '../../__mocks__/index.js';
 import { setupContainer } from '../../container.js';
 import { TYPES } from '../../utils/types.js';
 
