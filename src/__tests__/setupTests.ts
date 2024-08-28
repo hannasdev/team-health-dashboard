@@ -1,4 +1,4 @@
-// setupTest.ts
+// setupTests.ts
 import 'reflect-metadata';
 import { TextEncoder, TextDecoder } from 'util';
 
