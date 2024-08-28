@@ -6,6 +6,11 @@ export function createSuccessResponse<T>(data: T): IApiResponse<T> {
   return { success: true, data };
 }
 
-export function createErrorResponse(error: string): IApiResponse<never> {
-  return { success: false, error };
-}
+export const createErrorResponse = (
+  message: string,
+  statusCode: number = 500,
+) => ({
+  success: false,
+  error: message,
+  statusCode,
+});
