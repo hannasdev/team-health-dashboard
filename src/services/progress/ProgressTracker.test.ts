@@ -3,16 +3,15 @@ import {
   ProgressTracker,
 } from '../../services/progress/ProgressTracker.js';
 
-import type { IProgressTracker } from '../../interfaces/index.js';
-import type { Logger } from '../../utils/Logger';
+import type { IProgressTracker, ILogger } from '../../interfaces/index.js';
 
 describe('ProgressTracker', () => {
   let progressTracker: ProgressTracker;
-  let mockLogger: jest.Mocked<Logger>;
+  let mockLogger: jest.Mocked<ILogger>;
 
   beforeEach(() => {
     jest.useFakeTimers();
-    mockLogger = { info: jest.fn() } as unknown as jest.Mocked<Logger>;
+    mockLogger = { info: jest.fn() } as unknown as jest.Mocked<ILogger>;
     progressTracker = new ProgressTracker(mockLogger);
   });
 

@@ -4,7 +4,7 @@ import {
   createMockLogger,
   createMockCacheService,
   createMockGoogleSheetsClient,
-} from '../../__mocks__/mockFactories.js';
+} from '../../__mocks__/index.js';
 import { Config } from '../../config/config.js';
 import { GoogleSheetsRepository } from '../../repositories/googlesheets/GoogleSheetsRepository.js';
 import { ProgressCallback } from '../../types/index.js';

@@ -6,7 +6,7 @@ import {
   createMockLogger,
   createMockCacheService,
   createMockGitHubClient,
-} from '../../__mocks__/mockFactories.js';
+} from '../../__mocks__/index.js';
 import { Config } from '../../config/config.js';
 import { GitHubRepository } from '../../repositories/github/GitHubRepository.js';
 import { ProgressCallback } from '../../types/index.js';

@@ -4,7 +4,7 @@ import { TokenBlacklistService } from './TokenBlacklistService';
 import {
   createMockLogger,
   createMockMongoDbClient,
-} from '../../__mocks__/mockFactories';
+} from '../../__mocks__/index.js';
 
 import type { ILogger, IMongoDbClient } from '../../interfaces/index';
 

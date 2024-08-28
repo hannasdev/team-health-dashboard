@@ -1,12 +1,12 @@
 import { Container } from 'inversify';
 
+import { GitHubService } from './GitHubService.js';
 import {
   createMockLogger,
   createMockGitHubRepository,
   createMockMetricCalculator,
   createMockProgressTracker,
-} from '../../__mocks__/mockFactories.js';
-import { GitHubService } from '../../services/github/GitHubService.js';
+} from '../../__mocks__/index.js';
 import { ProgressCallback } from '../../types/index.js';
 import { TYPES } from '../../utils/types.js';
 

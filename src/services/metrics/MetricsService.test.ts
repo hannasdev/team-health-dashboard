@@ -7,7 +7,7 @@ import {
   createMockGoogleSheetsRepository,
   createMockGitHubRepository,
   createMockPullRequest,
-} from '../../__mocks__/mockFactories.js';
+} from '../../__mocks__/index.js';
 import { MetricsService } from '../../services/metrics/MetricsService.js';
 import { AppError } from '../../utils/errors.js';
 
@@ -180,6 +180,22 @@ describe('MetricsService', () => {
         'Error fetching GitHub data:',
         gitHubError,
       );
+    });
+
+    it('should return partial data when only one data source fails', async () => {
+      const mockSheetMetrics = [createMockMetric()];
+      mockGoogleSheetsRepository.fetchMetrics.mockResolvedValue(
+        mockSheetMetrics,
+      );
+      mockGitHubRepository.fetchPullRequests.mockRejectedValue(
+        new Error('GitHub API error'),
+      );
+
+      const result = await metricsService.getAllMetrics();
+
+      expect(result.metrics).toEqual(mockSheetMetrics);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].source).toBe('GitHub');
     });
 
     it('should not deduplicate metrics from different sources', async () => {
