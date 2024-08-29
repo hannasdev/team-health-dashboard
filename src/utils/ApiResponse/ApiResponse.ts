@@ -3,7 +3,7 @@
 import type { IApiResponse } from '../../interfaces';
 
 export function createSuccessResponse<T>(data: T): IApiResponse<T> {
-  return { success: true, data };
+  return { success: true, ...data };
 }
 
 export const createErrorResponse = (

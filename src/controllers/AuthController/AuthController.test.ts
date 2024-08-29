@@ -60,13 +60,11 @@ describe('AuthController', () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          data: expect.objectContaining({
-            accessToken: 'access_token',
-            refreshToken: 'refresh_token',
-            user: expect.objectContaining({
-              id: '123',
-              email: 'test@example.com',
-            }),
+          accessToken: 'access_token',
+          refreshToken: 'refresh_token',
+          user: expect.objectContaining({
+            id: '123',
+            email: 'test@example.com',
           }),
         }),
       );
@@ -140,13 +138,11 @@ describe('AuthController', () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          data: expect.objectContaining({
-            accessToken: 'new_access_token',
-            refreshToken: 'new_refresh_token',
-            user: expect.objectContaining({
-              id: '456',
-              email: 'newuser@example.com',
-            }),
+          accessToken: 'new_access_token',
+          refreshToken: 'new_refresh_token',
+          user: expect.objectContaining({
+            id: '456',
+            email: 'newuser@example.com',
           }),
         }),
       );
@@ -215,7 +211,7 @@ describe('AuthController', () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           success: true,
-          data: mockRefreshResult,
+          ...mockRefreshResult,
         }),
       );
       expect(next).not.toHaveBeenCalled();
