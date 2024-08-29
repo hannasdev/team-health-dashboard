@@ -19,6 +19,7 @@ export class SSEService implements ISSEService {
   private isResponseEnded: boolean = false;
   private res: Response | null = null;
   private timeout: NodeJS.Timeout | null = null;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
 
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
@@ -30,6 +31,7 @@ export class SSEService implements ISSEService {
     this.res = res;
     this.setupSSE();
     this.setupTimeout();
+    this.startHeartbeat();
   }
 
   private setupSSE(): void {
@@ -71,6 +73,9 @@ export class SSEService implements ISSEService {
       throw new Error('SSEService not initialized with a Response object');
     }
     if (!this.isResponseEnded) {
+      if (this.heartbeatInterval) {
+        clearInterval(this.heartbeatInterval);
+      }
       this.res.end();
       this.isResponseEnded = true;
       this.logger.info('Response ended');
@@ -108,20 +113,34 @@ export class SSEService implements ISSEService {
   }
 
   public sendResultEvent(result: any): void {
-    if (this.isClientConnected && !this.isResponseEnded) {
-      this.sendEvent('result', {
-        success: true,
-        data: result.metrics,
-        errors: result.errors,
-        githubStats: result.githubStats,
-        status: result.errors.length > 0 ? 207 : 200,
-      });
-      this.logger.info('Metrics fetched and sent successfully', {
-        metricsCount: result.metrics.length,
-        errorsCount: result.errors.length,
-      });
+    try {
+      if (this.isClientConnected && !this.isResponseEnded) {
+        this.sendEvent('result', {
+          success: true,
+          data: result.metrics,
+          errors: result.errors,
+          githubStats: result.githubStats,
+          status: result.errors.length > 0 ? 207 : 200,
+        });
+        this.logger.info('Metrics fetched and sent successfully', {
+          metricsCount: result.metrics.length,
+          errorsCount: result.errors.length,
+        });
+      }
+    } catch (error) {
+      this.logger.error('Error sending result event:', error as Error);
+      this.handleError(
+        error instanceof Error ? error : new Error('Unknown error occurred'),
+      );
+    } finally {
+      this.endResponse();
     }
-    this.endResponse();
+  }
+
+  private startHeartbeat(): void {
+    this.heartbeatInterval = setInterval(() => {
+      this.sendEvent('heartbeat', { timestamp: new Date().toISOString() });
+    }, 15000); // Send heartbeat every 15 seconds
   }
 
   private cleanup(): void {
