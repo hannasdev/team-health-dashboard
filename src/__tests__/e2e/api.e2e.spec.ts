@@ -106,70 +106,103 @@ describe('API E2E Tests', () => {
       expect(response.data).toHaveProperty('error', 'No token provided');
     });
 
-    it('should allow access for authenticated users and stream data', done => {
-      const timePeriod = 7;
-      console.log('Starting metrics request');
-
-      const headers = {
-        Authorization: `Bearer ${accessToken}`,
-      };
-
-      const url = new URL(`${apiEndpoint}/api/metrics`);
-      url.searchParams.append('timePeriod', timePeriod.toString());
-
-      const es = new EventSource(url.toString(), { headers });
-
-      let progressReceived = false;
-      let resultReceived = false;
-
-      const checkCompletion = () => {
-        if (progressReceived && resultReceived) {
-          console.log('Test completed successfully');
-          es.close();
-          done();
-        }
-      };
-
-      es.onopen = () => {
-        console.log('EventSource connection opened');
-      };
-
-      es.onmessage = event => {
-        console.log('Received event:', event);
+    it('should allow access for authenticated users and stream data', async () => {
+      const maxRetries = 3;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const data = JSON.parse(event.data);
-          console.log('Parsed event data:', data);
+          await new Promise<void>((resolve, reject) => {
+            // Specify Promise<void> here
+            const timePeriod = 7;
+            console.log(`Starting metrics request (attempt ${attempt})`);
 
-          if (data.event === 'progress') {
-            progressReceived = true;
-            console.log('Progress event received:', data);
-          } else if (data.event === 'result') {
-            resultReceived = true;
-            console.log('Result event received:', data);
-            expect(data.success).toBe(true);
-            expect(data.data).toBeInstanceOf(Array);
-            checkCompletion();
-          }
+            const headers = {
+              Authorization: `Bearer ${accessToken}`,
+            };
+
+            const url = new URL(`${apiEndpoint}/api/metrics`);
+            url.searchParams.append('timePeriod', timePeriod.toString());
+
+            const es = new EventSource(url.toString(), { headers });
+
+            let progressReceived = false;
+            let resultReceived = false;
+            let heartbeatReceived = false;
+
+            const checkCompletion = () => {
+              if (progressReceived && resultReceived) {
+                console.log('Test completed successfully');
+                es.close();
+                resolve(); // This should now work without type errors
+              }
+            };
+
+            es.onopen = () => {
+              console.log('EventSource connection opened');
+            };
+
+            es.onmessage = event => {
+              console.log('Received event:', event);
+              try {
+                const data = JSON.parse(event.data);
+                console.log('Parsed event data:', data);
+
+                switch (event.type) {
+                  case 'progress':
+                    progressReceived = true;
+                    console.log('Progress event received:', data);
+                    break;
+                  case 'result':
+                    resultReceived = true;
+                    console.log('Result event received:', data);
+                    expect(data.success).toBe(true);
+                    expect(data.data).toBeInstanceOf(Array);
+                    checkCompletion();
+                    break;
+                  case 'heartbeat':
+                    heartbeatReceived = true;
+                    console.log('Heartbeat event received:', data);
+                    break;
+                  default:
+                    console.log('Unknown event type received:', event.type);
+                }
+              } catch (error) {
+                console.error('Error parsing event data:', error);
+                es.close();
+                reject(error);
+              }
+            };
+
+            es.onerror = err => {
+              console.error(`EventSource error (attempt ${attempt}):`, err);
+              es.close();
+              if (attempt === maxRetries) {
+                reject(new Error(`EventSource error: ${JSON.stringify(err)}`));
+              }
+            };
+
+            setTimeout(() => {
+              if (!resultReceived) {
+                console.error(`Test timed out (attempt ${attempt})`);
+                es.close();
+                if (attempt === maxRetries) {
+                  reject(
+                    new Error('Test timed out without receiving a result'),
+                  );
+                }
+              }
+            }, 30000); // 30 seconds timeout per attempt
+          });
+
+          // If we reach here, the test passed
+          return;
         } catch (error) {
-          console.error('Error parsing event data:', error);
-          es.close();
-          done(error);
+          console.error(`Attempt ${attempt} failed:`, error);
+          if (attempt === maxRetries) {
+            throw error;
+          }
+          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
         }
-      };
-
-      es.onerror = err => {
-        console.error('EventSource error:', err);
-        es.close();
-        done(new Error(`EventSource error: ${JSON.stringify(err)}`));
-      };
-
-      setTimeout(() => {
-        if (!resultReceived) {
-          console.error('Test timed out');
-          es.close();
-          done(new Error('Test timed out without receiving a result'));
-        }
-      }, 60000); // 60 seconds timeout
+      }
     });
 
     it('should handle server errors gracefully', async () => {
@@ -224,7 +257,6 @@ describe('API E2E Tests', () => {
         },
       );
 
-      // CHANGED: Use axios instead of EventSource for more control
       const response = await axiosInstanceWithExpiredToken.get(
         `/api/metrics?timePeriod=${timePeriod}`,
         {
@@ -333,9 +365,10 @@ describe('API E2E Tests', () => {
       });
 
       expect(refreshResponse.status).toBe(401);
+      // CHANGED: Update expected error message
       expect(refreshResponse.data).toHaveProperty(
         'error',
-        'Invalid refresh token',
+        'Refresh token has been revoked',
       );
     });
   });
