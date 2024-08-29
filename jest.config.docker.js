@@ -16,4 +16,6 @@ export default {
   },
   transform: {},
   moduleDirectories: ['node_modules', 'dist'],
+  maxConcurrency: 1,
+  maxWorkers: 1,
 };
