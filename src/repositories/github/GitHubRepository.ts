@@ -50,7 +50,7 @@ export class GitHubRepository
     fetchedPRs: number;
     timePeriod: number;
   }> {
-    if (process.env.NODE_ENV === 'test') {
+    if (process.env.NODE_ENV === 'e2e') {
       return this.getMockPullRequestsData(timePeriod);
     }
 
