@@ -106,7 +106,7 @@ export class AuthService implements IAuthService {
       const user = await this.userRepository.findById(decoded.id);
       if (!user) {
         this.logger.warn(`User not found for id: ${decoded.id}`);
-        throw new InvalidRefreshTokenError('Invalid refresh token');
+        throw new UserNotFoundError(`User not found for id: ${decoded.id}`);
       }
 
       await this.tokenBlacklistService.blacklistToken(
@@ -130,9 +130,6 @@ export class AuthService implements IAuthService {
         error instanceof Error ? error : new Error('Unknown error'),
       );
 
-      if (error instanceof UserNotFoundError) {
-        throw new InvalidRefreshTokenError('Invalid refresh token');
-      }
       throw error;
     }
   }

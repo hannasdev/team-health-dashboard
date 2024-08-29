@@ -30,7 +30,7 @@ export class AuthMiddleware implements IAuthMiddleware {
     const authHeader = req.headers.authorization;
     if (!authHeader || typeof authHeader !== 'string') {
       this.logger.warn('Authorization header missing or invalid');
-      next(new UnauthorizedError('No valid token provided'));
+      next(new UnauthorizedError('No token provided'));
       return;
     }
 
