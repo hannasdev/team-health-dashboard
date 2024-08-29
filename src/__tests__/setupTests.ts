@@ -21,5 +21,6 @@ process.env.REFRESH_TOKEN_SECRET = 'test-jwt-refresh-secret';
 process.env.LOG_LEVEL = 'info';
 process.env.LOG_FORMAT = 'json';
 process.env.LOG_FILE_PATH = './logs';
+process.env.DATABASE_URL = 'placeholder_database';
 
 (global as any).jest = jest;
