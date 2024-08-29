@@ -5,6 +5,7 @@ npm-debug.log
 # Ignore logs
 logs
 *.log
+logs/*
 
 # Ignore version control files
 .git

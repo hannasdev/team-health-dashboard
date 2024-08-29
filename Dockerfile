@@ -47,7 +47,7 @@ FROM test AS unit-test
 FROM test AS e2e-test 
 # Copy wait-for-it script from base stage and ensure it has correct permissions
 COPY --from=base --chown=node:node /usr/local/bin/wait-for-it.sh /home/nodejs/wait-for-it.sh
-CMD ["node", "--experimental-vm-modules", "node_modules/.bin/jest", "--config", "jest.config.docker.js", "--testMatch", "**/dist/__tests__/e2e/**/*.e2e.spec.js", "--detectOpenHandles"]
+CMD ["node", "--experimental-vm-modules", "node_modules/.bin/jest", "--config", "jest.config.docker.js", "--testMatch", "**/dist/__tests__/e2e/**/*.e2e.spec.js", "--detectOpenHandles", "--runInBand", "--verbose"]
 
 # Production Stage 
 # - Builds a lean production image.
