@@ -16,3 +16,6 @@ package-lock.json
 *.md
 *.svg
 .aidigestignore
+logs/error.log
+logs/combined.log
+README.md
