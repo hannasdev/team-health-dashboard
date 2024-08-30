@@ -18,7 +18,6 @@ const config: Config = {
       testPathIgnorePatterns: [
         '<rootDir>/src/__tests__/e2e/',
         '<rootDir>/dist',
-        '<rootDir>/src/__tests__/integration/auth.integration.test.ts',
       ],
       setupFiles: ['<rootDir>/src/__tests__/setupTests.ts'],
       modulePathIgnorePatterns: ['<rootDir>/dist/'],
@@ -32,7 +31,7 @@ const config: Config = {
     {
       displayName: 'integration',
       testMatch: [
-        '<rootDir>/src/__tests__/integration/**/*.integration.test.ts',
+        '<rootDir>/src/__tests__/integration/**/*.integration-test.ts',
       ],
       testEnvironment: 'node',
       setupFiles: ['<rootDir>/src/__tests__/setupTests.ts'],

@@ -4,9 +4,7 @@ export default {
   testTimeout: 300000,
   rootDir: '.',
   testMatch: ['<rootDir>/dist/**/*.test.js'],
-  testPathIgnorePatterns: [
-    '<rootDir>/src/__tests__/integration/auth.integration.test.ts',
-  ],
+  testPathIgnorePatterns: [],
   testEnvironment: 'node',
   setupFiles: ['<rootDir>/dist/__tests__/setupTests.js'],
   setupFilesAfterEnv: ['<rootDir>/dist/__tests__/setupTests.js'],
