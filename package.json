@@ -14,7 +14,7 @@
     "test:watch": "npx jest --detectOpenHandles --coverage=false --watch --selectProjects unit ",
     "test:unit": "npx jest --detectOpenHandles --coverage=false --selectProjects unit",
     "test:integration": "npx jest --detectOpenHandles --coverage=false --selectProjects integration",
-    "test:e2e": "node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch '**/*.e2e.spec.js' --detectOpenHandles",
+    "test:e2e": "node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch '**/*.e2e.spec.js' --detectOpenHandles --runInBand --verbose",
     "test:coverage": "jest --coverage",
     "lint": "eslint --config .eslintrc.cjs 'src/**/*.{ts,js}'",
     "lint:fix": "eslint 'src/**/*.{ts,js}' --fix",

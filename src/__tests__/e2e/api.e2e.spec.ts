@@ -12,6 +12,27 @@ interface Metric {
   source: string;
 }
 
+interface MetricsResponse {
+  success: boolean;
+  data: Array<{
+    id: string;
+    metric_category: string;
+    metric_name: string;
+    value: number;
+    timestamp: string;
+    unit: string;
+    additional_info: string;
+    source: string;
+  }>;
+  errors: string[];
+  githubStats: {
+    totalPRs: number;
+    fetchedPRs: number;
+    timePeriod: number;
+  };
+  status: number;
+}
+
 jest.setTimeout(120000); // 2 minutes
 
 const apiEndpoint = 'http://app-test:3000';
@@ -124,7 +145,7 @@ describe('API E2E Tests', () => {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           await new Promise<void>((resolve, reject) => {
-            console.log(`Starting metrics request (attempt ${attempt})`);
+            // console.log(`Starting metrics request (attempt ${attempt})`);
 
             const headers = {
               Authorization: `Bearer ${accessToken}`,
@@ -164,7 +185,7 @@ describe('API E2E Tests', () => {
                     .read()
                     .then(({ done, value }) => {
                       if (done) {
-                        console.log('Stream complete');
+                        // console.log('Stream complete');
                         clearTimeout(timeout);
                         resolve();
                         return;
@@ -181,7 +202,7 @@ describe('API E2E Tests', () => {
                       processEvents();
                     })
                     .catch(error => {
-                      console.error('Error reading stream:', error);
+                      // console.error('Error reading stream:', error);
                       clearTimeout(timeout);
                       reject(error);
                     });
@@ -190,10 +211,10 @@ describe('API E2E Tests', () => {
                 processEvents();
 
                 function handleEvent(eventString: string) {
-                  console.log('Raw event string:', eventString);
+                  // console.log('Raw event string:', eventString);
                   const eventLines = eventString.split('\n');
                   if (eventLines.length < 2) {
-                    console.error('Invalid event format:', eventString);
+                    // console.error('Invalid event format:', eventString);
                     return;
                   }
 
@@ -205,12 +226,12 @@ describe('API E2E Tests', () => {
                       eventLines[1].replace('data: ', '').trim(),
                     );
                   } catch (error) {
-                    console.error('Error parsing event data:', error);
-                    console.error('Raw event data:', eventLines[1]);
+                    // console.error('Error parsing event data:', error);
+                    // console.error('Raw event data:', eventLines[1]);
                     return;
                   }
 
-                  console.log(`Received ${eventType} event:`, eventData);
+                  // console.log(`Received ${eventType} event:`, eventData);
 
                   switch (eventType) {
                     case 'progress':
@@ -267,7 +288,7 @@ describe('API E2E Tests', () => {
           // If we reach here, the test passed
           return;
         } catch (error) {
-          console.error(`Attempt ${attempt} failed:`, error);
+          // console.error(`Attempt ${attempt} failed:`, error);
           if (attempt === maxRetries) {
             throw error;
           }
@@ -303,143 +324,83 @@ describe('API E2E Tests', () => {
         validateStatus: () => true,
       });
 
-      axiosInstanceWithExpiredToken.interceptors.response.use(
-        response => {
-          console.log('Interceptor: Response received', response.status);
-          return response;
-        },
-        async error => {
-          console.log('Interceptor: Error caught', error.response?.status);
-          if (axios.isAxiosError(error) && error.response) {
-            console.log('Interceptor triggered:', error.response.status);
-            if (error.response.status === 401) {
-              console.log('Attempting to refresh token in interceptor');
-              try {
-                const refreshResponse = await retryRequest(
-                  'post',
-                  '/api/auth/refresh',
-                  { refreshToken },
-                );
-                console.log(
-                  'Interceptor refresh response:',
-                  refreshResponse.status,
-                  refreshResponse.data,
-                );
-
-                if (refreshResponse.status === 200) {
-                  accessToken = refreshResponse.data.accessToken;
-                  refreshToken = refreshResponse.data.refreshToken;
-
-                  // Retry the original request with the new token
-                  if (error.config) {
-                    error.config.headers['Authorization'] =
-                      `Bearer ${accessToken}`;
-                    console.log(
-                      'Retrying original request with new token from interceptor',
-                    );
-                    return axiosInstanceWithExpiredToken(error.config);
-                  } else {
-                    console.error('Error config is undefined');
-                    return Promise.reject(error);
-                  }
-                } else {
-                  console.log('Token refresh failed in interceptor');
-                  return Promise.reject(error);
-                }
-              } catch (refreshError) {
-                console.error(
-                  'Error during token refresh in interceptor:',
-                  refreshError,
-                );
-                return Promise.reject(refreshError);
-              }
-            }
-          }
-          return Promise.reject(error);
+      // First request with expired token
+      console.log('Sending request with expired token:', expiredToken);
+      const initialResponse = await axiosInstanceWithExpiredToken.get(
+        `/api/metrics?timePeriod=${timePeriod}`,
+        {
+          headers: {
+            Authorization: `Bearer ${expiredToken}`,
+          },
         },
       );
 
-      try {
-        console.log('Sending request with expired token:', expiredToken);
-        const response = await axiosInstanceWithExpiredToken.get(
-          `/api/metrics?timePeriod=${timePeriod}`,
-          {
-            headers: {
-              Authorization: `Bearer ${expiredToken}`,
-            },
-          },
-        );
+      console.log(
+        'Initial response:',
+        initialResponse.status,
+        initialResponse.data,
+      );
 
-        console.log('Final response:', response.status, response.data);
+      // Check if the initial request failed as expected
+      expect(initialResponse.status).toBe(401);
+      expect(initialResponse.data).toHaveProperty('error', 'No token provided');
 
-        // Check if the response is successful (either from interceptor refresh or manual refresh)
-        expect(response.status).toBe(200);
-        expect(response.data).toHaveProperty('success', true);
-        expect(response.data.data).toBeInstanceOf(Array);
-        expect(response.data.data.length).toBeGreaterThan(0);
-      } catch (error) {
-        console.error('Error in test:', error);
-        if (axios.isAxiosError(error)) {
-          if (error.response) {
-            console.error('Response status:', error.response.status);
-            console.error('Response data:', error.response.data);
-          } else if (error.request) {
-            console.error('No response received:', error.request);
-          } else {
-            console.error('Error setting up request:', error.message);
-          }
-        } else {
-          console.error('Non-Axios error:', error);
-        }
+      // Now try to refresh the token
+      console.log('Attempting to refresh token');
+      const refreshResponse = await retryRequest('post', '/api/auth/refresh', {
+        refreshToken,
+      });
 
-        // If the interceptor didn't handle the refresh, try manual refresh
-        console.log('Manually attempting token refresh');
-        try {
-          const refreshResponse = await retryRequest(
-            'post',
-            '/api/auth/refresh',
+      console.log(
+        'Refresh response:',
+        refreshResponse.status,
+        refreshResponse.data,
+      );
+
+      expect(refreshResponse.status).toBe(200);
+      expect(refreshResponse.data).toHaveProperty('accessToken');
+      expect(refreshResponse.data).toHaveProperty('refreshToken');
+
+      // Update the tokens
+      accessToken = refreshResponse.data.accessToken;
+      refreshToken = refreshResponse.data.refreshToken;
+
+      // Try the request again with the new token
+      const retryResponse: MetricsResponse = await new Promise(
+        (resolve, reject) => {
+          const eventSource = new EventSource(
+            `${apiEndpoint}/api/metrics?timePeriod=${timePeriod}`,
             {
-              refreshToken,
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
             },
           );
-          console.log(
-            'Manual refresh response:',
-            refreshResponse.status,
-            refreshResponse.data,
-          );
 
-          if (refreshResponse.status === 200) {
-            accessToken = refreshResponse.data.accessToken;
-            refreshToken = refreshResponse.data.refreshToken;
+          let fullData = '';
 
-            // Retry the request with the new token
-            const retryResponse = await axiosInstanceWithExpiredToken.get(
-              `/api/metrics?timePeriod=${timePeriod}`,
-              {
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                },
-              },
-            );
+          eventSource.onmessage = event => {
+            fullData += event.data;
+          };
 
-            console.log(
-              'Retry response:',
-              retryResponse.status,
-              retryResponse.data,
-            );
+          eventSource.onerror = error => {
+            eventSource.close();
+            reject(error);
+          };
 
-            expect(retryResponse.status).toBe(200);
-            expect(retryResponse.data).toHaveProperty('success', true);
-            expect(retryResponse.data.data).toBeInstanceOf(Array);
-            expect(retryResponse.data.data.length).toBeGreaterThan(0);
-            return; // Test passes if we reach here
-          }
-        } catch (refreshError) {
-          console.error('Manual refresh failed:', refreshError);
-        }
+          eventSource.addEventListener('result', event => {
+            eventSource.close();
+            resolve(JSON.parse(event.data) as MetricsResponse);
+          });
+        },
+      );
 
-        throw error; // Re-throw the error if all attempts fail
-      }
+      console.log('Retry response:', retryResponse);
+
+      // Check if the retry was successful
+      expect(retryResponse).toHaveProperty('success', true);
+      expect(retryResponse.data).toBeInstanceOf(Array);
+      expect(retryResponse.data.length).toBeGreaterThan(0);
     });
   });
 
@@ -535,7 +496,7 @@ describe('API E2E Tests', () => {
       });
 
       expect(refreshResponse.status).toBe(401);
-      // CHANGED: Update expected error message
+
       expect(refreshResponse.data).toHaveProperty(
         'error',
         'Refresh token has been revoked',
