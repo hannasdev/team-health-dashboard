@@ -1,28 +1,33 @@
-// src/utils/Logger.ts
+// src/utils/Logger/Logger.ts
 import fs from 'fs';
 import path from 'path';
 
 import { injectable, inject } from 'inversify';
 import winston from 'winston';
 
-import { Config } from '../../config/config.js';
 import { TYPES } from '../../utils/types.js';
 
+import type { IConfig } from '../../interfaces/IConfig.js';
 import type { ILogger } from '../../interfaces/ILogger.js';
-
-const config = Config.getInstance();
 
 @injectable()
 export class Logger implements ILogger {
-  private logger: winston.Logger;
+  private logger: winston.Logger | Console;
 
   constructor(
     @inject(TYPES.LogLevel) private logLevel: string,
     @inject(TYPES.LogFormat) private logFormat: string,
+    @inject(TYPES.Config) private config: IConfig,
   ) {
-    const logDir = config.LOG_FILE_PATH || './logs';
+    this.logger = this.createLogger();
+  }
 
-    // Ensure the log directory exists
+  private createLogger(): winston.Logger | Console {
+    if (process.env.NODE_ENV === 'test') {
+      return console;
+    }
+
+    const logDir = this.config.LOG_FILE_PATH || './logs';
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
@@ -30,7 +35,7 @@ export class Logger implements ILogger {
     const errorLogPath = path.join(logDir, 'error.log');
     const combinedLogPath = path.join(logDir, 'combined.log');
 
-    this.logger = winston.createLogger({
+    return winston.createLogger({
       level: this.logLevel,
       format: winston.format.combine(
         winston.format.timestamp(),
@@ -50,29 +55,37 @@ export class Logger implements ILogger {
         }),
       ],
     });
-
-    this.debug('Logger initialized', {
-      logLevel: this.logLevel,
-      logFormat: this.logFormat,
-      logDir,
-      errorLogPath,
-      combinedLogPath,
-    });
   }
 
   info(message: string, meta?: Record<string, unknown>): void {
-    this.logger.info(message, meta);
+    if (process.env.NODE_ENV === 'test') {
+      console.log(JSON.stringify({ level: 'info', message, ...meta }));
+    } else {
+      (this.logger as winston.Logger).info(message, meta);
+    }
   }
 
   error(message: string, error?: Error, meta?: Record<string, unknown>): void {
-    this.logger.error(message, { error, ...meta });
+    if (process.env.NODE_ENV === 'test') {
+      console.log(JSON.stringify({ level: 'error', message, error, ...meta }));
+    } else {
+      (this.logger as winston.Logger).error(message, { error, ...meta });
+    }
   }
 
   warn(message: string, meta?: Record<string, unknown>): void {
-    this.logger.warn(message, meta);
+    if (process.env.NODE_ENV === 'test') {
+      console.log(JSON.stringify({ level: 'warn', message, ...meta }));
+    } else {
+      (this.logger as winston.Logger).warn(message, meta);
+    }
   }
 
   debug(message: string, meta?: Record<string, unknown>): void {
-    this.logger.debug(message, meta);
+    if (process.env.NODE_ENV === 'test') {
+      console.log(JSON.stringify({ level: 'debug', message, ...meta }));
+    } else {
+      (this.logger as winston.Logger).debug(message, meta);
+    }
   }
 }

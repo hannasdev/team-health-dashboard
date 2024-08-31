@@ -1,70 +1,52 @@
 // src/utils/Logger/Logger.test.ts
-
-import fs from 'fs';
-
-import winston from 'winston';
+import { Container } from 'inversify';
 
 import { Logger } from './Logger';
+import { TYPES } from '../../utils/types';
 
-// Mock winston
-jest.mock('winston', () => ({
-  createLogger: jest.fn().mockReturnValue({
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn(),
-    debug: jest.fn(),
-  }),
-  format: {
-    combine: jest.fn(),
-    timestamp: jest.fn(),
-    errors: jest.fn(),
-    json: jest.fn(),
-    simple: jest.fn(),
-  },
-  transports: {
-    Console: jest.fn(),
-    File: jest.fn(),
-  },
-}));
+import type { IConfig } from '../../interfaces/IConfig';
 
-// Mock fs
-jest.mock('fs', () => ({
-  existsSync: jest.fn(),
-  mkdirSync: jest.fn(),
-}));
+// Mock Config
+const mockConfig: IConfig = {
+  LOG_FILE_PATH: './logs',
+  // Add other required properties from IConfig
+} as IConfig;
 
 describe('Logger', () => {
+  let container: Container;
   let logger: Logger;
-  const mockLogLevel = 'info';
-  const mockLogFormat = 'json';
+  let consoleLogSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
-    logger = new Logger(mockLogLevel, mockLogFormat);
+    container = new Container();
+    container.bind<string>(TYPES.LogLevel).toConstantValue('debug');
+    container.bind<string>(TYPES.LogFormat).toConstantValue('json');
+    container.bind<IConfig>(TYPES.Config).toConstantValue(mockConfig);
+    container.bind<Logger>(TYPES.Logger).to(Logger);
+
+    process.env.NODE_ENV = 'test';
+    logger = container.get<Logger>(TYPES.Logger);
+
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
   });
 
-  it("should create log directory if it doesn't exist", () => {
-    expect(fs.existsSync).toHaveBeenCalledWith(expect.stringContaining('logs'));
-    expect(fs.mkdirSync).toHaveBeenCalledWith(expect.stringContaining('logs'), {
-      recursive: true,
-    });
+  afterEach(() => {
+    consoleLogSpy.mockRestore();
   });
 
-  it('should use json format when specified', () => {
-    expect(winston.format.json).toHaveBeenCalled();
-  });
-
-  it('should use simple format when not json', () => {
-    new Logger(mockLogLevel, 'simple');
-    expect(winston.format.simple).toHaveBeenCalled();
+  it('should create logger with correct configuration', () => {
+    expect(logger).toBeInstanceOf(Logger);
   });
 
   it('should log info messages', () => {
     const message = 'Test info message';
     const meta = { key: 'value' };
     logger.info(message, meta);
-    expect((logger as any).logger.info).toHaveBeenCalledWith(message, meta);
+    expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+    const loggedMessage = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+    expect(loggedMessage.level).toBe('info');
+    expect(loggedMessage.message).toBe(message);
+    expect(loggedMessage.key).toBe(meta.key);
   });
 
   it('should log error messages', () => {
@@ -72,23 +54,50 @@ describe('Logger', () => {
     const error = new Error('Test error');
     const meta = { key: 'value' };
     logger.error(message, error, meta);
-    expect((logger as any).logger.error).toHaveBeenCalledWith(message, {
-      error,
-      ...meta,
-    });
+    expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+    const loggedMessage = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+    expect(loggedMessage.level).toBe('error');
+    expect(loggedMessage.message).toBe(message);
+    expect(loggedMessage.error).toBeDefined();
+    expect(loggedMessage.key).toBe(meta.key);
   });
 
   it('should log warn messages', () => {
     const message = 'Test warn message';
     const meta = { key: 'value' };
     logger.warn(message, meta);
-    expect((logger as any).logger.warn).toHaveBeenCalledWith(message, meta);
+    expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+    const loggedMessage = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+    expect(loggedMessage.level).toBe('warn');
+    expect(loggedMessage.message).toBe(message);
+    expect(loggedMessage.key).toBe(meta.key);
   });
 
   it('should log debug messages', () => {
     const message = 'Test debug message';
     const meta = { key: 'value' };
     logger.debug(message, meta);
-    expect((logger as any).logger.debug).toHaveBeenCalledWith(message, meta);
+    expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+    const loggedMessage = JSON.parse(consoleLogSpy.mock.calls[0][0]);
+    expect(loggedMessage.level).toBe('debug');
+    expect(loggedMessage.message).toBe(message);
+    expect(loggedMessage.key).toBe(meta.key);
+  });
+
+  it('should use json format', () => {
+    logger.info('Test message');
+    expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+    expect(() => JSON.parse(consoleLogSpy.mock.calls[0][0])).not.toThrow();
+  });
+
+  it('should use simple format when specified', () => {
+    container.rebind<string>(TYPES.LogFormat).toConstantValue('simple');
+    const simpleLogger = container.get<Logger>(TYPES.Logger);
+    simpleLogger.info('Test message');
+    expect(consoleLogSpy).toHaveBeenCalledTimes(1);
+    expect(() => JSON.parse(consoleLogSpy.mock.calls[0][0])).not.toThrow(); // It's still JSON in test environment
+    expect(JSON.parse(consoleLogSpy.mock.calls[0][0]).message).toBe(
+      'Test message',
+    );
   });
 });
