@@ -2,20 +2,24 @@
 import { Response } from 'express';
 import { Container } from 'inversify';
 
-import { SSEService } from './SSEService';
+import { SSEService } from './SSEService.js';
 import {
   createMockLogger,
   createMockConfig,
   createMockProgressTracker,
 } from '../../__mocks__/index.js';
-import { createErrorResponse } from '../../utils/ApiResponse';
-import { AppError } from '../../utils/errors';
-import { TYPES } from '../../utils/types';
+import { createErrorResponse } from '../ApiResponse/index.js';
+import { AppError } from '../errors.js';
+import { TYPES } from '../types.js';
 
-import type { ILogger, IProgressTracker, IConfig } from '../../interfaces';
+import type {
+  ILogger,
+  IProgressTracker,
+  IConfig,
+} from '../../interfaces/index.js';
 
 // Mock dependencies
-jest.mock('../ApiResponse');
+jest.mock('../ApiResponse/index.js');
 
 describe('SSEService', () => {
   let sseService: SSEService;

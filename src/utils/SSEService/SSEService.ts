@@ -2,16 +2,17 @@
 import { Response } from 'express';
 import { injectable, inject } from 'inversify';
 
-import {
+import { ProgressCallback } from '../../types/index.js';
+import { createErrorResponse } from '../ApiResponse/index.js';
+import { AppError } from '../errors.js';
+import { TYPES } from '../types.js';
+
+import type {
   ILogger,
   ISSEService,
   IProgressTracker,
   IConfig,
 } from '../../interfaces/index.js';
-import { ProgressCallback } from '../../types/index.js';
-import { createErrorResponse } from '../../utils/ApiResponse/index.js';
-import { AppError } from '../../utils/errors.js';
-import { TYPES } from '../../utils/types.js';
 
 @injectable()
 export class SSEService implements ISSEService {
