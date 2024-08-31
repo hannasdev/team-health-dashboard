@@ -8,7 +8,7 @@ import {
   createMockConfig,
   createMockProgressTracker,
 } from '../../__mocks__/index.js';
-import { createErrorResponse } from '../ApiResponse/index.js';
+import { createErrorResponse } from '../../utils/ApiResponse/ApiResponse.js';
 import { AppError } from '../errors.js';
 import { TYPES } from '../types.js';
 
@@ -19,7 +19,7 @@ import type {
 } from '../../interfaces/index.js';
 
 // Mock dependencies
-jest.mock('../ApiResponse/index.js');
+jest.mock('../../utils/ApiResponse/ApiResponse.js');
 
 describe('SSEService', () => {
   let sseService: SSEService;

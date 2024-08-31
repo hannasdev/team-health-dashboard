@@ -3,7 +3,7 @@ import { Response } from 'express';
 import { injectable, inject } from 'inversify';
 
 import { ProgressCallback } from '../../types/index.js';
-import { createErrorResponse } from '../ApiResponse/index.js';
+import { createErrorResponse } from '../../utils/ApiResponse/ApiResponse.js';
 import { AppError } from '../errors.js';
 import { TYPES } from '../types.js';
 
