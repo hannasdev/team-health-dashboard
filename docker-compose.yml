@@ -121,6 +121,10 @@ services:
       - test-network
     env_file:
       - .env.test
+    environment:
+      - NODE_ENV=test
+    depends_on:
+      - db-test
     deploy:
       resources:
         limits:
@@ -136,6 +140,8 @@ services:
       - test-network
     env_file:
       - .env.e2e
+    environment:
+      - NODE_ENV=e2e
     depends_on:
       db-test:
         condition: service_healthy
