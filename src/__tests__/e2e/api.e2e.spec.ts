@@ -1,5 +1,12 @@
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 import EventSource from 'eventsource';
+
+import { retryRequest, createTestUser, loginUser } from './helpers/apiHelpers';
+import {
+  DEFAULT_TIMEOUT,
+  AUTH_ENDPOINTS,
+  METRICS_ENDPOINT,
+} from './helpers/constants';
 
 interface Metric {
   id: string;
@@ -33,7 +40,7 @@ interface MetricsResponse {
   status: number;
 }
 
-jest.setTimeout(120000); // 2 minutes
+jest.setTimeout(DEFAULT_TIMEOUT); // 2 minutes
 
 const apiEndpoint = 'http://app-test:3000';
 
@@ -41,54 +48,6 @@ describe('API E2E Tests', () => {
   let accessToken: string;
   let refreshToken: string;
   let testUser: { id: string; email: string; password: string };
-
-  const axiosInstance = axios.create({
-    baseURL: apiEndpoint,
-    validateStatus: () => true,
-  });
-
-  const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-  const retryRequest = async (
-    method: 'get' | 'post',
-    url: string,
-    body?: any,
-    headers?: any,
-    maxRetries = 5,
-    delay = 1000,
-  ): Promise<AxiosResponse> => {
-    let lastError: unknown;
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        console.log(`Attempt ${i + 1} for ${method.toUpperCase()} ${url}`);
-        const response = await axiosInstance({
-          method,
-          url,
-          data: body,
-          headers,
-        });
-        console.log(
-          `${method.toUpperCase()} ${url} successful. Status: ${response.status}`,
-        );
-        return response;
-      } catch (error: unknown) {
-        lastError = error;
-        console.error(
-          `Attempt ${i + 1} failed for ${method.toUpperCase()} ${url}:`,
-          error instanceof Error ? error.message : 'Unknown error',
-        );
-        if (i === maxRetries - 1) break;
-        console.log(`Retrying in ${delay}ms...`);
-        await wait(delay);
-      }
-    }
-
-    throw new Error(
-      `Max retries reached for ${method.toUpperCase()} ${url}: ${
-        lastError instanceof Error ? lastError.message : 'Unknown error'
-      }`,
-    );
-  };
 
   beforeAll(async () => {
     console.log('Starting E2E tests setup');
@@ -98,27 +57,16 @@ describe('API E2E Tests', () => {
     console.log('App is ready, proceeding with tests');
 
     // Create a test user
-    const email = `testuser_${Date.now()}@example.com`;
-    const password = 'testpassword';
-    const registerResponse = await retryRequest('post', '/api/auth/register', {
-      email,
-      password,
-    });
-    testUser = {
-      id: registerResponse.data.user.id,
-      email,
-      password,
-    };
+    testUser = await createTestUser();
 
     // Log in to get tokens
-    const loginResponse = await retryRequest('post', '/api/auth/login', {
-      email: testUser.email,
-      password: testUser.password,
-    });
+    const { userAccessToken, userRefreshToken } = await loginUser(
+      testUser.email,
+      testUser.password,
+    );
 
-    accessToken = loginResponse.data.accessToken;
-    refreshToken = loginResponse.data.refreshToken;
-    console.log('Tokens acquired successfully');
+    accessToken = userAccessToken;
+    refreshToken = userRefreshToken;
   }, 60000);
 
   describe('GET /health', () => {
@@ -132,7 +80,7 @@ describe('API E2E Tests', () => {
 
   describe('GET /api/metrics', () => {
     it('should deny access for unauthenticated users', async () => {
-      const response = await retryRequest('get', '/api/metrics');
+      const response = await retryRequest('get', METRICS_ENDPOINT);
       expect(response.status).toBe(401);
       expect(response.headers['content-type']).toMatch(/json/);
       expect(response.data).toHaveProperty('error', 'No token provided');
@@ -152,7 +100,7 @@ describe('API E2E Tests', () => {
               Accept: 'text/event-stream',
             };
 
-            const url = new URL(`${apiEndpoint}/api/metrics`);
+            const url = new URL(`${apiEndpoint}${METRICS_ENDPOINT}`);
             url.searchParams.append('timePeriod', timePeriod.toString());
 
             const abortController = new AbortController();
@@ -325,9 +273,9 @@ describe('API E2E Tests', () => {
       });
 
       // First request with expired token
-      console.log('Sending request with expired token:', expiredToken);
+      // console.log('Sending request with expired token:', expiredToken);
       const initialResponse = await axiosInstanceWithExpiredToken.get(
-        `/api/metrics?timePeriod=${timePeriod}`,
+        `${METRICS_ENDPOINT}?timePeriod=${timePeriod}`,
         {
           headers: {
             Authorization: `Bearer ${expiredToken}`,
@@ -335,27 +283,31 @@ describe('API E2E Tests', () => {
         },
       );
 
-      console.log(
-        'Initial response:',
-        initialResponse.status,
-        initialResponse.data,
-      );
+      // console.log(
+      //   'Initial response:',
+      //   initialResponse.status,
+      //   initialResponse.data,
+      // );
 
       // Check if the initial request failed as expected
       expect(initialResponse.status).toBe(401);
       expect(initialResponse.data).toHaveProperty('error', 'No token provided');
 
       // Now try to refresh the token
-      console.log('Attempting to refresh token');
-      const refreshResponse = await retryRequest('post', '/api/auth/refresh', {
-        refreshToken,
-      });
-
-      console.log(
-        'Refresh response:',
-        refreshResponse.status,
-        refreshResponse.data,
+      // console.log('Attempting to refresh token');
+      const refreshResponse = await retryRequest(
+        'post',
+        AUTH_ENDPOINTS.REFRESH,
+        {
+          refreshToken,
+        },
       );
+
+      // console.log(
+      //   'Refresh response:',
+      //   refreshResponse.status,
+      //   refreshResponse.data,
+      // );
 
       expect(refreshResponse.status).toBe(200);
       expect(refreshResponse.data).toHaveProperty('accessToken');
@@ -369,7 +321,7 @@ describe('API E2E Tests', () => {
       const retryResponse: MetricsResponse = await new Promise(
         (resolve, reject) => {
           const eventSource = new EventSource(
-            `${apiEndpoint}/api/metrics?timePeriod=${timePeriod}`,
+            `${apiEndpoint}${METRICS_ENDPOINT}?timePeriod=${timePeriod}`,
             {
               headers: {
                 Authorization: `Bearer ${accessToken}`,
@@ -407,7 +359,7 @@ describe('API E2E Tests', () => {
   describe('POST /api/auth/register', () => {
     it('should register a new user', async () => {
       const uniqueEmail = `testuser_${Date.now()}@example.com`;
-      const response = await retryRequest('post', '/api/auth/register', {
+      const response = await retryRequest('post', AUTH_ENDPOINTS.REGISTER, {
         email: uniqueEmail,
         password: 'testpassword',
       });
@@ -419,7 +371,7 @@ describe('API E2E Tests', () => {
     });
 
     it('should handle existing user registration', async () => {
-      const response = await retryRequest('post', '/api/auth/register', {
+      const response = await retryRequest('post', AUTH_ENDPOINTS.REGISTER, {
         email: 'testuser@example.com',
         password: 'testpassword',
       });
@@ -432,7 +384,7 @@ describe('API E2E Tests', () => {
 
   describe('POST /api/auth/login', () => {
     it('should log in a registered user', async () => {
-      const response = await retryRequest('post', '/api/auth/login', {
+      const response = await retryRequest('post', AUTH_ENDPOINTS.LOGIN, {
         email: testUser.email,
         password: testUser.password,
       });
@@ -445,7 +397,7 @@ describe('API E2E Tests', () => {
     });
 
     it('should handle invalid login credentials', async () => {
-      const response = await retryRequest('post', '/api/auth/login', {
+      const response = await retryRequest('post', AUTH_ENDPOINTS.LOGIN, {
         email: 'wrong@example.com',
         password: 'wrongpassword',
       });
@@ -458,7 +410,7 @@ describe('API E2E Tests', () => {
 
   describe('POST /api/auth/refresh', () => {
     it('should refresh the access token with a valid refresh token', async () => {
-      const response = await retryRequest('post', '/api/auth/refresh', {
+      const response = await retryRequest('post', AUTH_ENDPOINTS.REFRESH, {
         refreshToken,
       });
 
@@ -468,7 +420,7 @@ describe('API E2E Tests', () => {
     });
 
     it('should reject an invalid refresh token', async () => {
-      const response = await retryRequest('post', '/api/auth/refresh', {
+      const response = await retryRequest('post', AUTH_ENDPOINTS.REFRESH, {
         refreshToken: 'invalid-refresh-token',
       });
 
@@ -481,7 +433,7 @@ describe('API E2E Tests', () => {
     it('should log out the user and invalidate the refresh token', async () => {
       const response = await retryRequest(
         'post',
-        '/api/auth/logout',
+        AUTH_ENDPOINTS.LOGOUT,
         { refreshToken },
         {
           Authorization: `Bearer ${accessToken}`,
@@ -491,9 +443,13 @@ describe('API E2E Tests', () => {
       expect(response.status).toBe(204);
 
       // Try to use the logged out refresh token
-      const refreshResponse = await retryRequest('post', '/api/auth/refresh', {
-        refreshToken,
-      });
+      const refreshResponse = await retryRequest(
+        'post',
+        AUTH_ENDPOINTS.REFRESH,
+        {
+          refreshToken,
+        },
+      );
 
       expect(refreshResponse.status).toBe(401);
 
@@ -506,7 +462,7 @@ describe('API E2E Tests', () => {
 
   describe('Access token usage', () => {
     it('should access a protected route with the new access token', async () => {
-      const response = await retryRequest('get', '/api/metrics', null, {
+      const response = await retryRequest('get', METRICS_ENDPOINT, null, {
         Authorization: `Bearer ${accessToken}`,
       });
 
