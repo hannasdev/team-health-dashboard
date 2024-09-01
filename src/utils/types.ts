@@ -8,7 +8,7 @@ export const TYPES = {
   Application: Symbol.for('IApplication'),
   AuthController: Symbol.for('IAuthController'),
   AuthMiddleware: Symbol.for('IAuthMiddleware'),
-  AuthService: Symbol.for('IAuthService'),
+  AuthenticationService: Symbol.for('IAuthenticationService'),
   BcryptService: Symbol.for('IBcryptService'),
   CacheService: Symbol.for('ICacheService'),
   Config: Symbol.for('IConfig'),
@@ -34,4 +34,5 @@ export const TYPES = {
   TokenBlacklistService: Symbol.for('ITokenBlacklistService'),
   TokenService: Symbol.for('ITokenService'),
   UserRepository: Symbol.for('IUserRepository'),
+  UserService: Symbol.for('IUserService'),
 };

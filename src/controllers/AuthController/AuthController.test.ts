@@ -3,7 +3,8 @@ import { Container } from 'inversify';
 
 import { AuthController } from './AuthController';
 import {
-  createMockAuthService,
+  createMockAuthenticationService,
+  createMockUserService,
   createMockAuthRequest,
   createMockAuthControllerResponse,
   createMockLogger,
@@ -19,20 +20,27 @@ import { TYPES } from '../../utils/types';
 
 describe('AuthController', () => {
   let authController: AuthController;
-  let mockAuthService: ReturnType<typeof createMockAuthService>;
+  let mockAuthenticationService: ReturnType<
+    typeof createMockAuthenticationService
+  >;
+  let mockUserService: ReturnType<typeof createMockUserService>;
   let mockLogger: ReturnType<typeof createMockLogger>;
   let mockApiResponse: ReturnType<typeof createMockApiResponse>;
   let container: Container;
 
   beforeEach(() => {
     // Create mock instances
-    mockAuthService = createMockAuthService();
+    mockAuthenticationService = createMockAuthenticationService();
+    mockUserService = createMockUserService();
     mockLogger = createMockLogger();
     mockApiResponse = createMockApiResponse();
 
     // Set up the DI container
     container = new Container();
-    container.bind(TYPES.AuthService).toConstantValue(mockAuthService);
+    container
+      .bind(TYPES.AuthenticationService)
+      .toConstantValue(mockAuthenticationService);
+    container.bind(TYPES.UserService).toConstantValue(mockUserService);
     container.bind(TYPES.Logger).toConstantValue(mockLogger);
     container.bind(TYPES.ApiResponse).toConstantValue(mockApiResponse);
 
@@ -53,7 +61,7 @@ describe('AuthController', () => {
         accessToken: 'mock-access-token',
         refreshToken: 'mock-refresh-token',
       };
-      mockAuthService.login.mockResolvedValue(mockLoginResult);
+      mockAuthenticationService.login.mockResolvedValue(mockLoginResult);
 
       mockApiResponse.createSuccessResponse.mockReturnValue({
         success: true,
@@ -69,7 +77,7 @@ describe('AuthController', () => {
 
       await authController.login(req, res as any, next);
 
-      expect(mockAuthService.login).toHaveBeenCalledWith(
+      expect(mockAuthenticationService.login).toHaveBeenCalledWith(
         'test@example.com',
         'password123',
       );
@@ -102,13 +110,13 @@ describe('AuthController', () => {
       const res = createMockAuthControllerResponse();
       const next = jest.fn();
 
-      mockAuthService.login.mockRejectedValue(
+      mockAuthenticationService.login.mockRejectedValue(
         new InvalidInputError('Email and password are required'),
       );
 
       await authController.login(req, res as any, next);
 
-      expect(mockAuthService.login).toHaveBeenCalledWith(
+      expect(mockAuthenticationService.login).toHaveBeenCalledWith(
         'test@example.com',
         'wrongpassword',
       );
@@ -123,7 +131,7 @@ describe('AuthController', () => {
       await authController.login(req, res as any, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(InvalidInputError));
-      expect(mockAuthService.login).not.toHaveBeenCalled();
+      expect(mockAuthenticationService.login).not.toHaveBeenCalled();
     });
   });
 
@@ -135,12 +143,15 @@ describe('AuthController', () => {
       const res = createMockAuthControllerResponse();
       const next = jest.fn();
 
-      const mockRegisterResult = {
-        user: new User('2', 'newuser@example.com', 'hashedPassword'),
+      const mockUser = new User('2', 'newuser@example.com', 'hashedPassword');
+      mockUserService.registerUser.mockResolvedValue(mockUser);
+
+      const mockLoginResult = {
+        user: mockUser,
         accessToken: 'mock-access-token',
         refreshToken: 'mock-refresh-token',
       };
-      mockAuthService.register.mockResolvedValue(mockRegisterResult);
+      mockAuthenticationService.login.mockResolvedValue(mockLoginResult);
 
       mockApiResponse.createSuccessResponse.mockReturnValue({
         success: true,
@@ -156,7 +167,11 @@ describe('AuthController', () => {
 
       await authController.register(req, res as any, next);
 
-      expect(mockAuthService.register).toHaveBeenCalledWith(
+      expect(mockUserService.registerUser).toHaveBeenCalledWith(
+        'newuser@example.com',
+        'newpassword123',
+      );
+      expect(mockAuthenticationService.login).toHaveBeenCalledWith(
         'newuser@example.com',
         'newpassword123',
       );
@@ -200,11 +215,13 @@ describe('AuthController', () => {
       const res = createMockAuthControllerResponse();
       const next = jest.fn();
 
-      mockAuthService.register.mockRejectedValue(new UserAlreadyExistsError());
+      mockUserService.registerUser.mockRejectedValue(
+        new UserAlreadyExistsError(),
+      );
 
       await authController.register(req, res as any, next);
 
-      expect(mockAuthService.register).toHaveBeenCalledWith(
+      expect(mockUserService.registerUser).toHaveBeenCalledWith(
         'existing@example.com',
         'password123',
       );
@@ -219,7 +236,7 @@ describe('AuthController', () => {
       await authController.register(req, res as any, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(InvalidInputError));
-      expect(mockAuthService.register).not.toHaveBeenCalled();
+      expect(mockUserService.registerUser).not.toHaveBeenCalled();
     });
   });
 
@@ -235,7 +252,9 @@ describe('AuthController', () => {
         accessToken: 'new_access_token',
         refreshToken: 'new_refresh_token',
       };
-      mockAuthService.refreshToken.mockResolvedValue(mockRefreshResult);
+      mockAuthenticationService.refreshToken.mockResolvedValue(
+        mockRefreshResult,
+      );
 
       mockApiResponse.createSuccessResponse.mockReturnValue({
         success: true,
@@ -244,7 +263,7 @@ describe('AuthController', () => {
 
       await authController.refreshToken(req, res as any, next);
 
-      expect(mockAuthService.refreshToken).toHaveBeenCalledWith(
+      expect(mockAuthenticationService.refreshToken).toHaveBeenCalledWith(
         'valid_refresh_token',
       );
       expect(mockApiResponse.createSuccessResponse).toHaveBeenCalledWith(
@@ -264,13 +283,13 @@ describe('AuthController', () => {
       const res = createMockAuthControllerResponse();
       const next = jest.fn();
 
-      mockAuthService.refreshToken.mockRejectedValue(
+      mockAuthenticationService.refreshToken.mockRejectedValue(
         new InvalidRefreshTokenError(),
       );
 
       await authController.refreshToken(req, res as any, next);
 
-      expect(mockAuthService.refreshToken).toHaveBeenCalledWith(
+      expect(mockAuthenticationService.refreshToken).toHaveBeenCalledWith(
         'invalid_refresh_token',
       );
       expect(next).toHaveBeenCalledWith(expect.any(InvalidRefreshTokenError));
@@ -284,7 +303,7 @@ describe('AuthController', () => {
       await authController.refreshToken(req, res as any, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(InvalidInputError));
-      expect(mockAuthService.refreshToken).not.toHaveBeenCalled();
+      expect(mockAuthenticationService.refreshToken).not.toHaveBeenCalled();
     });
   });
 
@@ -296,11 +315,11 @@ describe('AuthController', () => {
       const res = createMockAuthControllerResponse();
       const next = jest.fn();
 
-      mockAuthService.logout.mockResolvedValue(undefined);
+      mockAuthenticationService.logout.mockResolvedValue(undefined);
 
       await authController.logout(req, res as any, next);
 
-      expect(mockAuthService.logout).toHaveBeenCalledWith(
+      expect(mockAuthenticationService.logout).toHaveBeenCalledWith(
         'valid_refresh_token',
       );
       expect(res.status).toHaveBeenCalledWith(204);
@@ -315,11 +334,13 @@ describe('AuthController', () => {
       const res = createMockAuthControllerResponse();
       const next = jest.fn();
 
-      mockAuthService.logout.mockRejectedValue(new Error('Logout failed'));
+      mockAuthenticationService.logout.mockRejectedValue(
+        new Error('Logout failed'),
+      );
 
       await authController.logout(req, res as any, next);
 
-      expect(mockAuthService.logout).toHaveBeenCalledWith(
+      expect(mockAuthenticationService.logout).toHaveBeenCalledWith(
         'invalid_refresh_token',
       );
       expect(next).toHaveBeenCalledWith(expect.any(Error));
@@ -333,7 +354,7 @@ describe('AuthController', () => {
       await authController.logout(req, res as any, next);
 
       expect(next).toHaveBeenCalledWith(expect.any(InvalidInputError));
-      expect(mockAuthService.logout).not.toHaveBeenCalled();
+      expect(mockAuthenticationService.logout).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,6 +1,9 @@
+import { User } from '../models/User.js';
+import { UserAlreadyExistsError, UserNotFoundError } from '../utils/errors.js';
+
 import type {
   IAuthRequest,
-  IAuthService,
+  IAuthenticationService,
   ICacheService,
   IFetchDataResult,
   IGitHubService,
@@ -13,6 +16,7 @@ import type {
   IProgressTracker,
   IMongoDbClient,
   IMetricCalculator,
+  IUserService,
 } from '../interfaces/index.js';
 
 export function createMockCacheService(): jest.Mocked<ICacheService> {
@@ -41,7 +45,7 @@ export function createMockCacheService(): jest.Mocked<ICacheService> {
   };
 }
 
-export function createMockAuthService(): jest.Mocked<IAuthService> {
+export function createMockAuthenticationService(): jest.Mocked<IAuthenticationService> {
   return {
     login: jest.fn().mockImplementation((email, password) => {
       if (email === 'test@example.com' && password === 'password123') {
@@ -52,16 +56,6 @@ export function createMockAuthService(): jest.Mocked<IAuthService> {
         });
       }
       return Promise.reject(new Error('Invalid credentials'));
-    }),
-    register: jest.fn().mockImplementation((email, password) => {
-      if (email === 'existing@example.com') {
-        return Promise.reject(new Error('User already exists'));
-      }
-      return Promise.resolve({
-        user: { id: '2', email },
-        accessToken: 'mock-access-token',
-        refreshToken: 'mock-refresh-token',
-      });
     }),
     refreshToken: jest.fn().mockImplementation(refreshToken => {
       if (refreshToken === 'valid-refresh-token') {
@@ -77,6 +71,32 @@ export function createMockAuthService(): jest.Mocked<IAuthService> {
         return Promise.resolve();
       }
       return Promise.reject(new Error('Invalid refresh token'));
+    }),
+  };
+}
+
+export function createMockUserService(): jest.Mocked<IUserService> {
+  return {
+    registerUser: jest.fn().mockImplementation((email, password) => {
+      if (email === 'existing@example.com') {
+        return Promise.reject(new UserAlreadyExistsError());
+      }
+      return Promise.resolve(new User('2', email, 'hashedPassword'));
+    }),
+    getUserById: jest.fn().mockImplementation(id => {
+      if (id === '1') {
+        return Promise.resolve(
+          new User('1', 'test@example.com', 'hashedPassword'),
+        );
+      }
+      return Promise.reject(
+        new UserNotFoundError(`User not found for id: ${id}`),
+      );
+    }),
+    updateUserProfile: jest.fn().mockImplementation((id, data) => {
+      return Promise.resolve(
+        new User(id, data.email || 'updated@example.com', 'hashedPassword'),
+      );
     }),
   };
 }

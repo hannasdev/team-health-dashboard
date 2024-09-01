@@ -5,21 +5,24 @@ import { inject, injectable } from 'inversify';
 
 import { User } from 'models/User.js';
 
-import { UnauthorizedError, InvalidInputError } from '../../utils/errors.js';
+import { InvalidInputError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
   IAuthController,
-  IAuthService,
+  IAuthenticationService,
   IAuthRequest,
   ILogger,
   IApiResponse,
+  IUserService,
 } from '../../interfaces';
 
 @injectable()
 export class AuthController implements IAuthController {
   constructor(
-    @inject(TYPES.AuthService) private authService: IAuthService,
+    @inject(TYPES.AuthenticationService)
+    private authenticationService: IAuthenticationService,
+    @inject(TYPES.UserService) private userService: IUserService,
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.ApiResponse) private apiResponse: IApiResponse,
   ) {}
@@ -34,7 +37,7 @@ export class AuthController implements IAuthController {
       if (!email || !password) {
         throw new InvalidInputError('Email and password are required');
       }
-      const result = await this.authService.login(email, password);
+      const result = await this.authenticationService.login(email, password);
       res.json(
         this.apiResponse.createSuccessResponse({
           ...result,
@@ -57,16 +60,22 @@ export class AuthController implements IAuthController {
       if (!email || !password) {
         throw new InvalidInputError('Email and password are required');
       }
-      const result = await this.authService.register(email, password);
+      const user = await this.userService.registerUser(email, password);
+      const { accessToken, refreshToken } =
+        await this.authenticationService.login(email, password);
       this.logger.debug('Register successful', { email });
       res.status(201).json(
         this.apiResponse.createSuccessResponse({
-          ...result,
-          user: this.sanitizeUser(result.user),
+          user: this.sanitizeUser(user),
+          accessToken,
+          refreshToken,
         }),
       );
     } catch (error) {
-      this.logger.error('Register failed', error as Error);
+      this.logger.error(
+        'Register failed',
+        error instanceof Error ? error : new Error('Unknown error'),
+      );
       next(error);
     }
   }
@@ -82,7 +91,8 @@ export class AuthController implements IAuthController {
         this.logger.error('Refresh token is required');
         throw new InvalidInputError('Refresh token is required');
       }
-      const result = await this.authService.refreshToken(refreshToken);
+      const result =
+        await this.authenticationService.refreshToken(refreshToken);
       res.json(this.apiResponse.createSuccessResponse(result));
     } catch (error) {
       next(error);
@@ -99,7 +109,7 @@ export class AuthController implements IAuthController {
       if (!refreshToken) {
         throw new InvalidInputError('Refresh token is required');
       }
-      await this.authService.logout(refreshToken);
+      await this.authenticationService.logout(refreshToken);
       res.status(204).send();
     } catch (error) {
       next(error);

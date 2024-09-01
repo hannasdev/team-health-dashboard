@@ -23,7 +23,7 @@ import { ErrorHandler } from './middleware/ErrorHandler.js';
 import { GitHubRepository } from './repositories/github/GitHubRepository.js';
 import { GoogleSheetsRepository } from './repositories/googlesheets/GoogleSheetsRepository.js';
 import { UserRepository } from './repositories/user/UserRepository.js';
-import { AuthService } from './services/auth/AuthService.js';
+import { AuthenticationService } from './services/auth/AuthenticationService.js';
 import { CacheService } from './services/cache/CacheService.js';
 import { MongoDbClient } from './services/database/MongoDbClient.js';
 import { MetricCalculator } from './services/metrics/MetricsCalculator.js';
@@ -31,6 +31,7 @@ import { MetricsService } from './services/metrics/MetricsService.js';
 import { ProgressTracker } from './services/progress/ProgressTracker.js';
 import TokenBlacklistService from './services/TokenBlacklistService/index.js';
 import { TokenService } from './services/TokenService/index.js';
+import { UserService } from './services/user/UserService.js';
 import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
 import { ApiResponse } from './utils/ApiResponse/ApiResponse.js';
 import { BcryptService } from './utils/BcryptService/index.js';
@@ -44,7 +45,7 @@ import type {
   IApplication,
   IAuthController,
   IAuthMiddleware,
-  IAuthService,
+  IAuthenticationService,
   IBcryptService,
   ICacheService,
   IConfig,
@@ -67,6 +68,7 @@ import type {
   ITokenBlacklistService,
   ITokenService,
   IUserRepository,
+  IUserService,
 } from './interfaces/index.js';
 
 const config = Config.getInstance();
@@ -124,6 +126,7 @@ export function setupContainer(
 
   // 6.  Services (Depend on repositories, metric calculators, and other services)
   container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService);
+  container.bind<IUserService>(TYPES.UserService).to(UserService);
 
   // 7.  Controllers (Depend on services)
   container
@@ -136,7 +139,9 @@ export function setupContainer(
 
   // 8.  Middleware (Can depend on services)
   container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
-  container.bind<IAuthService>(TYPES.AuthService).to(AuthService);
+  container
+    .bind<IAuthenticationService>(TYPES.AuthenticationService)
+    .to(AuthenticationService);
   container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
 
   // 9. Application (Depends on middleware, routers, and potentially other services)

@@ -2,7 +2,7 @@
 
 import { Container } from 'inversify';
 
-import { AuthService } from './AuthService';
+import { AuthenticationService } from './AuthenticationService';
 import {
   createMockConfig,
   createMockTokenService,
@@ -15,14 +15,13 @@ import { Config } from '../../config/config';
 import { User } from '../../models/User';
 import {
   InvalidCredentialsError,
-  UserAlreadyExistsError,
   UserNotFoundError,
   InvalidRefreshTokenError,
 } from '../../utils/errors';
 import { TYPES } from '../../utils/types';
 
-describe('AuthService', () => {
-  let authService: AuthService;
+describe('AuthenticationService', () => {
+  let authService: AuthenticationService;
   let mockConfig: ReturnType<typeof createMockConfig>;
   let mockTokenService: ReturnType<typeof createMockTokenService>;
   let mockTokenBlacklistService: ReturnType<
@@ -57,7 +56,7 @@ describe('AuthService', () => {
     container.bind(TYPES.Logger).toConstantValue(mockLogger);
 
     // Create an instance of AuthService
-    authService = container.resolve(AuthService);
+    authService = container.resolve(AuthenticationService);
   });
 
   describe('login', () => {
@@ -106,56 +105,6 @@ describe('AuthService', () => {
       await expect(
         authService.login('test@example.com', 'wrongpassword'),
       ).rejects.toThrow(InvalidCredentialsError);
-    });
-  });
-
-  describe('register', () => {
-    it('should successfully register a new user', async () => {
-      const email = 'newuser@example.com';
-      const password = 'password123';
-      const hashedPassword = 'hashedPassword';
-      const newUser = new User('123', email, hashedPassword);
-      const accessToken = 'access_token';
-      const refreshToken = 'refresh_token';
-
-      mockUserRepository.findByEmail.mockResolvedValue(undefined);
-      mockBcryptService.hash.mockResolvedValue(hashedPassword);
-      mockUserRepository.create.mockResolvedValue(newUser);
-      mockTokenService.generateAccessToken.mockReturnValue(accessToken);
-      mockTokenService.generateRefreshToken.mockReturnValue(refreshToken);
-
-      const result = await authService.register(email, password);
-
-      expect(result).toEqual({ user: newUser, accessToken, refreshToken });
-      expect(mockUserRepository.findByEmail).toHaveBeenCalledWith(email);
-      expect(mockBcryptService.hash).toHaveBeenCalledWith(
-        password,
-        mockConfig.BCRYPT_ROUNDS,
-      );
-      expect(mockUserRepository.create).toHaveBeenCalledWith(
-        email,
-        hashedPassword,
-      );
-      expect(mockTokenService.generateAccessToken).toHaveBeenCalledWith({
-        id: newUser.id,
-        email: newUser.email,
-      });
-      expect(mockTokenService.generateRefreshToken).toHaveBeenCalledWith({
-        id: newUser.id,
-      });
-    });
-
-    it('should throw UserAlreadyExistsError if email is already registered', async () => {
-      const existingUser = new User(
-        '123',
-        'existing@example.com',
-        'hashedPassword',
-      );
-      mockUserRepository.findByEmail.mockResolvedValue(existingUser);
-
-      await expect(
-        authService.register('existing@example.com', 'password123'),
-      ).rejects.toThrow(UserAlreadyExistsError);
     });
   });
 
@@ -210,7 +159,7 @@ describe('AuthService', () => {
       ).rejects.toThrow(InvalidRefreshTokenError);
     });
 
-    it('should throw UserNotFoundError if user does not exist', async () => {
+    it('should throw InvalidRefreshTokenError if user does not exist', async () => {
       mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
       mockTokenService.validateRefreshToken.mockReturnValue({
         id: 'nonexistent_id',
@@ -219,7 +168,7 @@ describe('AuthService', () => {
       mockUserRepository.findById.mockResolvedValue(undefined);
 
       await expect(authService.refreshToken('valid_token')).rejects.toThrow(
-        UserNotFoundError,
+        InvalidRefreshTokenError,
       );
     });
   });

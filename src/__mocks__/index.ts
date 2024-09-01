@@ -26,7 +26,7 @@ export {
 
 export {
   createMockCacheService,
-  createMockAuthService,
+  createMockAuthenticationService,
   createMockAuthRequest,
   createMockTokenService,
   createMockTokenBlacklistService,
@@ -37,6 +37,7 @@ export {
   createMockProgressTracker,
   createMockMongoDbClient,
   createMockMetricCalculator,
+  createMockUserService,
 } from './mockServices';
 
 export {

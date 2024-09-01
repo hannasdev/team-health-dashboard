@@ -3,18 +3,20 @@ import { Container } from 'inversify';
 import request from 'supertest';
 
 import {
-  createMockAuthService,
+  createMockAuthenticationService,
   createMockLogger,
   MockMongoDbClient,
   MockGitHubAdapter,
   MockGoogleSheetsAdapter,
+  createMockUserService,
 } from '../../__mocks__/index.js';
 import { setupContainer } from '../../container.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
-  IAuthService,
+  IAuthenticationService,
   ITeamHealthDashboardApp,
+  IUserService,
 } from '../../interfaces/index.js';
 import type { Express } from 'express';
 
@@ -28,17 +30,19 @@ jest.mock('@octokit/graphql', () => ({
 describe('Auth Integration Tests', () => {
   let app: Express;
   let testContainer: Container;
-  let mockAuthService: jest.Mocked<IAuthService>;
+  let mockAuthService: jest.Mocked<IAuthenticationService>;
+  let mockUserService: jest.Mocked<IUserService>;
 
   beforeAll(async () => {
-    mockAuthService = createMockAuthService();
+    mockAuthService = createMockAuthenticationService();
+    mockUserService = createMockUserService();
     const mockLogger = createMockLogger();
     const mockMongoDbClient = new MockMongoDbClient();
     const mockGitHubAdapter = new MockGitHubAdapter();
     const mockGoogleSheetsAdapter = new MockGoogleSheetsAdapter();
 
     testContainer = setupContainer({
-      [TYPES.AuthService.toString()]: mockAuthService,
+      [TYPES.AuthenticationService.toString()]: mockAuthService,
       [TYPES.Logger.toString()]: mockLogger,
       [TYPES.MongoDbClient.toString()]: mockMongoDbClient,
       [TYPES.GitHubClient.toString()]: mockGitHubAdapter,
@@ -55,7 +59,7 @@ describe('Auth Integration Tests', () => {
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
       const userData = { email: 'test@example.com', password: 'password123' };
-      mockAuthService.register.mockResolvedValueOnce({
+      mockUserService.registerUser.mockResolvedValueOnce({
         user: { id: '1', email: userData.email },
         accessToken: 'mock-access-token',
         refreshToken: 'mock-refresh-token',
@@ -77,7 +81,7 @@ describe('Auth Integration Tests', () => {
         email: 'existing@example.com',
         password: 'password123',
       };
-      mockAuthService.register.mockRejectedValueOnce(
+      mockUserService.registerUser.mockRejectedValueOnce(
         new Error('User already exists'),
       );
 
