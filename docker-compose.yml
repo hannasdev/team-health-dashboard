@@ -42,7 +42,7 @@ services:
     volumes:
       - mongodb_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
-    command: mongod --bind_ip_all
+    command: mongod --bind_ip_all --quiet
     networks:
       - app-network
     healthcheck:
@@ -97,7 +97,7 @@ services:
     volumes:
       - mongodb_test_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
-    command: mongod --bind_ip_all
+    command: mongod --bind_ip_all --quiet --logpath /dev/null
     networks:
       - test-network
     healthcheck:
