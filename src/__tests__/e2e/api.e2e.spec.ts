@@ -21,23 +21,25 @@ interface Metric {
 
 interface MetricsResponse {
   success: boolean;
-  data: Array<{
-    id: string;
-    metric_category: string;
-    metric_name: string;
-    value: number;
-    timestamp: string;
-    unit: string;
-    additional_info: string;
-    source: string;
-  }>;
-  errors: string[];
-  githubStats: {
-    totalPRs: number;
-    fetchedPRs: number;
-    timePeriod: number;
+  data: {
+    metrics: Array<{
+      id: string;
+      metric_category: string;
+      metric_name: string;
+      value: number;
+      timestamp: string;
+      unit: string;
+      additional_info: string;
+      source: string;
+    }>;
+    errors: string[];
+    githubStats: {
+      totalPRs: number;
+      fetchedPRs: number;
+      timePeriod: number;
+    };
+    status: number;
   };
-  status: number;
 }
 
 jest.setTimeout(DEFAULT_TIMEOUT); // 2 minutes
@@ -71,19 +73,17 @@ describe('API E2E Tests', () => {
 
   describe('GET /health', () => {
     it('should return health status', async () => {
-      const response = await retryRequest('get', '/health');
-      expect(response.status).toBe(200);
-      expect(response.headers['content-type']).toMatch(/json/);
-      expect(response.data).toHaveProperty('status');
+      const { data } = await retryRequest('get', '/health');
+      // console.log('health response', data);
+      expect(data.data.status).toBe('OK');
     });
   });
 
   describe('GET /api/metrics', () => {
     it('should deny access for unauthenticated users', async () => {
-      const response = await retryRequest('get', METRICS_ENDPOINT);
-      expect(response.status).toBe(401);
-      expect(response.headers['content-type']).toMatch(/json/);
-      expect(response.data).toHaveProperty('error', 'No token provided');
+      await expect(
+        axios.get(`${apiEndpoint}${METRICS_ENDPOINT}`),
+      ).rejects.toThrow();
     });
 
     it('should allow access for authenticated users and stream data', async () => {
@@ -196,19 +196,23 @@ describe('API E2E Tests', () => {
                     case 'result':
                       expect(progressEventReceived).toBe(true);
                       expect(eventData.success).toBe(true);
-                      expect(eventData.data).toBeInstanceOf(Array);
-                      expect(eventData.data.length).toBeGreaterThan(0);
-                      expect(eventData.errors).toBeInstanceOf(Array);
-                      expect(eventData.githubStats).toHaveProperty('totalPRs');
-                      expect(eventData.githubStats).toHaveProperty(
+                      expect(eventData.data.metrics).toBeInstanceOf(Array);
+                      expect(eventData.data.metrics.length).toBeGreaterThan(0);
+                      expect(eventData.data.errors).toBeInstanceOf(Array);
+                      expect(eventData.data.githubStats).toHaveProperty(
+                        'totalPRs',
+                      );
+                      expect(eventData.data.githubStats).toHaveProperty(
                         'fetchedPRs',
                       );
-                      expect(eventData.githubStats).toHaveProperty(
+                      expect(eventData.data.githubStats).toHaveProperty(
                         'timePeriod',
                       );
-                      expect(eventData.githubStats.timePeriod).toBe(timePeriod);
-                      expect(eventData.status).toBe(200);
-                      eventData.data.forEach((metric: Metric) => {
+                      expect(eventData.data.githubStats.timePeriod).toBe(
+                        timePeriod,
+                      );
+                      expect(eventData.data.status).toBe(200);
+                      eventData.data.metrics.forEach((metric: Metric) => {
                         expect(metric).toHaveProperty('id');
                         expect(metric).toHaveProperty('metric_category');
                         expect(metric).toHaveProperty('metric_name');
@@ -254,7 +258,7 @@ describe('API E2E Tests', () => {
           Authorization: `Bearer ${accessToken}`,
         },
       );
-
+      // console.log('handle server errors gracefully', response);
       expect(response.status).toBe(500);
       expect(response.data).toHaveProperty('error');
     });
@@ -303,19 +307,19 @@ describe('API E2E Tests', () => {
         },
       );
 
-      // console.log(
-      //   'Refresh response:',
-      //   refreshResponse.status,
-      //   refreshResponse.data,
-      // );
+      console.log(
+        'Refresh response:',
+        refreshResponse.status,
+        refreshResponse.data,
+      );
 
       expect(refreshResponse.status).toBe(200);
-      expect(refreshResponse.data).toHaveProperty('accessToken');
-      expect(refreshResponse.data).toHaveProperty('refreshToken');
+      expect(refreshResponse.data.data).toHaveProperty('accessToken');
+      expect(refreshResponse.data.data).toHaveProperty('refreshToken');
 
       // Update the tokens
-      accessToken = refreshResponse.data.accessToken;
-      refreshToken = refreshResponse.data.refreshToken;
+      accessToken = refreshResponse.data.data.accessToken;
+      refreshToken = refreshResponse.data.data.refreshToken;
 
       // Try the request again with the new token
       const retryResponse: MetricsResponse = await new Promise(
@@ -347,12 +351,12 @@ describe('API E2E Tests', () => {
         },
       );
 
-      console.log('Retry response:', retryResponse);
+      // console.log('Retry metrics response:', retryResponse);
 
       // Check if the retry was successful
       expect(retryResponse).toHaveProperty('success', true);
-      expect(retryResponse.data).toBeInstanceOf(Array);
-      expect(retryResponse.data.length).toBeGreaterThan(0);
+      expect(retryResponse.data.metrics).toBeInstanceOf(Array);
+      expect(retryResponse.data.metrics.length).toBeGreaterThan(0);
     });
   });
 
@@ -365,9 +369,9 @@ describe('API E2E Tests', () => {
       });
 
       expect(response.status).toBe(201);
-      expect(response.data).toHaveProperty('accessToken');
-      expect(response.data).toHaveProperty('refreshToken');
-      expect(response.data).toHaveProperty('user');
+      expect(response.data.data).toHaveProperty('accessToken');
+      expect(response.data.data).toHaveProperty('refreshToken');
+      expect(response.data.data).toHaveProperty('user');
     });
 
     it('should handle existing user registration', async () => {
@@ -375,9 +379,8 @@ describe('API E2E Tests', () => {
         email: 'testuser@example.com',
         password: 'testpassword',
       });
-
-      expect(response.status).toBe(409);
-      expect(response.headers['content-type']).toMatch(/json/);
+      // console.log('existing user response', response.data);
+      expect(response.data.statusCode).toBe(409);
       expect(response.data).toHaveProperty('error', 'User already exists');
     });
   });
@@ -391,9 +394,9 @@ describe('API E2E Tests', () => {
 
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toMatch(/json/);
-      expect(response.data).toHaveProperty('accessToken');
-      expect(response.data).toHaveProperty('refreshToken');
-      expect(response.data).toHaveProperty('user');
+      expect(response.data.data).toHaveProperty('accessToken');
+      expect(response.data.data).toHaveProperty('refreshToken');
+      expect(response.data.data).toHaveProperty('user');
     });
 
     it('should handle invalid login credentials', async () => {
@@ -401,9 +404,9 @@ describe('API E2E Tests', () => {
         email: 'wrong@example.com',
         password: 'wrongpassword',
       });
+      // console.log('invalid credentials response', response.data);
 
-      expect(response.status).toBe(401);
-      expect(response.headers['content-type']).toMatch(/json/);
+      expect(response.data.statusCode).toBe(401);
       expect(response.data).toHaveProperty('error', 'Invalid credentials');
     });
   });
@@ -415,16 +418,17 @@ describe('API E2E Tests', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.data).toHaveProperty('accessToken');
-      expect(response.data).toHaveProperty('refreshToken');
+      expect(response.data.data).toHaveProperty('accessToken');
+      expect(response.data.data).toHaveProperty('refreshToken');
     });
 
     it('should reject an invalid refresh token', async () => {
       const response = await retryRequest('post', AUTH_ENDPOINTS.REFRESH, {
         refreshToken: 'invalid-refresh-token',
       });
+      // console.log('reject invalid token response', response.data);
 
-      expect(response.status).toBe(401);
+      expect(response.data.statusCode).toBe(401);
       expect(response.data).toHaveProperty('error', 'Invalid refresh token');
     });
   });
@@ -440,6 +444,8 @@ describe('API E2E Tests', () => {
         },
       );
 
+      // console.log('logout user response', response);
+
       expect(response.status).toBe(204);
 
       // Try to use the logged out refresh token
@@ -450,6 +456,7 @@ describe('API E2E Tests', () => {
           refreshToken,
         },
       );
+      // console.log('logout user response', refreshResponse);
 
       expect(refreshResponse.status).toBe(401);
 

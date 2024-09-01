@@ -2,7 +2,7 @@
 
 // Utilized by the Logger class to serialize errors for logging purposes.
 
-import { AppError } from './errors';
+import { AppError } from './errors.js';
 
 export function serializeError(err: Error): object {
   if (err instanceof AppError) {

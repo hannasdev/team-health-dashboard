@@ -59,8 +59,9 @@ export const createTestUser = async () => {
     email,
     password,
   });
+  // console.log('registered user', registerResponse);
   return {
-    id: registerResponse.data.user.id,
+    id: registerResponse.data.data.user.id,
     email,
     password,
   };
@@ -71,8 +72,10 @@ export const loginUser = async (email: string, password: string) => {
     email,
     password,
   });
+  // console.log('logged in', loginResponse);
+
   return {
-    userAccessToken: loginResponse.data.accessToken,
-    userRefreshToken: loginResponse.data.refreshToken,
+    userAccessToken: loginResponse.data.data.accessToken,
+    userRefreshToken: loginResponse.data.data.refreshToken,
   };
 };
