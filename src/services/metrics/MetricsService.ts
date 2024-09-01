@@ -6,11 +6,11 @@ import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
+  IMetricCalculator,
   IMetricsService,
   IMetric,
   IGoogleSheetsRepository,
   IGitHubRepository,
-  IPullRequest,
   ILogger,
 } from '../../interfaces/index.js';
 
@@ -21,6 +21,7 @@ export class MetricsService implements IMetricsService {
     private googleSheetsRepository: IGoogleSheetsRepository,
     @inject(TYPES.GitHubRepository) private gitHubRepository: IGitHubRepository,
     @inject(TYPES.Logger) private logger: ILogger,
+    @inject(TYPES.MetricCalculator) private metricCalculator: IMetricCalculator,
   ) {}
 
   async getAllMetrics(
@@ -53,10 +54,11 @@ export class MetricsService implements IMetricsService {
         timePeriod,
         this.createProgressCallback('GitHub', 50, progressCallback),
       );
-      allMetrics = [
-        ...allMetrics,
-        ...this.convertPullRequestsToMetrics(githubData.pullRequests),
-      ];
+      const githubMetrics = this.metricCalculator.calculateMetrics(
+        githubData.pullRequests,
+      );
+      this.logger.info(`Calculated ${githubMetrics.length} GitHub metrics`);
+      allMetrics = [...allMetrics, ...githubMetrics];
       githubStats = {
         totalPRs: githubData.totalPRs,
         fetchedPRs: githubData.fetchedPRs,
@@ -104,64 +106,64 @@ export class MetricsService implements IMetricsService {
     return Array.from(metricMap.values());
   }
 
-  private convertPullRequestsToMetrics(
-    pullRequests: IPullRequest[],
-  ): IMetric[] {
-    const metrics: IMetric[] = [];
+  // private convertPullRequestsToMetrics(
+  //   pullRequests: IPullRequest[],
+  // ): IMetric[] {
+  //   const metrics: IMetric[] = [];
 
-    // PR Count Metric
-    metrics.push({
-      id: 'github-pr-count',
-      metric_category: 'GitHub',
-      metric_name: 'Pull Request Count',
-      value: pullRequests.length,
-      timestamp: new Date(),
-      unit: 'count',
-      additional_info: '',
-      source: 'GitHub',
-    });
+  //   // PR Count Metric
+  //   metrics.push({
+  //     id: 'github-pr-count',
+  //     metric_category: 'GitHub',
+  //     metric_name: 'Pull Request Count',
+  //     value: pullRequests.length,
+  //     timestamp: new Date(),
+  //     unit: 'count',
+  //     additional_info: '',
+  //     source: 'GitHub',
+  //   });
 
-    // Average PR Size Metric
-    const totalChanges = pullRequests.reduce(
-      (sum, pr) => sum + pr.additions + pr.deletions,
-      0,
-    );
-    const avgPRSize =
-      pullRequests.length > 0 ? totalChanges / pullRequests.length : 0;
+  //   // Average PR Size Metric
+  //   const totalChanges = pullRequests.reduce(
+  //     (sum, pr) => sum + pr.additions + pr.deletions,
+  //     0,
+  //   );
+  //   const avgPRSize =
+  //     pullRequests.length > 0 ? totalChanges / pullRequests.length : 0;
 
-    metrics.push({
-      id: 'github-avg-pr-size',
-      metric_category: 'GitHub',
-      metric_name: 'Average PR Size',
-      value: avgPRSize,
-      timestamp: new Date(),
-      unit: 'lines',
-      additional_info: '',
-      source: 'GitHub',
-    });
+  //   metrics.push({
+  //     id: 'github-avg-pr-size',
+  //     metric_category: 'GitHub',
+  //     metric_name: 'Average PR Size',
+  //     value: avgPRSize,
+  //     timestamp: new Date(),
+  //     unit: 'lines',
+  //     additional_info: '',
+  //     source: 'GitHub',
+  //   });
 
-    // Average Time to Merge Metric
-    const mergedPRs = pullRequests.filter(pr => pr.mergedAt);
-    const totalMergeTime = mergedPRs.reduce((sum, pr) => {
-      const createDate = new Date(pr.createdAt);
-      const mergeDate = new Date(pr.mergedAt!);
-      return sum + (mergeDate.getTime() - createDate.getTime());
-    }, 0);
-    const avgMergeTime =
-      mergedPRs.length > 0
-        ? totalMergeTime / mergedPRs.length / (1000 * 60 * 60)
-        : 0; // in hours
-    metrics.push({
-      id: 'github-avg-merge-time',
-      metric_category: 'GitHub',
-      metric_name: 'Average Time to Merge',
-      value: avgMergeTime,
-      timestamp: new Date(),
-      unit: 'hours',
-      additional_info: '',
-      source: 'GitHub',
-    });
+  //   // Average Time to Merge Metric
+  //   const mergedPRs = pullRequests.filter(pr => pr.mergedAt);
+  //   const totalMergeTime = mergedPRs.reduce((sum, pr) => {
+  //     const createDate = new Date(pr.createdAt);
+  //     const mergeDate = new Date(pr.mergedAt!);
+  //     return sum + (mergeDate.getTime() - createDate.getTime());
+  //   }, 0);
+  //   const avgMergeTime =
+  //     mergedPRs.length > 0
+  //       ? totalMergeTime / mergedPRs.length / (1000 * 60 * 60)
+  //       : 0; // in hours
+  //   metrics.push({
+  //     id: 'github-avg-merge-time',
+  //     metric_category: 'GitHub',
+  //     metric_name: 'Average Time to Merge',
+  //     value: avgMergeTime,
+  //     timestamp: new Date(),
+  //     unit: 'hours',
+  //     additional_info: '',
+  //     source: 'GitHub',
+  //   });
 
-    return metrics;
-  }
+  //   return metrics;
+  // }
 }

@@ -26,9 +26,23 @@ export class MetricCalculator implements IMetricCalculator {
    */
   calculateMetrics(pullRequests: IPullRequest[]): IMetric[] {
     return [
+      this.calculatePRCount(pullRequests),
       this.calculatePRCycleTime(pullRequests),
       this.calculatePRSize(pullRequests),
     ];
+  }
+
+  private calculatePRCount(pullRequests: IPullRequest[]): IMetric {
+    return {
+      id: 'github-pr-count',
+      metric_category: 'GitHub',
+      metric_name: 'Pull Request Count',
+      value: pullRequests.length,
+      timestamp: new Date(),
+      unit: 'count',
+      additional_info: '',
+      source: 'GitHub',
+    };
   }
 
   /**
@@ -45,21 +59,18 @@ export class MetricCalculator implements IMetricCalculator {
     const averageCycleTime =
       mergedPRs.length > 0
         ? mergedPRs.reduce((sum, pr) => {
-            const totalMergeTime = mergedPRs.reduce((sum, pr) => {
-              const createdAt = new Date(pr.createdAt);
-              const mergedAt = new Date(pr.mergedAt!);
-              return sum + (mergedAt.getTime() - createdAt.getTime());
-            }, 0);
-            return totalMergeTime;
+            const createdAt = new Date(pr.createdAt);
+            const mergedAt = new Date(pr.mergedAt!);
+            return sum + (mergedAt.getTime() - createdAt.getTime());
           }, 0) / mergedPRs.length
         : 0;
 
     const averageCycleTimeInHours = averageCycleTime / (1000 * 60 * 60);
 
     return {
-      id: 'github-pr-cycle-time',
-      metric_category: 'Efficiency',
-      metric_name: 'PR Cycle Time',
+      id: 'github-avg-merge-time',
+      metric_category: 'GitHub',
+      metric_name: 'Average Time to Merge',
       value: Math.round(averageCycleTimeInHours),
       timestamp: new Date(),
       unit: 'hours',
@@ -85,9 +96,9 @@ export class MetricCalculator implements IMetricCalculator {
       pullRequests.length > 0 ? totalSize / pullRequests.length : 0;
 
     return {
-      id: 'github-pr-size',
-      metric_category: 'Code Quality',
-      metric_name: 'PR Size',
+      id: 'github-avg-pr-size',
+      metric_category: 'GitHub',
+      metric_name: 'Average PR Size',
       value: Math.round(averageSize),
       timestamp: new Date(),
       unit: 'lines',

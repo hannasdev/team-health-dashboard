@@ -7,11 +7,13 @@ import {
   createMockGoogleSheetsRepository,
   createMockGitHubRepository,
   createMockPullRequest,
+  createMockMetricCalculator,
 } from '../../__mocks__/index.js';
 import { MetricsService } from '../../services/metrics/MetricsService.js';
 import { AppError } from '../../utils/errors.js';
 
 import type {
+  IMetricCalculator,
   IMetricsService,
   IMetric,
   ILogger,
@@ -24,22 +26,25 @@ describe('MetricsService', () => {
   >;
   let mockGitHubRepository: ReturnType<typeof createMockGitHubRepository>;
   let mockLogger: ILogger;
+  let mockMetricCalculator: jest.Mocked<IMetricCalculator>;
 
   beforeEach(() => {
     jest.resetAllMocks();
     mockGoogleSheetsRepository = createMockGoogleSheetsRepository();
     mockGitHubRepository = createMockGitHubRepository();
     mockLogger = createMockLogger();
+    mockMetricCalculator = createMockMetricCalculator();
     metricsService = new MetricsService(
       mockGoogleSheetsRepository,
       mockGitHubRepository,
       mockLogger,
+      mockMetricCalculator,
     );
   });
 
   describe('fetchData', () => {
     it('should fetch and combine metrics from Google Sheets and GitHub with progress updates', async () => {
-      const mockSheetMetrics = [createMockMetric()];
+      const mockSheetMetrics = [createMockMetric({ source: 'Google Sheets' })];
       const mockGitHubResult = {
         pullRequests: [createMockPullRequest()],
         totalPRs: 1,
@@ -49,16 +54,16 @@ describe('MetricsService', () => {
 
       mockGoogleSheetsRepository.fetchMetrics.mockImplementation(
         async (progressCallback?: ProgressCallback) => {
-          progressCallback?.(0, 100, 'Starting to fetch data');
-          progressCallback?.(100, 100, 'Finished fetching data');
+          progressCallback?.(0, 100, 'Starting Google Sheets fetch');
+          progressCallback?.(100, 100, 'Finished Google Sheets fetch');
           return mockSheetMetrics;
         },
       );
 
       mockGitHubRepository.fetchPullRequests.mockImplementation(
         async (timePeriod: number, progressCallback?: ProgressCallback) => {
-          progressCallback?.(0, 100, 'Starting to fetch data');
-          progressCallback?.(100, 100, 'Finished fetching data');
+          progressCallback?.(0, 100, 'Starting GitHub fetch');
+          progressCallback?.(100, 100, 'Finished GitHub fetch');
           return mockGitHubResult;
         },
       );
@@ -67,7 +72,7 @@ describe('MetricsService', () => {
 
       const result = await metricsService.getAllMetrics(mockProgressCallback);
 
-      expect(result.metrics.length).toBeGreaterThan(0);
+      expect(result.metrics.length).toBe(4); // 1 from Google Sheets + 3 from GitHub
       expect(result.errors).toHaveLength(0);
       expect(result.githubStats).toEqual(
         expect.objectContaining({
@@ -77,34 +82,36 @@ describe('MetricsService', () => {
         }),
       );
 
+      expect(mockMetricCalculator.calculateMetrics).toHaveBeenCalledWith(
+        mockGitHubResult.pullRequests,
+      );
+
+      // Check that the progress callback was called
       expect(mockProgressCallback).toHaveBeenCalledTimes(4);
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
         1,
         0,
         100,
-        'Google Sheets: Starting to fetch data',
+        'Google Sheets: Starting Google Sheets fetch',
       );
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
         2,
         50,
         100,
-        'Google Sheets: Finished fetching data',
+        'Google Sheets: Finished Google Sheets fetch',
       );
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
         3,
         50,
         100,
-        'GitHub: Starting to fetch data',
+        'GitHub: Starting GitHub fetch',
       );
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
         4,
         100,
         100,
-        'GitHub: Finished fetching data',
+        'GitHub: Finished GitHub fetch',
       );
-
-      expect(mockGoogleSheetsRepository.fetchMetrics).toHaveBeenCalled();
-      expect(mockGitHubRepository.fetchPullRequests).toHaveBeenCalled();
     });
 
     it('should handle errors from Google Sheets repository', async () => {

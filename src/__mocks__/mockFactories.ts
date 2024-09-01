@@ -30,21 +30,6 @@ export function createMockConfig(): jest.Mocked<IConfig> {
   };
 }
 
-// Helper function to create mock metrics
-export function createMockMetric(overrides: Partial<IMetric> = {}): IMetric {
-  return {
-    id: 'test-metric',
-    value: 10,
-    unit: 'count',
-    metric_category: 'test category',
-    metric_name: 'test metric',
-    additional_info: '',
-    source: '',
-    timestamp: new Date(), // Changed from empty string to new Date()
-    ...overrides,
-  };
-}
-
 export function createMockRequest(
   overrides: Partial<IAuthRequest> = {},
 ): IAuthRequest {

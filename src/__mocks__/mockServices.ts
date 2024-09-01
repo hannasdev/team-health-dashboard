@@ -188,6 +188,27 @@ export function createMockMongoDbClient(): jest.Mocked<IMongoDbClient> {
 
 export function createMockMetricCalculator(): jest.Mocked<IMetricCalculator> {
   return {
-    calculateMetrics: jest.fn().mockReturnValue([]),
+    calculateMetrics: jest
+      .fn()
+      .mockReturnValue([
+        createMockMetric({ id: 'github-pr-count', source: 'GitHub' }),
+        createMockMetric({ id: 'github-pr-cycle-time', source: 'GitHub' }),
+        createMockMetric({ id: 'github-pr-size', source: 'GitHub' }),
+      ]),
+  };
+}
+
+// Helper function to create mock metrics
+export function createMockMetric(overrides: Partial<IMetric> = {}): IMetric {
+  return {
+    id: 'test-metric',
+    value: 10,
+    unit: 'count',
+    metric_category: 'test category',
+    metric_name: 'test metric',
+    additional_info: '',
+    source: '',
+    timestamp: new Date(), // Changed from empty string to new Date()
+    ...overrides,
   };
 }

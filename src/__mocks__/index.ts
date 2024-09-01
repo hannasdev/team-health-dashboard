@@ -8,7 +8,6 @@ export { createMockAuthControllerResponse } from './mockControllers';
 
 export {
   createMockConfig,
-  createMockMetric,
   createMockRequest,
   createMockResponse,
   createMockExpressRequest,
@@ -38,6 +37,7 @@ export {
   createMockMongoDbClient,
   createMockMetricCalculator,
   createMockUserService,
+  createMockMetric,
 } from './mockServices';
 
 export {
