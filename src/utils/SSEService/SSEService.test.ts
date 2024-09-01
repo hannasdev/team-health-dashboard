@@ -2,24 +2,22 @@
 import { Response } from 'express';
 import { Container } from 'inversify';
 
-import { SSEService } from './SSEService.js';
+import { SSEService } from './SSEService';
 import {
   createMockLogger,
   createMockConfig,
   createMockProgressTracker,
-} from '../../__mocks__/index.js';
-import { createErrorResponse } from '../../utils/ApiResponse/ApiResponse.js';
-import { AppError } from '../errors.js';
-import { TYPES } from '../types.js';
+  createMockApiResponse,
+} from '../../__mocks__/index';
+import { AppError } from '../errors';
+import { TYPES } from '../types';
 
 import type {
+  IApiResponse,
   ILogger,
   IProgressTracker,
   IConfig,
-} from '../../interfaces/index.js';
-
-// Mock dependencies
-jest.mock('../../utils/ApiResponse/ApiResponse.js');
+} from '../../interfaces';
 
 describe('SSEService', () => {
   let sseService: SSEService;
@@ -27,6 +25,8 @@ describe('SSEService', () => {
   let mockProgressTracker: ReturnType<typeof createMockProgressTracker>;
   let mockConfig: ReturnType<typeof createMockConfig>;
   let mockResponse: jest.Mocked<Response>;
+  // ADDED: Mock API Response
+  let mockApiResponse: jest.Mocked<IApiResponse>;
   let container: Container;
 
   beforeEach(() => {
@@ -35,7 +35,7 @@ describe('SSEService', () => {
     mockProgressTracker = createMockProgressTracker();
     mockConfig = createMockConfig();
     mockConfig.SSE_TIMEOUT = 5000; // Set a specific timeout for testing
-
+    mockApiResponse = createMockApiResponse();
     // Mock setTimeout and clearTimeout
     global.setTimeout = jest.fn() as any;
     global.clearTimeout = jest.fn() as any;
@@ -54,6 +54,10 @@ describe('SSEService', () => {
     container
       .bind<IProgressTracker>(TYPES.ProgressTracker)
       .toConstantValue(mockProgressTracker);
+    // ADDED: Bind mock API Response
+    container
+      .bind<IApiResponse>(TYPES.ApiResponse)
+      .toConstantValue(mockApiResponse);
     container.bind<SSEService>(TYPES.SSEService).to(SSEService);
 
     // Get instance of SSEService
@@ -89,16 +93,50 @@ describe('SSEService', () => {
   });
 
   describe('sendEvent', () => {
-    it('should send event correctly', () => {
+    it('should send result event correctly', () => {
+      const mockResult = {
+        metrics: [{ id: '1', value: 10 }],
+        errors: [],
+        githubStats: { totalPRs: 5, fetchedPRs: 5 },
+      };
+
+      mockApiResponse.createSuccessResponse.mockReturnValue({
+        success: true,
+        data: {
+          metrics: mockResult.metrics,
+          errors: mockResult.errors,
+          githubStats: mockResult.githubStats,
+          status: 200,
+        },
+      });
+
       sseService.initialize(mockResponse);
-      sseService.sendEvent('test', { data: 'test data' });
+      sseService.sendResultEvent(mockResult);
+
+      expect(mockApiResponse.createSuccessResponse).toHaveBeenCalledWith({
+        metrics: mockResult.metrics,
+        errors: mockResult.errors,
+        githubStats: mockResult.githubStats,
+        status: 200,
+      });
 
       expect(mockResponse.write).toHaveBeenCalledWith(
-        'event: test\ndata: {"data":"test data"}\n\n',
+        expect.stringContaining('event: result\ndata:'),
       );
-      expect(mockLogger.debug).toHaveBeenCalledWith('Sent test event', {
-        dataLength: 20,
-      });
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('"success":true'),
+      );
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'data: {"success":true,"data":{"metrics":[{"id":"1","value":10}],"errors":[],"githubStats":{"totalPRs":5,"fetchedPRs":5},"status":200}}',
+        ),
+      );
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Metrics fetched and sent successfully',
+        { metricsCount: 1, errorsCount: 0 },
+      );
+      expect(mockResponse.end).toHaveBeenCalled();
     });
 
     it('should handle undefined data', () => {
@@ -190,8 +228,11 @@ describe('SSEService', () => {
   describe('handleError', () => {
     it('should handle AppError correctly', () => {
       const appError = new AppError(400, 'Test error');
-      (createErrorResponse as jest.Mock).mockReturnValue({
+      // CHANGED: Use mockApiResponse instead of mocked createErrorResponse
+      mockApiResponse.createErrorResponse.mockReturnValue({
+        success: false,
         error: 'Test error',
+        statusCode: 400,
       });
 
       sseService.initialize(mockResponse);
@@ -200,6 +241,10 @@ describe('SSEService', () => {
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error in SSEService:',
         appError,
+      );
+      expect(mockApiResponse.createErrorResponse).toHaveBeenCalledWith(
+        'Test error',
+        400,
       );
       expect(mockResponse.write).toHaveBeenCalledWith(
         expect.stringContaining('"error":"Test error"'),
@@ -211,8 +256,11 @@ describe('SSEService', () => {
 
     it('should handle generic Error correctly', () => {
       const genericError = new Error('Generic error');
-      (createErrorResponse as jest.Mock).mockReturnValue({
+      // CHANGED: Use mockApiResponse instead of mocked createErrorResponse
+      mockApiResponse.createErrorResponse.mockReturnValue({
+        success: false,
         error: 'An unexpected error occurred',
+        statusCode: 500,
       });
 
       sseService.initialize(mockResponse);
@@ -221,6 +269,10 @@ describe('SSEService', () => {
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error in SSEService:',
         genericError,
+      );
+      expect(mockApiResponse.createErrorResponse).toHaveBeenCalledWith(
+        'An unexpected error occurred',
+        500,
       );
       expect(mockResponse.write).toHaveBeenCalledWith(
         expect.stringContaining('"error":"An unexpected error occurred"'),
@@ -236,12 +288,34 @@ describe('SSEService', () => {
         githubStats: { totalPRs: 5, fetchedPRs: 5 },
       };
 
+      mockApiResponse.createSuccessResponse.mockReturnValue({
+        success: true,
+        data: {
+          metrics: mockResult.metrics,
+          errors: mockResult.errors,
+          githubStats: mockResult.githubStats,
+          status: 200,
+        },
+      });
+
       sseService.initialize(mockResponse);
       sseService.sendResultEvent(mockResult);
+
+      expect(mockApiResponse.createSuccessResponse).toHaveBeenCalledWith({
+        metrics: mockResult.metrics,
+        errors: mockResult.errors,
+        githubStats: mockResult.githubStats,
+        status: 200,
+      });
+
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('event: result\ndata:'),
+      );
 
       expect(mockResponse.write).toHaveBeenCalledWith(
         expect.stringContaining('"success":true'),
       );
+
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Metrics fetched and sent successfully',
         { metricsCount: 1, errorsCount: 0 },

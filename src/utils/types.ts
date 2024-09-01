@@ -5,6 +5,7 @@
  */
 export const TYPES = {
   Application: Symbol.for('IApplication'),
+  ApiResponse: Symbol.for('IApiResponse'),
   AuthController: Symbol.for('IAuthController'),
   AuthMiddleware: Symbol.for('IAuthMiddleware'),
   AuthService: Symbol.for('IAuthService'),

@@ -3,6 +3,7 @@ import type {
   IJwtService,
   ILogger,
   ISSEService,
+  IApiResponse,
 } from '../interfaces';
 
 export function createMockSSEService(): jest.Mocked<ISSEService> {
@@ -90,5 +91,12 @@ export function createMockJwtService(): jest.Mocked<IJwtService> {
     sign: jest.fn(),
     verify: jest.fn(),
     decode: jest.fn(),
+  };
+}
+
+export function createMockApiResponse(): jest.Mocked<IApiResponse> {
+  return {
+    createSuccessResponse: jest.fn(),
+    createErrorResponse: jest.fn(),
   };
 }

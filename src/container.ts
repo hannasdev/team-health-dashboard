@@ -31,6 +31,7 @@ import { ProgressTracker } from './services/progress/ProgressTracker.js';
 import TokenBlacklistService from './services/TokenBlacklistService/index.js';
 import { TokenService } from './services/TokenService/index.js';
 import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
+import { ApiResponse } from './utils/ApiResponse/ApiResponse.js';
 import { BcryptService } from './utils/BcryptService/index.js';
 import { JwtService } from './utils/JwtService/index.js';
 import { Logger } from './utils/Logger/index.js';
@@ -63,6 +64,7 @@ import type {
   ITokenService,
   IUserRepository,
   IMongoDbClient,
+  IApiResponse,
 } from './interfaces/index.js';
 
 const config = Config.getInstance();
@@ -78,6 +80,7 @@ export function setupContainer(
   container.bind<ILogger>(TYPES.Logger).to(Logger).inSingletonScope();
   container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
   container.bind<string>(TYPES.LogFormat).toConstantValue(config.LOG_FORMAT);
+  container.bind<IApiResponse>(TYPES.ApiResponse).to(ApiResponse);
   container.bind<ITokenService>(TYPES.TokenService).to(TokenService);
   container
     .bind<ITokenBlacklistService>(TYPES.TokenBlacklistService)

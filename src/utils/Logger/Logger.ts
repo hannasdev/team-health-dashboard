@@ -6,6 +6,7 @@ import { injectable, inject } from 'inversify';
 import winston from 'winston';
 
 import { TYPES } from '../../utils/types.js';
+import { serializeError } from '../errorUtils.js';
 
 import type { IConfig } from '../../interfaces/IConfig.js';
 import type { ILogger } from '../../interfaces/ILogger.js';
@@ -66,10 +67,21 @@ export class Logger implements ILogger {
   }
 
   error(message: string, error?: Error, meta?: Record<string, unknown>): void {
+    const serializedError = error ? serializeError(error) : undefined;
     if (process.env.NODE_ENV === 'test') {
-      console.log(JSON.stringify({ level: 'error', message, error, ...meta }));
+      console.log(
+        JSON.stringify({
+          level: 'error',
+          message,
+          error: serializedError,
+          ...meta,
+        }),
+      );
     } else {
-      (this.logger as winston.Logger).error(message, { error, ...meta });
+      (this.logger as winston.Logger).error(message, {
+        error: serializedError,
+        ...meta,
+      });
     }
   }
 

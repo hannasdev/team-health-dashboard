@@ -8,6 +8,7 @@ import {
   UserNotFoundError,
   InvalidRefreshTokenError,
   InvalidResetTokenError,
+  AppError,
 } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
@@ -129,8 +130,7 @@ export class AuthService implements IAuthService {
         'Error refreshing token:',
         error instanceof Error ? error : new Error('Unknown error'),
       );
-
-      throw error;
+      throw error instanceof AppError ? error : new InvalidRefreshTokenError();
     }
   }
 

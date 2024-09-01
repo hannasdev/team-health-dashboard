@@ -3,7 +3,6 @@ import { Response, Router, NextFunction } from 'express';
 
 import { container } from '../container.js';
 import { MetricsController } from '../controllers/MetricsController/MetricsController.js';
-import { createErrorResponse } from '../utils/ApiResponse/index.js';
 import { AppError } from '../utils/errors.js';
 import { TYPES } from '../utils/types.js';
 
@@ -11,6 +10,7 @@ import type {
   IAuthRequest,
   IAuthMiddleware,
   ILogger,
+  IApiResponse,
 } from '../interfaces/index.js';
 
 const router = Router();
@@ -22,6 +22,7 @@ const getAuthMiddleware = () =>
   container.get<IAuthMiddleware>(TYPES.AuthMiddleware);
 
 const getLogger = () => container.get<ILogger>(TYPES.Logger);
+const getApiResponse = () => container.get<IApiResponse>(TYPES.ApiResponse);
 
 router.get(
   '/metrics',
@@ -33,7 +34,7 @@ router.get(
         logger.warn('Authentication failed:', err);
         return res
           .status(401)
-          .json(createErrorResponse('No token provided', 401));
+          .json(getApiResponse().createErrorResponse('No token provided', 401));
       }
       next();
     });

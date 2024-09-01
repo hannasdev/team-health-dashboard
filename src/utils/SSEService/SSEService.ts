@@ -3,7 +3,6 @@ import { Response } from 'express';
 import { injectable, inject } from 'inversify';
 
 import { ProgressCallback } from '../../types/index.js';
-import { createErrorResponse } from '../../utils/ApiResponse/ApiResponse.js';
 import { AppError } from '../errors.js';
 import { TYPES } from '../types.js';
 
@@ -12,6 +11,7 @@ import type {
   ISSEService,
   IProgressTracker,
   IConfig,
+  IApiResponse,
 } from '../../interfaces/index.js';
 
 @injectable()
@@ -26,6 +26,7 @@ export class SSEService implements ISSEService {
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.ProgressTracker) private progressTracker: IProgressTracker,
     @inject(TYPES.Config) private config: IConfig,
+    @inject(TYPES.ApiResponse) private apiResponse: IApiResponse,
   ) {}
 
   public initialize(res: Response): void {
@@ -101,7 +102,7 @@ export class SSEService implements ISSEService {
     if (this.isClientConnected && !this.isResponseEnded) {
       this.sendEvent(
         'error',
-        createErrorResponse(
+        this.apiResponse.createErrorResponse(
           error instanceof AppError
             ? error.message
             : 'An unexpected error occurred',
@@ -116,13 +117,13 @@ export class SSEService implements ISSEService {
   public sendResultEvent(result: any): void {
     try {
       if (this.isClientConnected && !this.isResponseEnded) {
-        this.sendEvent('result', {
-          success: true,
-          data: result.metrics,
+        const response = this.apiResponse.createSuccessResponse({
+          metrics: result.metrics,
           errors: result.errors,
           githubStats: result.githubStats,
           status: result.errors.length > 0 ? 207 : 200,
         });
+        this.sendEvent('result', response);
         this.logger.info('Metrics fetched and sent successfully', {
           metricsCount: result.metrics.length,
           errorsCount: result.errors.length,

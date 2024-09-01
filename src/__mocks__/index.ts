@@ -45,4 +45,5 @@ export {
   createCacheDecoratorMock,
   createMockBcryptService,
   createMockJwtService,
+  createMockApiResponse,
 } from './mockUtils';
