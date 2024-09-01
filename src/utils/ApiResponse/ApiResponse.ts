@@ -1,16 +1,25 @@
-// src/utils/ApiResponse.ts
+// src/utils/ApiResponse/ApiResponse.ts
+
+import { injectable } from 'inversify';
 
 import type { IApiResponse } from '../../interfaces';
 
-export function createSuccessResponse<T>(data: T): IApiResponse<T> {
-  return { success: true, ...data };
-}
+@injectable()
+export class ApiResponse implements IApiResponse {
+  createSuccessResponse<T>(data: T): { success: true; data: T } {
+    return { success: true, data };
+  }
 
-export const createErrorResponse = (
-  message: string,
-  statusCode: number = 500,
-) => ({
-  success: false,
-  error: message,
-  statusCode,
-});
+  createErrorResponse(
+    message: string,
+    details?: any,
+    statusCode: number = 500,
+  ): {
+    success: false;
+    error: string;
+    details?: any;
+    statusCode: number;
+  } {
+    return { success: false, error: message, details, statusCode };
+  }
+}

@@ -5,14 +5,7 @@ import { inject, injectable } from 'inversify';
 
 import { User } from 'models/User.js';
 
-import {
-  createSuccessResponse,
-  createErrorResponse,
-} from '../../utils/ApiResponse/index.js';
-import {
-  UnauthorizedError,
-  InvalidRefreshTokenError,
-} from '../../utils/errors.js';
+import { UnauthorizedError, InvalidInputError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
@@ -20,6 +13,7 @@ import type {
   IAuthService,
   IAuthRequest,
   ILogger,
+  IApiResponse,
 } from '../../interfaces';
 
 @injectable()
@@ -27,6 +21,7 @@ export class AuthController implements IAuthController {
   constructor(
     @inject(TYPES.AuthService) private authService: IAuthService,
     @inject(TYPES.Logger) private logger: ILogger,
+    @inject(TYPES.ApiResponse) private apiResponse: IApiResponse,
   ) {}
 
   public async login(
@@ -37,11 +32,11 @@ export class AuthController implements IAuthController {
     try {
       const { email, password } = req.body;
       if (!email || !password) {
-        throw new UnauthorizedError('Email and password are required');
+        throw new InvalidInputError('Email and password are required');
       }
       const result = await this.authService.login(email, password);
       res.json(
-        createSuccessResponse({
+        this.apiResponse.createSuccessResponse({
           ...result,
           user: this.sanitizeUser(result.user),
         }),
@@ -60,12 +55,12 @@ export class AuthController implements IAuthController {
       this.logger.debug('Register request received', { email: req.body.email });
       const { email, password } = req.body;
       if (!email || !password) {
-        throw new UnauthorizedError('Email and password are required');
+        throw new InvalidInputError('Email and password are required');
       }
       const result = await this.authService.register(email, password);
       this.logger.debug('Register successful', { email });
       res.status(201).json(
-        createSuccessResponse({
+        this.apiResponse.createSuccessResponse({
           ...result,
           user: this.sanitizeUser(result.user),
         }),
@@ -85,10 +80,10 @@ export class AuthController implements IAuthController {
       const { refreshToken } = req.body;
       if (!refreshToken) {
         this.logger.error('Refresh token is required');
-        throw new UnauthorizedError('Refresh token is required');
+        throw new InvalidInputError('Refresh token is required');
       }
       const result = await this.authService.refreshToken(refreshToken);
-      res.json(createSuccessResponse(result));
+      res.json(this.apiResponse.createSuccessResponse(result));
     } catch (error) {
       next(error);
     }
@@ -102,7 +97,7 @@ export class AuthController implements IAuthController {
     try {
       const { refreshToken } = req.body;
       if (!refreshToken) {
-        throw new UnauthorizedError('Refresh token is required');
+        throw new InvalidInputError('Refresh token is required');
       }
       await this.authService.logout(refreshToken);
       res.status(204).send();
