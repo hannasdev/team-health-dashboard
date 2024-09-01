@@ -33,3 +33,4 @@ export type { ITeamHealthDashboardApp } from './ITeamHealthDashboardApp.js';
 export type { ITokenBlacklistService } from './ITokenBlacklistService.js';
 export type { ITokenService } from './ITokenService.js';
 export type { IUserRepository } from './IUserRepository.js';
+export type { IMongoAdapter } from './IMongoAdapter';

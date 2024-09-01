@@ -9,7 +9,7 @@ import { TYPES } from '../../utils/types.js';
 import type {
   ILogger,
   IUserRepository,
-  IMongoDbClient,
+  IMongoAdapter,
 } from '../../interfaces/index.js';
 
 @injectable()
@@ -18,9 +18,9 @@ export class UserRepository implements IUserRepository {
 
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
-    @inject(TYPES.MongoDbClient) private mongoDbClient: IMongoDbClient,
+    @inject(TYPES.MongoAdapter) private mongoAdapter: IMongoAdapter,
   ) {
-    this.collection = this.mongoDbClient.getDb().collection('users');
+    this.collection = this.mongoAdapter.getCollection('users');
   }
 
   async findByEmail(email: string): Promise<User | undefined> {

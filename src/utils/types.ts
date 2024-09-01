@@ -4,8 +4,8 @@
  * Provides unique symbols that we use to identify our injectable dependencies.
  */
 export const TYPES = {
-  Application: Symbol.for('IApplication'),
   ApiResponse: Symbol.for('IApiResponse'),
+  Application: Symbol.for('IApplication'),
   AuthController: Symbol.for('IAuthController'),
   AuthMiddleware: Symbol.for('IAuthMiddleware'),
   AuthService: Symbol.for('IAuthService'),
@@ -26,6 +26,7 @@ export const TYPES = {
   MetricCalculator: Symbol.for('IMetricCalculator'),
   MetricsController: Symbol.for('IMetricsController'),
   MetricsService: Symbol.for('IMetricsService'),
+  MongoAdapter: Symbol.for('IMongoAdapter'),
   MongoDbClient: Symbol.for('MongoDbClient'),
   ProgressTracker: Symbol.for('IProgressTracker'),
   SSEService: Symbol.for('ISSEService'),

@@ -12,6 +12,7 @@ import { Container } from 'inversify';
 
 import { GitHubAdapter } from './adapters/GitHubAdapter.js';
 import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter.js';
+import { MongoAdapter } from './adapters/MongoAdapter.js';
 import { container as appContainer } from './appContainer.js';
 import { Config } from './config/config.js';
 import { AuthController } from './controllers/AuthController/AuthController.js';
@@ -39,7 +40,7 @@ import { SSEService } from './utils/SSEService/SSEService.js';
 import { TYPES } from './utils/types.js';
 
 import type {
-  ISSEService,
+  IApiResponse,
   IApplication,
   IAuthController,
   IAuthMiddleware,
@@ -58,13 +59,14 @@ import type {
   IMetricCalculator,
   IMetricsController,
   IMetricsService,
+  IMongoAdapter,
+  IMongoDbClient,
   IProgressTracker,
+  ISSEService,
   ITeamHealthDashboardApp,
   ITokenBlacklistService,
   ITokenService,
   IUserRepository,
-  IMongoDbClient,
-  IApiResponse,
 } from './interfaces/index.js';
 
 const config = Config.getInstance();
@@ -100,6 +102,7 @@ export function setupContainer(
     .inSingletonScope();
 
   // 3. Adapters (Clients for external services)
+  container.bind<IMongoAdapter>(TYPES.MongoAdapter).to(MongoAdapter);
   container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
   container
     .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
