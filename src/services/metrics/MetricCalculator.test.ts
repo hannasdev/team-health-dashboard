@@ -35,9 +35,10 @@ describe('MetricCalculator', () => {
 
       const metrics = calculator.calculateMetrics(mockPullRequests);
 
-      expect(metrics).toHaveLength(2);
-      expect(metrics[0].id).toBe('github-pr-cycle-time');
-      expect(metrics[1].id).toBe('github-pr-size');
+      expect(metrics).toHaveLength(3);
+      expect(metrics[0].id).toBe('github-pr-count');
+      expect(metrics[1].id).toBe('github-pr-cycle-time');
+      expect(metrics[2].id).toBe('github-avg-pr-size');
     });
   });
 

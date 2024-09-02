@@ -68,7 +68,7 @@ export class MetricCalculator implements IMetricCalculator {
     const averageCycleTimeInHours = averageCycleTime / (1000 * 60 * 60);
 
     return {
-      id: 'github-avg-merge-time',
+      id: 'github-pr-cycle-time',
       metric_category: 'GitHub',
       metric_name: 'Average Time to Merge',
       value: Math.round(averageCycleTimeInHours),
