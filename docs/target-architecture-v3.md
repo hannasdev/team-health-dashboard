@@ -250,6 +250,7 @@ classDiagram
         Logger
         Config
         ErrorHandler
+        EventEmitter
     }
 
     %% Presentation Layer
@@ -267,12 +268,14 @@ classDiagram
     BusinessLogicLayer --> TokenManagementService
     BusinessLogicLayer --> MetricCalculator
     BusinessLogicLayer --> SSEService
+    BusinessLogicLayer --> ProgressTracker
 
     %% Data Access Layer
     DataAccessLayer --> MetricsRepository
     DataAccessLayer --> UserRepository
     DataAccessLayer --> GitHubRepository
     DataAccessLayer --> GoogleSheetsRepository
+    DataAccessLayer --> TokenBlacklistRepository
 
     %% Adapters
     DataAccessLayer --> MongoAdapter
@@ -293,6 +296,7 @@ classDiagram
 
     MetricsService --> MetricsRepository
     MetricsService --> MetricCalculator
+    MetricsService --> ProgressTracker
     AuthenticationService --> TokenManagementService
     AuthenticationService --> UserService
     UserService --> UserRepository
@@ -305,8 +309,19 @@ classDiagram
     GitHubRepository --> GitHubAdapter
     GoogleSheetsRepository --> GoogleSheetsAdapter
     UserRepository --> MongoAdapter
+    TokenBlacklistRepository --> MongoAdapter
 
-    %% Class definitions
+    %% New connections
+    MiddlewareGroup --> AuthMiddleware
+    AuthMiddleware --> TokenManagementService
+    AuthMiddleware --> SSEService
+
+    SSEService --> EventEmitter
+    SSEService --> ProgressTracker
+
+    TokenManagementService --> TokenBlacklistRepository
+
+    %% Class definitions (updated and new)
     class App {
         +configureMiddleware()
         +configureRoutes()
@@ -316,9 +331,16 @@ classDiagram
     class MiddlewareGroup {
         ErrorHandlingMiddleware
         LoggingMiddleware
-        AuthenticationMiddleware
+        AuthMiddleware
         CorsMiddleware
         BodyParserMiddleware
+    }
+
+    class AuthMiddleware {
+        +handle(req, res, next)
+        -handleSSEAuth(req, res, next, decoded)
+        -isTokenExpired(decoded)
+        -handleTokenRefresh(token, refreshToken, req, res)
     }
 
     class MetricsController {
@@ -337,7 +359,8 @@ classDiagram
     }
 
     class MetricsService {
-        +getAllMetrics(timePeriod)
+        +getAllMetrics(timePeriod, progressCallback)
+        +cancelOperation()
     }
 
     class AuthenticationService {
@@ -368,43 +391,36 @@ classDiagram
     }
 
     class SSEService {
-        +initializeConnection(res)
-        +sendEvent(eventName, data)
+        +initialize(res)
+        +sendEvent(event, data)
+        +endResponse()
+        +handleClientDisconnection()
+        +handleError(error)
+        +progressCallback(current, total, message)
     }
 
-    class MetricsRepository {
-        +getMetrics(source, timePeriod)
-    }
-
-    class UserRepository {
-        +findByEmail(email)
-        +create(userData)
-        +findById(id)
-        +update(id, data)
+    class ProgressTracker {
+        +trackProgress(current, total, message)
+        +getProgress()
     }
 
     class GitHubRepository {
-        +getPullRequests(timePeriod)
+        +fetchPullRequests(timePeriod, progressCallback)
+        +cancelOperation()
     }
 
     class GoogleSheetsRepository {
         +getMetricsData()
     }
 
-    class MongoAdapter {
-        +connect()
-        +disconnect()
-        +find(collection, query)
-        +insert(collection, data)
-        +update(collection, query, data)
-        +delete(collection, query)
+    class TokenBlacklistRepository {
+        +addToBlacklist(token, expiresAt)
+        +isBlacklisted(token)
+        +removeExpired()
     }
 
-    class GitHubAdapter {
-        +graphqlQuery(query, variables)
-    }
-
-    class GoogleSheetsAdapter {
-        +getValues(spreadsheetId, range)
+    class EventEmitter {
+        +on(event, listener)
+        +emit(event, ...args)
     }
 ```
