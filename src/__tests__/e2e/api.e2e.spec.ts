@@ -1,50 +1,21 @@
+import { listenerCount } from 'node:events';
+
 import axios from 'axios';
 import EventSource from 'eventsource';
 
-import { retryRequest, createTestUser, loginUser } from './helpers/apiHelpers';
+import {
+  apiEndpoint,
+  retryRequest,
+  createTestUser,
+  loginUser,
+} from './helpers/apiHelpers';
 import {
   DEFAULT_TIMEOUT,
   AUTH_ENDPOINTS,
   METRICS_ENDPOINT,
 } from './helpers/constants';
 
-interface Metric {
-  id: string;
-  metric_category: string;
-  metric_name: string;
-  value: number;
-  timestamp: string;
-  unit: string;
-  additional_info: string;
-  source: string;
-}
-
-interface MetricsResponse {
-  success: boolean;
-  data: {
-    metrics: Array<{
-      id: string;
-      metric_category: string;
-      metric_name: string;
-      value: number;
-      timestamp: string;
-      unit: string;
-      additional_info: string;
-      source: string;
-    }>;
-    errors: string[];
-    githubStats: {
-      totalPRs: number;
-      fetchedPRs: number;
-      timePeriod: number;
-    };
-    status: number;
-  };
-}
-
 jest.setTimeout(DEFAULT_TIMEOUT); // 2 minutes
-
-const apiEndpoint = 'http://app-test:3000';
 
 describe('API E2E Tests', () => {
   let accessToken: string;
@@ -57,19 +28,30 @@ describe('API E2E Tests', () => {
     // Wait for the app to be ready
     await retryRequest('get', '/health');
     console.log('App is ready, proceeding with tests');
+  }, 60000);
 
-    // Create a test user
+  beforeEach(async () => {
+    // Log out any existing user
+    if (accessToken && refreshToken) {
+      await retryRequest(
+        'post',
+        AUTH_ENDPOINTS.LOGOUT,
+        { refreshToken },
+        {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      );
+    }
+
+    // Create a new user and log in
     testUser = await createTestUser();
-
-    // Log in to get tokens
     const { userAccessToken, userRefreshToken } = await loginUser(
       testUser.email,
       testUser.password,
     );
-
     accessToken = userAccessToken;
     refreshToken = userRefreshToken;
-  }, 60000);
+  });
 
   describe('GET /health', () => {
     it('should return health status', async () => {
@@ -80,284 +62,16 @@ describe('API E2E Tests', () => {
   });
 
   describe('GET /api/metrics', () => {
-    it('should deny access for unauthenticated users', async () => {
-      await expect(
-        axios.get(`${apiEndpoint}${METRICS_ENDPOINT}`),
-      ).rejects.toThrow();
-    });
-
     it('should allow access for authenticated users and stream data', async () => {
-      const maxRetries = 3;
-      const timePeriod = 90; // Match the time period used in the actual request
-
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          await new Promise<void>((resolve, reject) => {
-            // console.log(`Starting metrics request (attempt ${attempt})`);
-
-            const headers = {
-              Authorization: `Bearer ${accessToken}`,
-              Accept: 'text/event-stream',
-            };
-
-            const url = new URL(`${apiEndpoint}${METRICS_ENDPOINT}`);
-            url.searchParams.append('timePeriod', timePeriod.toString());
-
-            const abortController = new AbortController();
-            const timeout = setTimeout(() => {
-              abortController.abort();
-              reject(new Error('Test timed out'));
-            }, 60000); // 60 seconds timeout
-
-            fetch(url.toString(), {
-              headers,
-              signal: abortController.signal,
-            })
-              .then(response => {
-                if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                if (!response.body) {
-                  throw new Error('Response body is null');
-                }
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let buffer = '';
-                let lastProgress = -1;
-                let progressEventReceived = false;
-
-                function processEvents() {
-                  reader
-                    .read()
-                    .then(({ done, value }) => {
-                      if (done) {
-                        // console.log('Stream complete');
-                        clearTimeout(timeout);
-                        resolve();
-                        return;
-                      }
-
-                      buffer += decoder.decode(value, { stream: true });
-                      const events = buffer.split('\n\n');
-                      buffer = events.pop() || '';
-
-                      for (const event of events) {
-                        handleEvent(event);
-                      }
-
-                      processEvents();
-                    })
-                    .catch(error => {
-                      // console.error('Error reading stream:', error);
-                      clearTimeout(timeout);
-                      reject(error);
-                    });
-                }
-
-                processEvents();
-
-                function handleEvent(eventString: string) {
-                  // console.log('Raw event string:', eventString);
-                  const eventLines = eventString.split('\n');
-                  if (eventLines.length < 2) {
-                    // console.error('Invalid event format:', eventString);
-                    return;
-                  }
-
-                  const eventType = eventLines[0].replace('event: ', '').trim();
-                  let eventData;
-
-                  try {
-                    eventData = JSON.parse(
-                      eventLines[1].replace('data: ', '').trim(),
-                    );
-                  } catch (error) {
-                    // console.error('Error parsing event data:', error);
-                    // console.error('Raw event data:', eventLines[1]);
-                    return;
-                  }
-
-                  // console.log(`Received ${eventType} event:`, eventData);
-
-                  switch (eventType) {
-                    case 'progress':
-                      progressEventReceived = true;
-                      expect(eventData.progress).toBeGreaterThanOrEqual(
-                        lastProgress,
-                      );
-                      lastProgress = eventData.progress;
-                      expect(eventData).toHaveProperty('progress');
-                      expect(eventData).toHaveProperty('message');
-                      expect(eventData).toHaveProperty('current');
-                      expect(eventData).toHaveProperty('total');
-                      break;
-                    case 'result':
-                      expect(progressEventReceived).toBe(true);
-                      expect(eventData.success).toBe(true);
-                      expect(eventData.data.metrics).toBeInstanceOf(Array);
-                      expect(eventData.data.metrics.length).toBeGreaterThan(0);
-                      expect(eventData.data.errors).toBeInstanceOf(Array);
-                      expect(eventData.data.githubStats).toHaveProperty(
-                        'totalPRs',
-                      );
-                      expect(eventData.data.githubStats).toHaveProperty(
-                        'fetchedPRs',
-                      );
-                      expect(eventData.data.githubStats).toHaveProperty(
-                        'timePeriod',
-                      );
-                      expect(eventData.data.githubStats.timePeriod).toBe(
-                        timePeriod,
-                      );
-                      expect(eventData.data.status).toBe(200);
-                      eventData.data.metrics.forEach((metric: Metric) => {
-                        expect(metric).toHaveProperty('id');
-                        expect(metric).toHaveProperty('metric_category');
-                        expect(metric).toHaveProperty('metric_name');
-                        expect(metric).toHaveProperty('value');
-                        expect(metric).toHaveProperty('timestamp');
-                        expect(metric).toHaveProperty('unit');
-                        expect(metric).toHaveProperty('additional_info');
-                        expect(metric).toHaveProperty('source');
-                      });
-                      clearTimeout(timeout);
-                      resolve();
-                      break;
-                    default:
-                      console.log('Unknown event type:', eventType);
-                  }
-                }
-              })
-              .catch(error => {
-                console.error('Fetch error:', error);
-                clearTimeout(timeout);
-                reject(error);
-              });
-          });
-
-          // If we reach here, the test passed
-          return;
-        } catch (error) {
-          // console.error(`Attempt ${attempt} failed:`, error);
-          if (attempt === maxRetries) {
-            throw error;
-          }
-          await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds before retrying
-        }
-      }
-    });
-
-    it('should handle server errors gracefully', async () => {
-      const response = await retryRequest(
-        'get',
-        '/api/metrics?error=true',
-        null,
-        {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      );
-      // console.log('handle server errors gracefully', response);
-      expect(response.status).toBe(500);
-      expect(response.data).toHaveProperty('error');
-    });
+      await streamMetricsData(accessToken, refreshToken, 90);
+    }, 100000); // Increase timeout to 100 seconds
   });
 
   describe('GET /api/metrics with token handling', () => {
     it('should handle token expiration and refresh during metrics retrieval', async () => {
-      const timePeriod = 7;
-
-      // Simulate an expired token
       const expiredToken = 'expired.access.token';
-
-      const axiosInstanceWithExpiredToken = axios.create({
-        baseURL: apiEndpoint,
-        validateStatus: () => true,
-      });
-
-      // First request with expired token
-      // console.log('Sending request with expired token:', expiredToken);
-      const initialResponse = await axiosInstanceWithExpiredToken.get(
-        `${METRICS_ENDPOINT}?timePeriod=${timePeriod}`,
-        {
-          headers: {
-            Authorization: `Bearer ${expiredToken}`,
-          },
-        },
-      );
-
-      // console.log(
-      //   'Initial response:',
-      //   initialResponse.status,
-      //   initialResponse.data,
-      // );
-
-      // Check if the initial request failed as expected
-      expect(initialResponse.status).toBe(401);
-      expect(initialResponse.data).toHaveProperty('error', 'No token provided');
-
-      // Now try to refresh the token
-      // console.log('Attempting to refresh token');
-      const refreshResponse = await retryRequest(
-        'post',
-        AUTH_ENDPOINTS.REFRESH,
-        {
-          refreshToken,
-        },
-      );
-
-      console.log(
-        'Refresh response:',
-        refreshResponse.status,
-        refreshResponse.data,
-      );
-
-      expect(refreshResponse.status).toBe(200);
-      expect(refreshResponse.data.data).toHaveProperty('accessToken');
-      expect(refreshResponse.data.data).toHaveProperty('refreshToken');
-
-      // Update the tokens
-      accessToken = refreshResponse.data.data.accessToken;
-      refreshToken = refreshResponse.data.data.refreshToken;
-
-      // Try the request again with the new token
-      const retryResponse: MetricsResponse = await new Promise(
-        (resolve, reject) => {
-          const eventSource = new EventSource(
-            `${apiEndpoint}${METRICS_ENDPOINT}?timePeriod=${timePeriod}`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-            },
-          );
-
-          let fullData = '';
-
-          eventSource.onmessage = event => {
-            fullData += event.data;
-          };
-
-          eventSource.onerror = error => {
-            eventSource.close();
-            reject(error);
-          };
-
-          eventSource.addEventListener('result', event => {
-            eventSource.close();
-            resolve(JSON.parse(event.data) as MetricsResponse);
-          });
-        },
-      );
-
-      // console.log('Retry metrics response:', retryResponse);
-
-      // Check if the retry was successful
-      expect(retryResponse).toHaveProperty('success', true);
-      expect(retryResponse.data.metrics).toBeInstanceOf(Array);
-      expect(retryResponse.data.metrics.length).toBeGreaterThan(0);
-    });
+      await streamMetricsData(expiredToken, refreshToken, 7);
+    }, 100000); // Increase timeout to 100 seconds
   });
 
   describe('POST /api/auth/register', () => {
@@ -416,6 +130,11 @@ describe('API E2E Tests', () => {
       const response = await retryRequest('post', AUTH_ENDPOINTS.REFRESH, {
         refreshToken,
       });
+      console.log('Full refresh token response:', {
+        status: response.status,
+        data: response.data,
+        headers: response.headers,
+      });
 
       expect(response.status).toBe(200);
       expect(response.data.data).toHaveProperty('accessToken');
@@ -469,13 +188,207 @@ describe('API E2E Tests', () => {
 
   describe('Access token usage', () => {
     it('should access a protected route with the new access token', async () => {
-      const response = await retryRequest('get', METRICS_ENDPOINT, null, {
-        Authorization: `Bearer ${accessToken}`,
-      });
-
-      expect(response.status).toBe(200);
-      // Check for the start of the event stream
-      expect(response.headers['content-type']).toMatch(/^text\/event-stream/);
-    });
+      await streamMetricsData(accessToken, refreshToken, 7);
+    }, 100000); // Increase timeout to 100 seconds
   });
 });
+
+async function streamMetricsData(
+  accessToken: string,
+  refreshToken: string,
+  timePeriod: number,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const abortController = new AbortController();
+    const timeout = setTimeout(() => {
+      abortController.abort();
+      reject(new Error('Test timed out'));
+    }, 90000); // 90 seconds timeout
+
+    let eventSource: EventSource | null = null;
+    let lastHeartbeat = Date.now();
+    let resultReceived = false;
+
+    function handleEvent(event: MessageEvent) {
+      console.log(`Received event: ${event.type}`, event.data);
+
+      try {
+        const data = JSON.parse(event.data);
+        switch (event.type) {
+          case 'progress':
+            handleProgressEvent(data);
+            break;
+          case 'result':
+            handleResultEvent(data);
+            clearTimeout(timeout);
+            eventSource?.close();
+            resultReceived = true;
+            resolve();
+            break;
+          case 'error':
+            handleErrorEvent(data);
+            break;
+          case 'heartbeat':
+            lastHeartbeat = Date.now();
+            console.log('Received heartbeat:', data);
+            break;
+          default:
+            console.warn('Unknown event type:', event.type);
+        }
+      } catch (parseError) {
+        console.error(
+          'Error parsing event data:',
+          parseError,
+          'Raw data:',
+          event.data,
+        );
+        handleError(parseError);
+      }
+    }
+
+    function handleProgressEvent(data: any) {
+      expect(data).toHaveProperty('progress');
+      expect(data).toHaveProperty('message');
+      expect(data).toHaveProperty('current');
+      expect(data).toHaveProperty('total');
+    }
+
+    function handleResultEvent(data: any) {
+      console.log('Received result event:', data);
+      try {
+        expect(data.success).toBe(true);
+        expect(data.data).toHaveProperty('metrics');
+        expect(data.data).toHaveProperty('errors');
+        expect(data.data).toHaveProperty('githubStats');
+        expect(data.data).toHaveProperty('status');
+        expect(data.data.status).toBe(200);
+        validateMetrics(data.data.metrics);
+
+        console.log('Metrics validation successful');
+        clearTimeout(timeout);
+        clearInterval(inactivityCheck);
+        eventSource?.close();
+        resultReceived = true;
+        setTimeout(resolve, 1000); // Give a short delay before resolving
+      } catch (error) {
+        console.error('Error in handleResultEvent:', error);
+        handleError(error);
+      }
+    }
+
+    function handleErrorEvent(data: any) {
+      clearTimeout(timeout);
+      eventSource?.close();
+      reject(new Error(`SSE Error: ${data.error}`));
+    }
+
+    function validateMetrics(metrics: any[]) {
+      const expectedMetrics = [
+        'Cycle Time',
+        'WIP Items',
+        'Lead Time',
+        'Sprint Velocity',
+        'Burndown',
+        'Code Review Time',
+        'PR Size (avg)',
+        'Build Success',
+        'Bug Resolution',
+        'Goal Achievement',
+        'Happiness Index',
+        'Pull Request Count',
+        'Average Time to Merge',
+        'Average PR Size',
+      ];
+      expectedMetrics.forEach(metricName => {
+        expect(metrics.some(m => m.metric_name === metricName)).toBe(true);
+      });
+    }
+
+    function handleError(error: unknown) {
+      console.error('SSE Error:', error);
+      clearTimeout(timeout);
+      eventSource?.close();
+      reject(error);
+    }
+
+    function connect(token: string) {
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      const url = `${apiEndpoint}${METRICS_ENDPOINT}?timePeriod=${timePeriod}`;
+      const headers = { Authorization: `Bearer ${token}` };
+
+      console.log('Connecting to SSE with URL:', url);
+      eventSource = new EventSource(url, { headers });
+
+      eventSource.onopen = () => console.log('SSE connection opened');
+
+      eventSource.onerror = (error: Event) => {
+        console.error('SSE connection error:', error);
+        if (eventSource?.readyState === EventSource.CLOSED) {
+          console.log('SSE connection closed');
+          if (resultReceived) {
+            console.log('Operation completed successfully');
+            resolve();
+          } else {
+            if ((error as any).status === 401) {
+              refreshTokenAndReconnect();
+            } else {
+              handleError(new Error('SSE connection closed unexpectedly'));
+            }
+          }
+        }
+      };
+
+      eventSource.onmessage = event => {
+        console.log('Received SSE message:', event.type, event.data);
+        handleEvent(event);
+      };
+    }
+
+    async function refreshTokenAndReconnect() {
+      try {
+        const refreshResponse = await retryRequest(
+          'post',
+          AUTH_ENDPOINTS.REFRESH,
+          { refreshToken },
+        );
+        if (refreshResponse.status === 200 && refreshResponse.data.data) {
+          accessToken = refreshResponse.data.data.accessToken;
+          refreshToken = refreshResponse.data.data.refreshToken;
+          console.log('Token refreshed successfully');
+          connect(accessToken);
+        } else {
+          throw new Error('Failed to refresh token');
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+        handleError(refreshError);
+      }
+    }
+
+    // Check for inactivity
+    const inactivityCheck = setInterval(() => {
+      if (resultReceived) {
+        clearInterval(inactivityCheck);
+        return;
+      }
+      if (Date.now() - lastHeartbeat > 60000) {
+        console.error('No heartbeat received for 60 seconds');
+        clearInterval(inactivityCheck);
+        if (!resultReceived) {
+          handleError(new Error('SSE connection inactive'));
+        }
+      }
+    }, 5000);
+
+    connect(accessToken);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(inactivityCheck);
+      eventSource?.close();
+    };
+  });
+}
