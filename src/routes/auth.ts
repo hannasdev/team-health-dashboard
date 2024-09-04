@@ -24,24 +24,5 @@ router.post('/register', (req: Request, res: Response, next: NextFunction) =>
 router.post('/refresh', (req: Request, res: Response, next: NextFunction) =>
   getAuthController().refreshToken(req, res, next),
 );
-// router.post('/revoke', (req: Request, res: Response, next: NextFunction) =>
-//   getAuthController().revokeRefreshToken(req, res, next),
-// );
 
 export default router;
-// export default function (authController: AuthController) {
-//   const router = Router();
-//   router.post('/register', (req, res, next) =>
-//     authController.register(req, res, next),
-//   );
-//   router.post('/login', (req, res, next) =>
-//     authController.login(req, res, next),
-//   );
-//   router.post('/logout', (req, res, next) =>
-//     authController.logout(req, res, next),
-//   );
-//   router.post('/refresh', (req, res, next) =>
-//     authController.refreshToken(req, res, next),
-//   );
-//   return router;
-// }
