@@ -1,4 +1,4 @@
-// src/services/SSEService.ts
+// src/utils/SSEService/SSEService.ts
 import { Response } from 'express';
 import { injectable, inject } from 'inversify';
 
@@ -12,28 +12,33 @@ import type {
   IProgressTracker,
   IConfig,
   IApiResponse,
+  IEventEmitter,
 } from '../../interfaces/index.js';
 
 @injectable()
 export class SSEService implements ISSEService {
-  private isClientConnected: boolean = true;
   private isResponseEnded: boolean = false;
   private res: Response | null = null;
   private timeout: NodeJS.Timeout | null = null;
   private heartbeatInterval: NodeJS.Timeout | null = null;
+  private heartbeatIntervalDuration: number;
 
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.ProgressTracker) private progressTracker: IProgressTracker,
     @inject(TYPES.Config) private config: IConfig,
     @inject(TYPES.ApiResponse) private apiResponse: IApiResponse,
-  ) {}
+    @inject(TYPES.EventEmitter) private eventEmitter: IEventEmitter,
+  ) {
+    this.heartbeatIntervalDuration = this.config.HEARTBEAT_INTERVAL;
+  }
 
   public initialize(res: Response): void {
     this.res = res;
     this.setupSSE();
     this.setupTimeout();
     this.startHeartbeat();
+    this.setupEventListeners();
   }
 
   private setupSSE(): void {
@@ -57,11 +62,17 @@ export class SSEService implements ISSEService {
     }, timeoutDuration);
   }
 
-  public sendEvent(event: string, data: any): void {
+  private setupEventListeners(): void {
+    this.eventEmitter.on('sendEvent', this.handleSendEvent.bind(this));
+    this.eventEmitter.on('endResponse', this.endResponse.bind(this));
+    this.eventEmitter.on('error', this.handleError.bind(this));
+  }
+
+  private emitEvent(event: string, data: any): void {
     if (!this.res) {
       throw new Error('SSEService not initialized with a Response object');
     }
-    if (this.isClientConnected && !this.isResponseEnded) {
+    if (!this.isResponseEnded) {
       const dataString = data !== undefined ? JSON.stringify(data) : '';
       this.res.write(`event: ${event}\ndata: ${dataString}\n\n`);
       this.logger.debug(`Sent ${event} event`, {
@@ -70,13 +81,24 @@ export class SSEService implements ISSEService {
     }
   }
 
+  private handleSendEvent(event: string, data: any): void {
+    this.emitEvent(event, data);
+  }
+
+  public sendEvent(event: string, data: any): void {
+    this.logger.debug(`sendEvent: ${event}: ${data}`);
+    this.eventEmitter.emit('sendEvent', event, data);
+  }
+
   public endResponse(): void {
     if (!this.res) {
       throw new Error('SSEService not initialized with a Response object');
     }
     if (!this.isResponseEnded) {
-      if (this.heartbeatInterval) {
-        clearInterval(this.heartbeatInterval);
+      this.stopHeartbeat(); // CHANGED: Stop heartbeat before ending response
+      if (this.timeout) {
+        clearTimeout(this.timeout);
+        this.timeout = null;
       }
       this.res.end();
       this.isResponseEnded = true;
@@ -86,21 +108,31 @@ export class SSEService implements ISSEService {
   }
 
   public handleClientDisconnection = (): void => {
-    this.isClientConnected = false;
     this.logger.info('Client disconnected');
     this.endResponse();
   };
 
-  public progressCallback: ProgressCallback = (current, total, message) => {
+  public progressCallback: ProgressCallback = (
+    current: number,
+    total: number,
+    message: string,
+  ) => {
     const progress = Math.min(Math.round((current / total) * 100), 100);
     this.progressTracker.trackProgress(current, total, message);
-    this.sendEvent('progress', { progress, message, current, total });
+    this.eventEmitter.emit('sendEvent', 'progress', {
+      progress,
+      message,
+      current,
+      total,
+    });
   };
 
   public handleError(error: Error): void {
     this.logger.error('Error in SSEService:', error);
-    if (this.isClientConnected && !this.isResponseEnded) {
-      this.sendEvent(
+    if (!this.isResponseEnded) {
+      this.stopHeartbeat(); // Stop heartbeat explicitly
+      this.eventEmitter.emit(
+        'sendEvent',
         'error',
         this.apiResponse.createErrorResponse(
           error instanceof AppError
@@ -116,14 +148,14 @@ export class SSEService implements ISSEService {
 
   public sendResultEvent(result: any): void {
     try {
-      if (this.isClientConnected && !this.isResponseEnded) {
+      if (!this.isResponseEnded) {
         const response = this.apiResponse.createSuccessResponse({
           metrics: result.metrics,
           errors: result.errors,
           githubStats: result.githubStats,
           status: result.errors.length > 0 ? 207 : 200,
         });
-        this.sendEvent('result', response);
+        this.eventEmitter.emit('sendEvent', 'result', response);
         this.logger.info('Metrics fetched and sent successfully', {
           metricsCount: result.metrics.length,
           errorsCount: result.errors.length,
@@ -134,22 +166,40 @@ export class SSEService implements ISSEService {
       this.handleError(
         error instanceof Error ? error : new Error('Unknown error occurred'),
       );
-    } finally {
-      this.endResponse();
     }
   }
 
+  public triggerHeartbeat(): void {
+    this.logger.debug('Heartbeat Sent');
+    this.eventEmitter.emit('sendEvent', 'heartbeat', {
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   private startHeartbeat(): void {
+    this.logger.debug('Start heartbeat');
     this.heartbeatInterval = setInterval(() => {
-      this.sendEvent('heartbeat', { timestamp: new Date().toISOString() });
-    }, 15000); // Send heartbeat every 15 seconds
+      this.eventEmitter.emit('sendEvent', 'heartbeat', {
+        timestamp: new Date().toISOString(),
+      });
+    }, this.heartbeatIntervalDuration);
+  }
+
+  private stopHeartbeat(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+      this.logger.debug('Stopped heartbeat');
+    }
   }
 
   private cleanup(): void {
+    this.stopHeartbeat();
     if (this.timeout) {
       clearTimeout(this.timeout);
       this.timeout = null;
     }
+    this.logger.debug('Cleanup finished');
     // Add any other cleanup operations here
   }
 }

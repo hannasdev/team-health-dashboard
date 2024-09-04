@@ -21,4 +21,5 @@ export interface IConfig {
   REFRESH_TOKEN_EXPIRY: string;
   BCRYPT_ROUNDS: number;
   SSE_TIMEOUT: number;
+  HEARTBEAT_INTERVAL: number;
 }

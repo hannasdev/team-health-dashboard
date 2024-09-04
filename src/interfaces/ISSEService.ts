@@ -1,4 +1,5 @@
 // src/interfaces/ISSEService.ts
+
 import { Response } from 'express';
 
 import { ProgressCallback } from '../types/index';
@@ -11,4 +12,5 @@ export interface ISSEService {
   progressCallback: ProgressCallback;
   handleError(error: Error): void;
   sendResultEvent(result: any): void;
+  triggerHeartbeat(): void;
 }

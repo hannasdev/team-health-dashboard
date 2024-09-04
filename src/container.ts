@@ -13,6 +13,7 @@ import { Container } from 'inversify';
 import { GitHubAdapter } from './adapters/GitHubAdapter.js';
 import { GoogleSheetsAdapter } from './adapters/GoogleSheetAdapter.js';
 import { MongoAdapter } from './adapters/MongoAdapter.js';
+import { NodeEventEmitterAdapter } from './adapters/NodeEventEmitterAdapter.js';
 import { container as appContainer } from './appContainer.js';
 import { Config } from './config/config.js';
 import { AuthController } from './controllers/AuthController/AuthController.js';
@@ -69,6 +70,7 @@ import type {
   ITokenService,
   IUserRepository,
   IUserService,
+  IEventEmitter,
 } from './interfaces/index.js';
 
 const config = Config.getInstance();
@@ -104,6 +106,10 @@ export function setupContainer(
     .inSingletonScope();
 
   // 3. Adapters (Clients for external services)
+  container
+    .bind<IEventEmitter>(TYPES.EventEmitter)
+    .to(NodeEventEmitterAdapter)
+    .inSingletonScope();
   container.bind<IMongoAdapter>(TYPES.MongoAdapter).to(MongoAdapter);
   container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
   container
@@ -149,7 +155,10 @@ export function setupContainer(
     .bind<IApplication>(TYPES.Application)
     .to(TeamHealthDashboardApp)
     .inSingletonScope();
-  container.bind<ISSEService>(TYPES.SSEService).to(SSEService);
+  container
+    .bind<ISSEService>(TYPES.SSEService)
+    .to(SSEService)
+    .inSingletonScope();
 
   if (isTestMode) {
     // Add any test-specific bindings or overrides here

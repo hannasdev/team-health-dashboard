@@ -2,182 +2,168 @@
 import { Response } from 'express';
 import { Container } from 'inversify';
 
-import { SSEService } from './SSEService';
 import {
   createMockLogger,
-  createMockConfig,
   createMockProgressTracker,
   createMockApiResponse,
 } from '../../__mocks__/index';
-import { AppError } from '../errors';
-import { TYPES } from '../types';
+import { Config } from '../../config/config';
+import { AppError } from '../../utils/errors';
+import { SSEService } from '../../utils/SSEService/SSEService';
+import { TYPES } from '../../utils/types';
 
 import type {
   IApiResponse,
   ILogger,
   IProgressTracker,
+  ISSEService,
   IConfig,
+  IEventEmitter,
 } from '../../interfaces';
 
 describe('SSEService', () => {
-  let sseService: SSEService;
-  let mockLogger: ReturnType<typeof createMockLogger>;
-  let mockProgressTracker: ReturnType<typeof createMockProgressTracker>;
-  let mockConfig: ReturnType<typeof createMockConfig>;
-  let mockResponse: jest.Mocked<Response>;
-  // ADDED: Mock API Response
-  let mockApiResponse: jest.Mocked<IApiResponse>;
   let container: Container;
+  let sseService: ISSEService;
+  let mockLogger: jest.Mocked<ILogger>;
+  let mockProgressTracker: jest.Mocked<IProgressTracker>;
+  let mockConfig: IConfig;
+  let mockResponse: jest.Mocked<Response>;
+  let mockApiResponse: jest.Mocked<IApiResponse>;
+  let mockEventEmitter: jest.Mocked<IEventEmitter>;
+
+  const testConfig = {
+    REPO_OWNER: 'github_owner_test',
+    REPO_REPO: 'github_repo_test',
+    JWT_SECRET: 'test-secret',
+    REPO_TOKEN: 'test-github-token',
+    GOOGLE_SHEETS_PRIVATE_KEY: 'test-google-sheets-private-key',
+    GOOGLE_SHEETS_CLIENT_EMAIL: 'test-client-email@example.com',
+    GOOGLE_SHEETS_SHEET_ID: 'test-sheet-id',
+    REFRESH_TOKEN_SECRET: 'test-token-secret',
+    MONGODB_URI: 'mongodb://localhost:27017/test-db',
+    PORT: 3000,
+    CORS_ORIGIN: 'http://localhost:3000',
+    NODE_ENV: 'test',
+    SSE_TIMEOUT: 5000,
+    HEARTBEAT_INTERVAL: 100, // Set a shorter interval for testing
+  };
 
   beforeEach(() => {
-    // Create mocks
     mockLogger = createMockLogger();
     mockProgressTracker = createMockProgressTracker();
-    mockConfig = createMockConfig();
-    mockConfig.SSE_TIMEOUT = 5000; // Set a specific timeout for testing
+    mockConfig = Config.getInstance(testConfig);
     mockApiResponse = createMockApiResponse();
-    // Mock setTimeout and clearTimeout
-    global.setTimeout = jest.fn() as any;
+
+    jest.useFakeTimers();
+    global.setInterval = jest.fn(() => 1) as any;
+    global.clearInterval = jest.fn() as any;
+    global.setTimeout = jest.fn(() => 1) as any;
     global.clearTimeout = jest.fn() as any;
 
-    // Create mock response
     mockResponse = {
       writeHead: jest.fn(),
       write: jest.fn(),
       end: jest.fn(),
     } as any;
 
-    // Set up DI container
+    mockEventEmitter = {
+      on: jest.fn(),
+      emit: jest.fn(),
+      removeListener: jest.fn(),
+    };
+
     container = new Container();
     container.bind<IConfig>(TYPES.Config).toConstantValue(mockConfig);
     container.bind<ILogger>(TYPES.Logger).toConstantValue(mockLogger);
     container
       .bind<IProgressTracker>(TYPES.ProgressTracker)
       .toConstantValue(mockProgressTracker);
-    // ADDED: Bind mock API Response
     container
       .bind<IApiResponse>(TYPES.ApiResponse)
       .toConstantValue(mockApiResponse);
-    container.bind<SSEService>(TYPES.SSEService).to(SSEService);
+    container
+      .bind<IEventEmitter>(TYPES.EventEmitter)
+      .toConstantValue(mockEventEmitter);
+    container
+      .bind<ISSEService>(TYPES.SSEService)
+      .to(SSEService)
+      .inSingletonScope();
 
-    // Get instance of SSEService
-    sseService = container.get<SSEService>(TYPES.SSEService);
+    sseService = container.get<ISSEService>(TYPES.SSEService);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.clearAllTimers();
     jest.useRealTimers();
-    jest.restoreAllMocks();
   });
 
   describe('initialize', () => {
-    it('should set up timeout', () => {
-      const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+    it('should set up SSE, timeout, heartbeat, and event listeners', () => {
+      const setupSSESpy = jest.spyOn(sseService as any, 'setupSSE');
+      const setupTimeoutSpy = jest.spyOn(sseService as any, 'setupTimeout');
+      const startHeartbeatSpy = jest.spyOn(sseService as any, 'startHeartbeat');
+      const setupEventListenersSpy = jest.spyOn(
+        sseService as any,
+        'setupEventListeners',
+      );
 
       sseService.initialize(mockResponse);
 
-      expect(setTimeoutSpy).toHaveBeenCalledWith(
-        expect.any(Function),
-        mockConfig.SSE_TIMEOUT,
-      );
-
-      // Manually call the timeout function
-      const timeoutFn = setTimeoutSpy.mock.calls[0][0] as Function;
-      timeoutFn();
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error in SSEService:',
-        expect.any(AppError),
-      );
+      expect(setupSSESpy).toHaveBeenCalled();
+      expect(setupTimeoutSpy).toHaveBeenCalled();
+      expect(startHeartbeatSpy).toHaveBeenCalled();
+      expect(setupEventListenersSpy).toHaveBeenCalled();
     });
   });
 
-  describe('sendEvent', () => {
-    it('should send result event correctly', () => {
-      const mockResult = {
-        metrics: [{ id: '1', value: 10 }],
-        errors: [],
-        githubStats: { totalPRs: 5, fetchedPRs: 5 },
-      };
-
-      mockApiResponse.createSuccessResponse.mockReturnValue({
-        success: true,
-        data: {
-          metrics: mockResult.metrics,
-          errors: mockResult.errors,
-          githubStats: mockResult.githubStats,
-          status: 200,
-        },
-      });
-
+  describe('event handling', () => {
+    it('should set up event listeners on initialize', () => {
       sseService.initialize(mockResponse);
-      sseService.sendResultEvent(mockResult);
 
-      expect(mockApiResponse.createSuccessResponse).toHaveBeenCalledWith({
-        metrics: mockResult.metrics,
-        errors: mockResult.errors,
-        githubStats: mockResult.githubStats,
-        status: 200,
-      });
-
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('event: result\ndata:'),
+      expect(mockEventEmitter.on).toHaveBeenCalledWith(
+        'sendEvent',
+        expect.any(Function),
       );
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('"success":true'),
+      expect(mockEventEmitter.on).toHaveBeenCalledWith(
+        'endResponse',
+        expect.any(Function),
       );
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining(
-          'data: {"success":true,"data":{"metrics":[{"id":"1","value":10}],"errors":[],"githubStats":{"totalPRs":5,"fetchedPRs":5},"status":200}}',
-        ),
+      expect(mockEventEmitter.on).toHaveBeenCalledWith(
+        'error',
+        expect.any(Function),
       );
-
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'Metrics fetched and sent successfully',
-        { metricsCount: 1, errorsCount: 0 },
-      );
-      expect(mockResponse.end).toHaveBeenCalled();
     });
 
-    it('should handle undefined data', () => {
+    it('should emit sendEvent when calling sendEvent method', () => {
       sseService.initialize(mockResponse);
-      sseService.sendEvent('test', undefined);
+      sseService.sendEvent('test', { data: 'test data' });
 
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        'event: test\ndata: \n\n',
-      );
-      expect(mockLogger.debug).toHaveBeenCalledWith('Sent test event', {
-        dataLength: 0,
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith('sendEvent', 'test', {
+        data: 'test data',
       });
     });
 
-    it('should throw error if not initialized', () => {
-      expect(() => sseService.sendEvent('test', { data: 'test data' })).toThrow(
-        'SSEService not initialized with a Response object',
+    it('should write to response when handling sendEvent', () => {
+      sseService.initialize(mockResponse);
+      (sseService as any).handleSendEvent('test', { data: 'test data' });
+
+      expect(mockResponse.write).toHaveBeenCalledWith(
+        expect.stringContaining('event: test\ndata: {"data":"test data"}\n\n'),
       );
     });
   });
 
   describe('endResponse', () => {
-    it('should end response correctly', () => {
-      const clearTimeoutSpy = jest.spyOn(global, 'clearTimeout');
-
+    it('should end response and stop heartbeat correctly', () => {
       sseService.initialize(mockResponse);
-
-      // Simulate setting a timeout
-      const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-      setTimeoutSpy.mockReturnValue(123 as any); // Mock a timeout ID
-
-      sseService['setupTimeout'](); // Call the private method to set up the timeout
-
+      (sseService as any).setupTimeout(); // Ensure timeout is set up
       sseService.endResponse();
 
       expect(mockResponse.end).toHaveBeenCalled();
       expect(mockLogger.info).toHaveBeenCalledWith('Response ended');
-      expect(clearTimeoutSpy).toHaveBeenCalledWith(123); // Check if clearTimeout was called with the correct timeout ID
-
-      clearTimeoutSpy.mockRestore();
-      setTimeoutSpy.mockRestore();
+      expect(global.clearTimeout).toHaveBeenCalled();
+      expect(global.clearInterval).toHaveBeenCalled();
     });
 
     it('should not end response if already ended', () => {
@@ -207,7 +193,7 @@ describe('SSEService', () => {
   });
 
   describe('progressCallback', () => {
-    it('should send progress event correctly', () => {
+    it('should emit sendEvent with progress data', () => {
       sseService.initialize(mockResponse);
       sseService.progressCallback(50, 100, 'Half way there');
 
@@ -216,19 +202,68 @@ describe('SSEService', () => {
         100,
         'Half way there',
       );
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('"progress":50'),
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'sendEvent',
+        'progress',
+        {
+          progress: 50,
+          message: 'Half way there',
+          current: 50,
+          total: 100,
+        },
       );
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('"message":"Half way there"'),
+    });
+
+    it('should reach 100% progress', () => {
+      sseService.initialize(mockResponse);
+
+      // Simulate progress updates
+      sseService.progressCallback(0, 100, 'Starting');
+      sseService.progressCallback(50, 100, 'Halfway');
+      sseService.progressCallback(100, 100, 'Complete');
+
+      // Check that the last call to emit was with 100% progress
+      expect(mockEventEmitter.emit).toHaveBeenLastCalledWith(
+        'sendEvent',
+        'progress',
+        expect.objectContaining({
+          progress: 100,
+          message: 'Complete',
+          current: 100,
+          total: 100,
+        }),
+      );
+
+      // Verify that the progress tracker was called correctly
+      expect(mockProgressTracker.trackProgress).toHaveBeenCalledTimes(3);
+      expect(mockProgressTracker.trackProgress).toHaveBeenLastCalledWith(
+        100,
+        100,
+        'Complete',
+      );
+    });
+
+    it('should cap progress at 100% even if current exceeds total', () => {
+      sseService.initialize(mockResponse);
+
+      sseService.progressCallback(110, 100, 'Exceeded');
+
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'sendEvent',
+        'progress',
+        expect.objectContaining({
+          progress: 100, // Should be capped at 100
+          message: 'Exceeded',
+          current: 110,
+          total: 100,
+        }),
       );
     });
   });
 
   describe('handleError', () => {
-    it('should handle AppError correctly', () => {
+    it('should emit error event and stop heartbeat', () => {
       const appError = new AppError(400, 'Test error');
-      // CHANGED: Use mockApiResponse instead of mocked createErrorResponse
       mockApiResponse.createErrorResponse.mockReturnValue({
         success: false,
         error: 'Test error',
@@ -246,17 +281,17 @@ describe('SSEService', () => {
         'Test error',
         400,
       );
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('"error":"Test error"'),
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'sendEvent',
+        'error',
+        expect.any(Object),
       );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Sent error event to client',
-      );
+      expect(clearInterval).toHaveBeenCalled();
+      expect(mockResponse.end).toHaveBeenCalled();
     });
 
     it('should handle generic Error correctly', () => {
       const genericError = new Error('Generic error');
-      // CHANGED: Use mockApiResponse instead of mocked createErrorResponse
       mockApiResponse.createErrorResponse.mockReturnValue({
         success: false,
         error: 'An unexpected error occurred',
@@ -274,14 +309,19 @@ describe('SSEService', () => {
         'An unexpected error occurred',
         500,
       );
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('"error":"An unexpected error occurred"'),
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'sendEvent',
+        'error',
+        expect.objectContaining({
+          error: 'An unexpected error occurred',
+          statusCode: 500,
+        }),
       );
     });
   });
 
   describe('sendResultEvent', () => {
-    it('should send result event correctly', () => {
+    it('should emit sendEvent with result data', () => {
       const mockResult = {
         metrics: [{ id: '1', value: 10 }],
         errors: [],
@@ -308,19 +348,63 @@ describe('SSEService', () => {
         status: 200,
       });
 
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('event: result\ndata:'),
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'sendEvent',
+        'result',
+        expect.any(Object),
       );
-
-      expect(mockResponse.write).toHaveBeenCalledWith(
-        expect.stringContaining('"success":true'),
-      );
-
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Metrics fetched and sent successfully',
         { metricsCount: 1, errorsCount: 0 },
       );
-      expect(mockResponse.end).toHaveBeenCalled();
+    });
+  });
+
+  describe('event listeners', () => {
+    it('should set up event listeners on initialize', () => {
+      sseService.initialize(mockResponse);
+
+      expect(mockEventEmitter.on).toHaveBeenCalledWith(
+        'sendEvent',
+        expect.any(Function),
+      );
+      expect(mockEventEmitter.on).toHaveBeenCalledWith(
+        'endResponse',
+        expect.any(Function),
+      );
+      expect(mockEventEmitter.on).toHaveBeenCalledWith(
+        'error',
+        expect.any(Function),
+      );
+    });
+  });
+
+  describe('heartbeat', () => {
+    it('should start heartbeat on initialize', () => {
+      sseService.initialize(mockResponse);
+
+      expect(setInterval).toHaveBeenCalledWith(
+        expect.any(Function),
+        testConfig.HEARTBEAT_INTERVAL,
+      );
+    });
+
+    it('should send heartbeat events', () => {
+      sseService.initialize(mockResponse);
+      (sseService as any).triggerHeartbeat();
+
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'sendEvent',
+        'heartbeat',
+        expect.objectContaining({ timestamp: expect.any(String) }),
+      );
+    });
+
+    it('should stop heartbeat when calling endResponse', () => {
+      sseService.initialize(mockResponse);
+      sseService.endResponse();
+
+      expect(clearInterval).toHaveBeenCalled();
     });
   });
 });

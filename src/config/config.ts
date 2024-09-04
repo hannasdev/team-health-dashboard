@@ -86,7 +86,8 @@ export class Config implements IConfig {
       ACCESS_TOKEN_EXPIRY: '15m',
       REFRESH_TOKEN_EXPIRY: '7d',
       BCRYPT_ROUNDS: 10,
-      SSE_TIMEOUT: 120000, // 2 minutes default
+      SSE_TIMEOUT: 300000, // 5 minutes default
+      HEARTBEAT_INTERVAL: 15000, // 15s
     };
   }
 
@@ -114,7 +115,11 @@ export class Config implements IConfig {
       LOG_LEVEL: process.env.LOG_LEVEL,
       LOG_FORMAT: process.env.LOG_FORMAT,
       LOG_FILE_PATH: process.env.LOG_FILE_PATH,
-      SSE_TIMEOUT: parseInt(process.env.SSE_TIMEOUT || '120000', 10),
+      SSE_TIMEOUT: parseInt(process.env.SSE_TIMEOUT || '180000', 10),
+      HEARTBEAT_INTERVAL: parseInt(
+        process.env.HEARTBEAT_INTERVAL || '15000',
+        10,
+      ),
     };
   }
 
@@ -194,8 +199,13 @@ export class Config implements IConfig {
   public get BCRYPT_ROUNDS(): number {
     return this.config.BCRYPT_ROUNDS;
   }
+
   public get SSE_TIMEOUT(): number {
     return this.config.SSE_TIMEOUT;
+  }
+
+  public get HEARTBEAT_INTERVAL(): number {
+    return this.config.HEARTBEAT_INTERVAL;
   }
 
   private validate(): void {

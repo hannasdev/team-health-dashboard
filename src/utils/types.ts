@@ -13,6 +13,7 @@ export const TYPES = {
   CacheService: Symbol.for('ICacheService'),
   Config: Symbol.for('IConfig'),
   ErrorHandler: Symbol.for('IErrorHandler'),
+  EventEmitter: Symbol.for('IEventEmitter'),
   GitHubClient: Symbol.for('IGitHubClient'),
   GitHubRepository: Symbol.for('IGitHubRepository'),
   GitHubService: Symbol.for('IGitHubService'),
