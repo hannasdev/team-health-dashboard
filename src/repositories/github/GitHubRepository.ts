@@ -25,6 +25,7 @@ export class GitHubRepository
   private owner: string;
   private repo: string;
   private readonly timeout: number = 300000; // 5 minutes timeout
+  private isCancelled: boolean = false;
 
   constructor(
     @inject(TYPES.GitHubClient) private client: IGitHubClient,
@@ -50,8 +51,8 @@ export class GitHubRepository
     fetchedPRs: number;
     timePeriod: number;
   }> {
-    if (process.env.NODE_ENV === 'e2e') {
-      return this.getMockPullRequestsData(timePeriod);
+    if (this.isCancelled) {
+      throw new AppError(499, 'Operation cancelled');
     }
 
     const { since } = this.getDateRange(timePeriod);
@@ -63,7 +64,11 @@ export class GitHubRepository
     const startTime = Date.now();
 
     try {
-      while (hasNextPage) {
+      while (hasNextPage && !this.isCancelled) {
+        if (this.isCancelled) {
+          throw new AppError(499, 'Operation cancelled');
+        }
+
         if (Date.now() - startTime > this.timeout) {
           throw new Error('Operation timed out');
         }
@@ -80,6 +85,7 @@ export class GitHubRepository
         const newPRs = response.repository.pullRequests.nodes.map(
           (node: IGraphQLPullRequest) => this.mapToPullRequest(node),
         );
+
         pullRequests = [...pullRequests, ...newPRs];
 
         // Update estimated total after first fetch
@@ -92,7 +98,7 @@ export class GitHubRepository
 
         progressCallback?.(
           pullRequests.length,
-          Infinity,
+          estimatedTotal,
           `Fetched ${pullRequests.length} pull requests`,
         );
 
@@ -119,12 +125,22 @@ export class GitHubRepository
         timePeriod,
       };
     } catch (error) {
+      if (this.isCancelled) {
+        throw new AppError(499, 'Operation cancelled');
+      }
+
       this.logger.error('Error fetching pull requests:', error as Error);
       throw new AppError(
         500,
         `Failed to fetch pull requests: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
+    } finally {
+      this.isCancelled = false; // Reset cancellation flag
     }
+  }
+
+  public cancelOperation(): void {
+    this.isCancelled = true;
   }
 
   private mapToPullRequest(node: IGraphQLPullRequest): IPullRequest {

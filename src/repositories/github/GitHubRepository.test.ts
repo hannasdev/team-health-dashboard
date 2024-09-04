@@ -330,4 +330,11 @@ describe('GitHubRepository', () => {
     expect(result).toEqual(cachedPRs);
     expect(mockClient.graphql).not.toHaveBeenCalled();
   });
+
+  it('should cancel operation', async () => {
+    gitHubRepository.cancelOperation();
+    await expect(gitHubRepository.fetchPullRequests(90)).rejects.toThrow(
+      'Operation cancelled',
+    );
+  });
 });

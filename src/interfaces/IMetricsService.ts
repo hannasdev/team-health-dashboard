@@ -11,4 +11,5 @@ export interface IMetricsService {
     errors: { source: string; message: string }[];
     githubStats: { totalPRs: number; fetchedPRs: number; timePeriod: number };
   }>;
+  cancelOperation(): void;
 }

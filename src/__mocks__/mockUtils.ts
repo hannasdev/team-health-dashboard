@@ -15,6 +15,7 @@ export function createMockSSEService(): jest.Mocked<ISSEService> {
     progressCallback: jest.fn(),
     handleError: jest.fn(),
     sendResultEvent: jest.fn(),
+    triggerHeartbeat: jest.fn(),
   };
 }
 

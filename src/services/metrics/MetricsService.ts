@@ -16,6 +16,8 @@ import type {
 
 @injectable()
 export class MetricsService implements IMetricsService {
+  private isCancelled: boolean = false;
+
   constructor(
     @inject(TYPES.GoogleSheetsRepository)
     private googleSheetsRepository: IGoogleSheetsRepository,
@@ -23,6 +25,12 @@ export class MetricsService implements IMetricsService {
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.MetricCalculator) private metricCalculator: IMetricCalculator,
   ) {}
+
+  public cancelOperation(): void {
+    this.isCancelled = true;
+    this.gitHubRepository.cancelOperation();
+    // Add similar cancellation methods for other repositories if they exist
+  }
 
   async getAllMetrics(
     progressCallback?: ProgressCallback,
@@ -36,24 +44,57 @@ export class MetricsService implements IMetricsService {
     let allMetrics: IMetric[] = [];
     let githubStats = { totalPRs: 0, fetchedPRs: 0, timePeriod };
 
+    const totalSteps = 2; // Google Sheets and GitHub
+    let completedSteps = 0;
+
+    const updateOverallProgress = (
+      source: string,
+      current: number,
+      total: number,
+    ) => {
+      const stepProgress = current / total;
+      const overallProgress =
+        ((completedSteps + stepProgress) / totalSteps) * 100;
+      progressCallback?.(
+        Math.round(overallProgress),
+        100,
+        `${source}: ${Math.round(stepProgress * 100)}% complete`,
+      );
+    };
+
     try {
       const googleSheetsData = await this.googleSheetsRepository.fetchMetrics(
-        this.createProgressCallback('Google Sheets', 0, progressCallback),
+        (current, total, message) =>
+          updateOverallProgress('Google Sheets', current, total),
       );
+
+      if (this.isCancelled) {
+        throw new AppError(499, 'Operation cancelled');
+      }
+
       allMetrics = [...allMetrics, ...googleSheetsData];
+      completedSteps++;
     } catch (error) {
       this.logger.error('Error fetching Google Sheets data:', error as Error);
       errors.push({
         source: 'Google Sheets',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
+    } finally {
+      this.isCancelled = false;
     }
 
     try {
       const githubData = await this.gitHubRepository.fetchPullRequests(
         timePeriod,
-        this.createProgressCallback('GitHub', 50, progressCallback),
+        (current, total, message) =>
+          updateOverallProgress('GitHub', current, total),
       );
+
+      if (this.isCancelled) {
+        throw new AppError(499, 'Operation cancelled');
+      }
+
       const githubMetrics = this.metricCalculator.calculateMetrics(
         githubData.pullRequests,
       );
@@ -64,18 +105,23 @@ export class MetricsService implements IMetricsService {
         fetchedPRs: githubData.fetchedPRs,
         timePeriod: githubData.timePeriod,
       };
+      completedSteps++;
     } catch (error) {
       this.logger.error('Error fetching GitHub data:', error as Error);
       errors.push({
         source: 'GitHub',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
+    } finally {
+      this.isCancelled = false;
     }
 
     if (errors.length === 2) {
       // If both data sources failed, throw an AppError
       throw new AppError(500, 'Failed to fetch data from all sources');
     }
+
+    progressCallback?.(100, 100, 'Completed fetching all metrics');
 
     const uniqueMetrics = this.deduplicateMetrics(allMetrics);
 
@@ -106,64 +152,4 @@ export class MetricsService implements IMetricsService {
     return Array.from(metricMap.values());
   }
 
-  // private convertPullRequestsToMetrics(
-  //   pullRequests: IPullRequest[],
-  // ): IMetric[] {
-  //   const metrics: IMetric[] = [];
-
-  //   // PR Count Metric
-  //   metrics.push({
-  //     id: 'github-pr-count',
-  //     metric_category: 'GitHub',
-  //     metric_name: 'Pull Request Count',
-  //     value: pullRequests.length,
-  //     timestamp: new Date(),
-  //     unit: 'count',
-  //     additional_info: '',
-  //     source: 'GitHub',
-  //   });
-
-  //   // Average PR Size Metric
-  //   const totalChanges = pullRequests.reduce(
-  //     (sum, pr) => sum + pr.additions + pr.deletions,
-  //     0,
-  //   );
-  //   const avgPRSize =
-  //     pullRequests.length > 0 ? totalChanges / pullRequests.length : 0;
-
-  //   metrics.push({
-  //     id: 'github-avg-pr-size',
-  //     metric_category: 'GitHub',
-  //     metric_name: 'Average PR Size',
-  //     value: avgPRSize,
-  //     timestamp: new Date(),
-  //     unit: 'lines',
-  //     additional_info: '',
-  //     source: 'GitHub',
-  //   });
-
-  //   // Average Time to Merge Metric
-  //   const mergedPRs = pullRequests.filter(pr => pr.mergedAt);
-  //   const totalMergeTime = mergedPRs.reduce((sum, pr) => {
-  //     const createDate = new Date(pr.createdAt);
-  //     const mergeDate = new Date(pr.mergedAt!);
-  //     return sum + (mergeDate.getTime() - createDate.getTime());
-  //   }, 0);
-  //   const avgMergeTime =
-  //     mergedPRs.length > 0
-  //       ? totalMergeTime / mergedPRs.length / (1000 * 60 * 60)
-  //       : 0; // in hours
-  //   metrics.push({
-  //     id: 'github-avg-merge-time',
-  //     metric_category: 'GitHub',
-  //     metric_name: 'Average Time to Merge',
-  //     value: avgMergeTime,
-  //     timestamp: new Date(),
-  //     unit: 'hours',
-  //     additional_info: '',
-  //     source: 'GitHub',
-  //   });
-
-  //   return metrics;
-  // }
-}
+ 

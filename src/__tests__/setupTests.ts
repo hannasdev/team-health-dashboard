@@ -22,5 +22,6 @@ process.env.LOG_LEVEL = 'info';
 process.env.LOG_FORMAT = 'json';
 process.env.LOG_FILE_PATH = './logs';
 process.env.DATABASE_URL = 'placeholder_database';
+process.env.HEARTBEAT_INTERVAL = '15000';
 
 (global as any).jest = jest;

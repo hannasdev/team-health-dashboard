@@ -3,7 +3,7 @@ import { IncomingHttpHeaders } from 'http';
 
 import { Request, Response } from 'express';
 
-import type { IAuthRequest, IConfig, IMetric } from '../interfaces/index.js';
+import type { IAuthRequest, IConfig } from '../interfaces/index.js';
 
 export function createMockConfig(): jest.Mocked<IConfig> {
   return {
@@ -27,6 +27,7 @@ export function createMockConfig(): jest.Mocked<IConfig> {
     ACCESS_TOKEN_EXPIRY: '15m',
     REFRESH_TOKEN_EXPIRY: '1d',
     SSE_TIMEOUT: 120000,
+    HEARTBEAT_INTERVAL: 15000,
   };
 }
 
@@ -101,34 +102,40 @@ export function createMockMetricsRequest(
   overrides: Partial<Request> = {},
 ): Request {
   const mockRequest = {
+    accepts: jest.fn(),
+    acceptsCharsets: jest.fn(),
+    acceptsEncodings: jest.fn(),
+    acceptsLanguages: jest.fn(),
     app: {} as any,
     baseUrl: '',
     body: {},
     cookies: {},
     fresh: false,
+    get: jest.fn(),
+    header: jest.fn(),
     hostname: '',
-    ip: '',
+    ip: '127.0.0.1',
     ips: [],
+    is: jest.fn(),
     method: 'GET',
     originalUrl: '',
+    on: jest.fn(),
     params: {},
     path: '',
     protocol: 'http',
     query: {},
+    range: jest.fn(),
     route: {} as any,
     secure: false,
     signedCookies: {},
     stale: false,
     subdomains: [],
+    user: {
+      id: '123',
+      email: 'test@example.com',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    },
     xhr: false,
-    accepts: jest.fn(),
-    acceptsCharsets: jest.fn(),
-    acceptsEncodings: jest.fn(),
-    acceptsLanguages: jest.fn(),
-    get: jest.fn(),
-    header: jest.fn(),
-    is: jest.fn(),
-    range: jest.fn(),
     ...overrides,
   } as Request;
 

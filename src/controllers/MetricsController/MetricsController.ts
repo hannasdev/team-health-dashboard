@@ -49,8 +49,12 @@ export class MetricsController implements IMetricsController {
       ip: req.ip,
     });
 
-    this.sseService.initialize(res);
-    req.on('close', this.sseService.handleClientDisconnection);
+    const closeHandler = () => {
+      this.sseService.handleClientDisconnection();
+      this.metricsService.cancelOperation();
+    };
+
+    req.on('close', closeHandler);
 
     try {
       if (req.query.error === 'true') {
@@ -63,6 +67,10 @@ export class MetricsController implements IMetricsController {
       );
 
       this.sseService.sendResultEvent(result);
+
+      setTimeout(() => {
+        this.sseService.endResponse();
+      }, 5000); // 5 seconds delay
     } catch (error) {
       this.logger.error('Error fetching metrics:', error as Error);
       this.sseService.handleError(

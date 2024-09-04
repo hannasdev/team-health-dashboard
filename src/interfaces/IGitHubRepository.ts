@@ -13,4 +13,5 @@ export interface IGitHubRepository {
     fetchedPRs: number;
     timePeriod: number;
   }>;
+  cancelOperation(): void;
 }

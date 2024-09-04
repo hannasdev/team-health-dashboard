@@ -87,30 +87,36 @@ describe('MetricsService', () => {
       );
 
       // Check that the progress callback was called
-      expect(mockProgressCallback).toHaveBeenCalledTimes(4);
+      expect(mockProgressCallback).toHaveBeenCalledTimes(5);
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
         1,
         0,
         100,
-        'Google Sheets: Starting Google Sheets fetch',
+        'Google Sheets: 0% complete',
       );
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
         2,
         50,
         100,
-        'Google Sheets: Finished Google Sheets fetch',
+        'Google Sheets: 100% complete',
       );
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
         3,
         50,
         100,
-        'GitHub: Starting GitHub fetch',
+        'GitHub: 0% complete',
       );
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
         4,
         100,
         100,
-        'GitHub: Finished GitHub fetch',
+        'GitHub: 100% complete',
+      );
+      expect(mockProgressCallback).toHaveBeenNthCalledWith(
+        5,
+        100,
+        100,
+        'Completed fetching all metrics',
       );
     });
 
@@ -135,14 +141,14 @@ describe('MetricsService', () => {
     it('should handle errors from both repositories with progress updates', async () => {
       mockGoogleSheetsRepository.fetchMetrics.mockImplementation(
         async (progressCallback?: ProgressCallback) => {
-          progressCallback?.(0, 100, 'Starting to fetch data');
+          progressCallback?.(0, 100, 'Google Sheets: 0% complete');
           throw new Error('Google Sheets API error');
         },
       );
 
       mockGitHubRepository.fetchPullRequests.mockImplementation(
         async (timePeriod: number, progressCallback?: ProgressCallback) => {
-          progressCallback?.(0, 100, 'Starting to fetch data');
+          progressCallback?.(0, 100, 'Google Sheets: 0% complete');
           throw new Error('GitHub API error');
         },
       );
@@ -158,13 +164,13 @@ describe('MetricsService', () => {
         1,
         0,
         100,
-        'Google Sheets: Starting to fetch data',
+        'Google Sheets: 0% complete',
       );
       expect(mockProgressCallback).toHaveBeenNthCalledWith(
         2,
-        50,
+        0,
         100,
-        'GitHub: Starting to fetch data',
+        'GitHub: 0% complete',
       );
     });
 

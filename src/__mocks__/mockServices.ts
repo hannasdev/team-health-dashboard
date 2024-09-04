@@ -1,5 +1,9 @@
 import { User } from '../models/User.js';
-import { UserAlreadyExistsError, UserNotFoundError } from '../utils/errors.js';
+import {
+  UserAlreadyExistsError,
+  UserNotFoundError,
+  AppError,
+} from '../utils/errors.js';
 
 import type {
   IAuthRequest,
@@ -18,6 +22,7 @@ import type {
   IMetricCalculator,
   IUserService,
 } from '../interfaces/index.js';
+import type { ProgressCallback } from '../types/index.js';
 
 export function createMockCacheService(): jest.Mocked<ICacheService> {
   const cache = new Map<string, { value: any; expiry: number }>();
@@ -137,14 +142,58 @@ export function createMockTokenBlacklistService(): jest.Mocked<ITokenBlacklistSe
 }
 
 export function createMockMetricsService(): jest.Mocked<IMetricsService> {
+  let isCancelled = false;
+
   return {
-    getAllMetrics: jest.fn(() =>
-      Promise.resolve({
-        metrics: [],
-        errors: [],
-        githubStats: { totalPRs: 0, fetchedPRs: 0, timePeriod: 90 },
-      }),
-    ),
+    getAllMetrics: jest
+      .fn()
+      .mockImplementation(
+        async (
+          progressCallback?: ProgressCallback,
+          timePeriod: number = 90,
+        ) => {
+          if (progressCallback) {
+            // Simulate progress updates
+            progressCallback(25, 100, 'Google Sheets: 50% complete');
+
+            if (isCancelled) {
+              throw new AppError(499, 'Operation cancelled');
+            }
+
+            progressCallback(75, 100, 'GitHub: 50% complete');
+
+            if (isCancelled) {
+              throw new AppError(499, 'Operation cancelled');
+            }
+
+            progressCallback(100, 100, 'Completed fetching all metrics');
+          }
+
+          if (isCancelled) {
+            throw new AppError(499, 'Operation cancelled');
+          }
+
+          return {
+            metrics: [
+              {
+                id: 'mock-metric-1',
+                metric_category: 'Mock',
+                metric_name: 'Mock Metric 1',
+                value: 42,
+                timestamp: new Date().toISOString(),
+                unit: 'count',
+                additional_info: '',
+                source: 'Mock',
+              },
+            ],
+            errors: [],
+            githubStats: { totalPRs: 10, fetchedPRs: 10, timePeriod },
+          };
+        },
+      ),
+    cancelOperation: jest.fn().mockImplementation(() => {
+      isCancelled = true;
+    }),
   };
 }
 
