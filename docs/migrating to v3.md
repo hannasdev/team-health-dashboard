@@ -6,7 +6,7 @@
 - Extend ErrorHandler if necessary to handle any new error types introduced during refactoring.
 - Review error handling in the context of the new layer separation, ensuring that errors are properly propagated through the layers.
 
-## Implement Consistent Repository Pattern
+## Implement Consistent Repository Pattern - [DONE]
 
 Existing: We have GitHubRepository and GoogleSheetsRepository using adapters.
 Adjustment: The main task here is to create a MongoAdapter for UserRepository to be consistent with other repositories.
@@ -15,7 +15,7 @@ Adjustment: The main task here is to create a MongoAdapter for UserRepository to
 - Refactor UserRepository to use the new MongoAdapter instead of directly using MongoDbClient.
 - Ensure GitHubRepository and GoogleSheetsRepository are consistently using their respective adapters.
 
-## Refactor Authentication and User Management
+## Refactor Authentication and User Management - [DONE]
 
 Existing: We have an AuthService that handles both authentication and user management.
 Adjustment: This step is valid. We need to split AuthService into AuthenticationService and UserService.
@@ -40,7 +40,7 @@ Adjustment: This step is valid. Creating a HealthCheckService would improve sepa
 - Create a new HealthCheckService that encapsulates health check logic.
 - Refactor HealthCheckController to use the new HealthCheckService instead of directly accessing MongoDbClient.
 
-## Refactor MetricCalculator
+## Refactor MetricCalculator - [DONE]
 
 Existing: MetricCalculator is used by GitHubRepository.
 Adjustment: Moving it to the Business Logic layer (likely within MetricsService) is a valid step to improve reusability.
