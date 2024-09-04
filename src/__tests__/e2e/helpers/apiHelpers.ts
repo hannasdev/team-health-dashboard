@@ -35,21 +35,25 @@ export const retryRequest = async (
       return response;
     } catch (error: unknown) {
       lastError = error;
-      console.error(
-        `Attempt ${i + 1} failed for ${method.toUpperCase()} ${url}:`,
-        error instanceof Error ? error.message : 'Unknown error',
-      );
+      if (axios.isAxiosError(error) && error.response) {
+        console.error(
+          `Attempt ${i + 1} failed for ${method.toUpperCase()} ${url}:`,
+          error.response.status,
+          error.response.data,
+        );
+      } else {
+        console.error(
+          `Attempt ${i + 1} failed for ${method.toUpperCase()} ${url}:`,
+          error instanceof Error ? error.message : 'Unknown error',
+        );
+      }
       if (i === maxRetries - 1) break;
       console.log(`Retrying in ${delay}ms...`);
       await wait(delay);
     }
   }
 
-  throw new Error(
-    `Max retries reached for ${method.toUpperCase()} ${url}: ${
-      lastError instanceof Error ? lastError.message : 'Unknown error'
-    }`,
-  );
+  throw lastError;
 };
 
 export const createTestUser = async () => {

@@ -56,21 +56,30 @@ export class AuthenticationService implements IAuthenticationService {
         throw new InvalidRefreshTokenError('Refresh token has been revoked');
       }
 
+      this.logger.debug('Validating refresh token');
       const decoded = this.tokenService.validateRefreshToken(refreshToken);
+      this.logger.debug('Refresh token validated successfully', {
+        userId: decoded.id,
+      });
+
+      this.logger.debug('Looking up user');
       const user = await this.userRepository.findById(decoded.id);
       if (!user) {
         throw new InvalidRefreshTokenError('User not found');
       }
 
+      this.logger.debug('Blacklisting old refresh token');
       await this.tokenBlacklistService.blacklistToken(
         refreshToken,
         decoded.exp * 1000,
       );
 
+      this.logger.debug('Generating new tokens');
       const newAccessToken = this.tokenService.generateAccessToken({
         id: user.id,
         email: user.email,
       });
+
       const newRefreshToken = this.tokenService.generateRefreshToken({
         id: user.id,
       });

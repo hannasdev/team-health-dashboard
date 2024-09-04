@@ -91,10 +91,15 @@ export class AuthController implements IAuthController {
         this.logger.error('Refresh token is required');
         throw new InvalidInputError('Refresh token is required');
       }
+      this.logger.debug('Attempting to refresh token', {
+        refreshToken: refreshToken.substring(0, 10) + '...',
+      });
       const result =
         await this.authenticationService.refreshToken(refreshToken);
+      this.logger.debug('Token refresh successful');
       res.json(this.apiResponse.createSuccessResponse(result));
     } catch (error) {
+      this.logger.error('Token refresh failed', error as Error);
       next(error);
     }
   }
