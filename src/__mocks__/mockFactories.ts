@@ -41,7 +41,7 @@ export function createMockRequest(
   return req as IAuthRequest;
 }
 
-export const createMockResponse = () => {
+export function createMockResponse(): jest.Mocked<Response> {
   const res: Partial<Response> = {
     append: jest.fn().mockReturnThis(),
     attachment: jest.fn().mockReturnThis(),
@@ -69,15 +69,15 @@ export const createMockResponse = () => {
     json: jest.fn().mockReturnThis(),
     send: jest.fn().mockReturnThis(),
     sendStatus: jest.fn().mockReturnThis(),
+    on: jest.fn(),
+    once: jest.fn(),
+    emit: jest.fn(),
+    removeListener: jest.fn(),
+    setHeader: jest.fn(),
   };
 
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
-  res.send = jest.fn().mockReturnValue(res);
-  res.sendStatus = jest.fn().mockReturnValue(res);
-  res.end = jest.fn().mockReturnValue(res);
-  return res as Response;
-};
+  return res as jest.Mocked<Response>;
+}
 
 export function createMockExpressRequest(
   overrides: Partial<Request> = {},

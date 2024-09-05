@@ -151,5 +151,4 @@ export class MetricsService implements IMetricsService {
 
     return Array.from(metricMap.values());
   }
-
- 
+}

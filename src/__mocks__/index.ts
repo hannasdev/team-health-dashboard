@@ -2,6 +2,7 @@ export {
   MockMongoDbClient,
   MockGoogleSheetsAdapter,
   MockGitHubAdapter,
+  createMockEventEmitter,
 } from './mockAdapters';
 
 export { createMockAuthControllerResponse } from './mockControllers';

@@ -6,6 +6,7 @@ import type {
   IGitHubClient,
   IGoogleSheetsClient,
   IMongoDbClient,
+  IEventEmitter,
 } from '../interfaces/index.js';
 
 @injectable()
@@ -52,4 +53,12 @@ export class MockGoogleSheetsAdapter implements IGoogleSheetsClient {
       ],
     },
   });
+}
+
+export function createMockEventEmitter(): jest.Mocked<IEventEmitter> {
+  return {
+    on: jest.fn(),
+    emit: jest.fn(),
+    removeListener: jest.fn(),
+  };
 }

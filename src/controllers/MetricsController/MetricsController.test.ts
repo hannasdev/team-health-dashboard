@@ -1,5 +1,3 @@
-// src/controllers/MetricsController/MetricsController.test.ts
-
 import { Response, NextFunction } from 'express';
 
 import { MetricsController } from './MetricsController';
@@ -13,6 +11,7 @@ import {
 import { AppError } from '../../utils/errors';
 
 import type { IMetric, IAuthRequest } from '../../interfaces';
+import type { ProgressCallback } from '../../types'; // Make sure this import is correct
 
 describe('MetricsController', () => {
   let metricsController: MetricsController;
@@ -47,7 +46,7 @@ describe('MetricsController', () => {
   });
 
   describe('getAllMetrics', () => {
-    it('should set up client disconnection handler', async () => {
+    it('should create SSE connection and set up client disconnection handler', async () => {
       await metricsController.getAllMetrics(
         mockRequest,
         mockResponse as Response,
@@ -55,27 +54,13 @@ describe('MetricsController', () => {
         90,
       );
 
+      expect(mockSSEService.createConnection).toHaveBeenCalledWith(
+        expect.stringContaining('metrics-'),
+        mockResponse,
+      );
       expect(mockRequest.on).toHaveBeenCalledWith(
         'close',
         expect.any(Function),
-      );
-    });
-
-    it('should log the request information', async () => {
-      await metricsController.getAllMetrics(
-        mockRequest,
-        mockResponse as Response,
-        mockNext,
-        90,
-      );
-
-      expect(mockLogger.info).toHaveBeenCalledWith(
-        'Received getAllMetrics request',
-        {
-          timePeriod: 90,
-          userAgent: 'test-agent',
-          ip: '127.0.0.1',
-        },
       );
     });
 
@@ -88,11 +73,38 @@ describe('MetricsController', () => {
       );
 
       expect(mockMetricsService.getAllMetrics).toHaveBeenCalledWith(
-        mockSSEService.progressCallback,
+        expect.any(Function),
         90,
       );
     });
 
+    it('should send progress events', async () => {
+      mockMetricsService.getAllMetrics.mockImplementation(
+        async (progressCallback?: ProgressCallback) => {
+          if (progressCallback) {
+            progressCallback(50, 100, 'Halfway there');
+          }
+          return {
+            metrics: [],
+            errors: [],
+            githubStats: { totalPRs: 0, fetchedPRs: 0, timePeriod: 90 },
+          };
+        },
+      );
+
+      await metricsController.getAllMetrics(
+        mockRequest,
+        mockResponse as Response,
+        mockNext,
+        90,
+      );
+
+      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
+        expect.stringContaining('metrics-'),
+        'progress',
+        { current: 50, total: 100, message: 'Halfway there' },
+      );
+    });
     it('should send result event when metrics are fetched successfully', async () => {
       const mockMetrics: IMetric[] = [createMockMetric(), createMockMetric()];
       const mockResult = {
@@ -109,7 +121,11 @@ describe('MetricsController', () => {
         90,
       );
 
-      expect(mockSSEService.sendResultEvent).toHaveBeenCalledWith(mockResult);
+      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
+        expect.stringContaining('metrics-'),
+        'result',
+        mockResult,
+      );
     });
 
     it('should handle simulated error when query parameter is set', async () => {
@@ -122,8 +138,10 @@ describe('MetricsController', () => {
         90,
       );
 
-      expect(mockSSEService.handleError).toHaveBeenCalledWith(
-        expect.any(AppError),
+      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
+        expect.stringContaining('metrics-'),
+        'error',
+        { message: 'Simulated server error' },
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error fetching metrics:',
@@ -142,17 +160,24 @@ describe('MetricsController', () => {
         90,
       );
 
-      expect(mockSSEService.handleError).toHaveBeenCalledWith(unknownError);
+      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
+        expect.stringContaining('metrics-'),
+        'error',
+        { message: 'Unknown error' },
+      );
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error fetching metrics:',
         unknownError,
       );
     });
 
-    it('should handle token expiration during metric fetching', async () => {
-      const tokenExpiredError = new Error('Token expired');
-      tokenExpiredError.name = 'TokenExpiredError';
-      mockMetricsService.getAllMetrics.mockRejectedValue(tokenExpiredError);
+    it('should end connection after sending result', async () => {
+      jest.useFakeTimers();
+      mockMetricsService.getAllMetrics.mockResolvedValue({
+        metrics: [],
+        errors: [],
+        githubStats: { totalPRs: 0, fetchedPRs: 0, timePeriod: 90 },
+      });
 
       await metricsController.getAllMetrics(
         mockRequest,
@@ -161,13 +186,13 @@ describe('MetricsController', () => {
         90,
       );
 
-      expect(mockSSEService.handleError).toHaveBeenCalledWith(
-        tokenExpiredError,
+      jest.advanceTimersByTime(5000);
+
+      expect(mockSSEService.endConnection).toHaveBeenCalledWith(
+        expect.stringContaining('metrics-'),
       );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error fetching metrics:',
-        tokenExpiredError,
-      );
+
+      jest.useRealTimers();
     });
 
     it('should cancel operation on client disconnection', async () => {
@@ -183,7 +208,9 @@ describe('MetricsController', () => {
 
       closeHandler();
 
-      expect(mockSSEService.handleClientDisconnection).toHaveBeenCalled();
+      expect(mockSSEService.handleClientDisconnection).toHaveBeenCalledWith(
+        expect.stringContaining('metrics-'),
+      );
       expect(mockMetricsService.cancelOperation).toHaveBeenCalled();
     });
   });

@@ -6,5 +6,4 @@ export interface IEventEmitter {
     event: string | symbol,
     listener: (...args: any[]) => void,
   ): this;
-  // Add any other EventEmitter methods you need
 }

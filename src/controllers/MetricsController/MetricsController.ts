@@ -12,23 +12,6 @@ import type {
   ISSEService,
 } from '../../interfaces/index.js';
 
-/**
- * MetricsController
- *
- * This controller handles HTTP requests related to metrics in the Team Health Dashboard.
- * It acts as an intermediary between the HTTP layer and the MetricsService,
- * processing requests, managing Server-Sent Events (SSE) for progress updates,
- * and formatting the final response.
- *
- * Key responsibilities:
- * - Handles the getAllMetrics endpoint
- * - Manages SSE for real-time progress updates
- * - Processes and formats the response from MetricsService
- * - Handles errors and sends appropriate error responses
- *
- * @injectable
- */
-
 @injectable()
 export class MetricsController implements IMetricsController {
   constructor(
@@ -43,14 +26,11 @@ export class MetricsController implements IMetricsController {
     next: NextFunction,
     timePeriod: number,
   ): Promise<void> => {
-    this.logger.info('Received getAllMetrics request', {
-      timePeriod,
-      userAgent: req.headers['user-agent'],
-      ip: req.ip,
-    });
+    const connectionId = `metrics-${Date.now()}`;
+    this.sseService.createConnection(connectionId, res);
 
     const closeHandler = () => {
-      this.sseService.handleClientDisconnection();
+      this.sseService.handleClientDisconnection(connectionId);
       this.metricsService.cancelOperation();
     };
 
@@ -62,22 +42,30 @@ export class MetricsController implements IMetricsController {
       }
 
       const result = await this.metricsService.getAllMetrics(
-        this.sseService.progressCallback,
+        (current, total, message) => {
+          this.sseService.sendEvent(connectionId, 'progress', {
+            current,
+            total,
+            message,
+          });
+        },
         timePeriod,
       );
 
-      this.sseService.sendResultEvent(result);
+      this.sseService.sendEvent(connectionId, 'result', result);
 
       setTimeout(() => {
-        this.sseService.endResponse();
+        this.sseService.endConnection(connectionId);
       }, 5000); // 5 seconds delay
     } catch (error) {
       this.logger.error('Error fetching metrics:', error as Error);
-      this.sseService.handleError(
-        error instanceof Error
-          ? error
-          : new AppError(500, 'Unknown error occurred'),
-      );
+      this.sseService.sendEvent(connectionId, 'error', {
+        message:
+          error instanceof Error
+            ? error.message
+            : 'An unknown error occurred while fetching metrics',
+      });
+      this.sseService.endConnection(connectionId);
     }
   };
 }

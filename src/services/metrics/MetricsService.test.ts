@@ -1,6 +1,7 @@
 // src/__tests__/services/metrics/MetricsService.test.ts
 import { ProgressCallback } from 'types/index.js';
 
+import { MetricsService } from './MetricsService.js';
 import {
   createMockLogger,
   createMockMetric,
@@ -9,7 +10,6 @@ import {
   createMockPullRequest,
   createMockMetricCalculator,
 } from '../../__mocks__/index.js';
-import { MetricsService } from '../../services/metrics/MetricsService.js';
 import { AppError } from '../../utils/errors.js';
 
 import type {

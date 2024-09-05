@@ -8,14 +8,10 @@ import type {
 
 export function createMockSSEService(): jest.Mocked<ISSEService> {
   return {
-    initialize: jest.fn(),
+    createConnection: jest.fn(),
     sendEvent: jest.fn(),
-    endResponse: jest.fn(),
+    endConnection: jest.fn(),
     handleClientDisconnection: jest.fn(),
-    progressCallback: jest.fn(),
-    handleError: jest.fn(),
-    sendResultEvent: jest.fn(),
-    triggerHeartbeat: jest.fn(),
   };
 }
 

@@ -30,6 +30,7 @@ export type { IMongoAdapter } from './IMongoAdapter';
 export type { IMongoDbClient } from './IMongoDbClient.js';
 export type { IProgressTracker } from './IProgressTracker.js';
 export type { IPullRequest } from './IPullRequest.js';
+export type { ISSEConnection } from './ISSEConnection.js';
 export type { ISSEService } from './ISSEService.js';
 export type { ITeamHealthDashboardApp } from './ITeamHealthDashboardApp.js';
 export type { ITokenBlacklistService } from './ITokenBlacklistService.js';

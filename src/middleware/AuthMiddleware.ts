@@ -64,23 +64,31 @@ export class AuthMiddleware implements IAuthMiddleware {
     next: NextFunction,
     decoded: any,
   ): void {
+    const connectionId = `auth-${Date.now()}`;
+
     if (this.isTokenExpired(decoded)) {
       this.logger.warn(`Expired token for SSE connection: ${decoded.email}`);
-      this.sseService.handleError(new UnauthorizedError('Token has expired'));
+      this.sseService.createConnection(connectionId, res);
+      this.sseService.sendEvent(connectionId, 'error', {
+        message: 'Token has expired',
+      });
+      this.sseService.endConnection(connectionId);
       return;
     }
 
     this.logger.info(`SSE connection authenticated for user: ${decoded.email}`);
 
     // Initialize SSE connection
-    this.sseService.initialize(res);
+    this.sseService.createConnection(connectionId, res);
 
     // Set up token expiration check for SSE
     const checkTokenInterval = setInterval(() => {
       if (this.isTokenExpired(decoded)) {
         this.logger.warn(`Token expired for SSE connection: ${decoded.email}`);
-        this.sseService.sendEvent('error', { message: 'Token expired' });
-        this.sseService.endResponse();
+        this.sseService.sendEvent(connectionId, 'error', {
+          message: 'Token expired',
+        });
+        this.sseService.endConnection(connectionId);
         clearInterval(checkTokenInterval);
       }
     }, 60000); // Check every minute
@@ -88,7 +96,7 @@ export class AuthMiddleware implements IAuthMiddleware {
     // Clean up on client disconnect
     req.on('close', () => {
       clearInterval(checkTokenInterval);
-      this.sseService.handleClientDisconnection();
+      this.sseService.handleClientDisconnection(connectionId);
     });
 
     next();
@@ -183,7 +191,12 @@ export class AuthMiddleware implements IAuthMiddleware {
       error instanceof Error ? error.message : 'Invalid token',
     );
     if (res.headersSent) {
-      this.sseService.handleError(unauthorizedError);
+      const connectionId = `auth-error-${Date.now()}`;
+      this.sseService.createConnection(connectionId, res);
+      this.sseService.sendEvent(connectionId, 'error', {
+        message: unauthorizedError.message,
+      });
+      this.sseService.endConnection(connectionId);
     } else {
       next(unauthorizedError);
     }
