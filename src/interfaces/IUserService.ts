@@ -1,5 +1,5 @@
 // src/interfaces/IUserService.ts
-import { User } from '../models/User.js';
+import { User } from '../data/models/User.js';
 
 export interface IUserService {
   registerUser(email: string, password: string): Promise<User>;

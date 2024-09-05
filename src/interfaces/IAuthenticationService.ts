@@ -1,6 +1,6 @@
 // src/interfaces/IAuthService.ts
 // src/interfaces/IAuthenticationService.ts
-import { User } from '../models/User.js';
+import { User } from '../data/models/User.js';
 
 export interface IAuthenticationService {
   login(

@@ -7,7 +7,7 @@ import {
   createMockJwtService,
   createMockConfig,
 } from '../../__mocks__/index.js';
-import { Config } from '../../config/config';
+import { Config } from '../../cross-cutting/Config/config';
 import { TYPES } from '../../utils/types';
 
 describe('TokenService', () => {

@@ -4,9 +4,9 @@ import cors from 'cors';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import authRouter from './routes/auth.js';
-import healthCheckRouter from './routes/healthCheck.js';
-import metricsRouter from './routes/metrics.js';
+import authRouter from './presentation/routes/auth.js';
+import healthCheckRouter from './presentation/routes/healthCheck.js';
+import metricsRouter from './presentation/routes/metrics.js';
 import { TYPES } from './utils/types.js';
 
 import type {

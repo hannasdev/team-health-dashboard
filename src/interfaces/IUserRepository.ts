@@ -1,6 +1,6 @@
 // src/interfaces/IUserRepository.ts
 
-import { User } from '../models/User.js';
+import { User } from '../data/models/User.js';
 
 export interface IUserRepository {
   findByEmail(email: string): Promise<User | undefined>;
