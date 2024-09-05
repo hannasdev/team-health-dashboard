@@ -1,6 +1,6 @@
 # Target Architecture v3
 
-## Current Architecture (as of Sep 1, 2024)
+## Current Architecture (as of Sep 5, 2024)
 
 ```mermaid
 classDiagram
@@ -15,43 +15,58 @@ classDiagram
 
     MetricsController --> MetricsService
     MetricsController --> SSEService
-    AuthController --> AuthService
+    AuthController --> AuthenticationService
+    AuthController --> UserService
     AuthController --> ApiResponse
     HealthCheckController --> MongoDbClient
     HealthCheckController --> ApiResponse
 
-    MetricsService --> MetricsRepository
-    MetricsRepository --> GitHubRepository
-    MetricsRepository --> GoogleSheetsRepository
+    MetricsService --> GitHubRepository
+    MetricsService --> GoogleSheetsRepository
+    MetricsService --> MetricCalculator
+    MetricsService --> ProgressTracker
     SSEService --> ApiResponse
 
-    AuthService --> TokenService
-    AuthService --> UserRepository
+    AuthenticationService --> TokenService
+    AuthenticationService --> UserRepository
+    AuthenticationService --> TokenBlacklistService
+    AuthenticationService --> BcryptService
+    UserService --> UserRepository
+
     TokenService --> JwtService
-    TokenService --> TokenBlacklistService
-    TokenService --> BcryptService
+    TokenBlacklistService --> TokenBlacklistRepository
 
     GitHubRepository --> GitHubAdapter
-    GitHubRepository --> MetricCalculator
     GoogleSheetsRepository --> GoogleSheetsAdapter
 
-    UserRepository --> MongoDbClient
-    GitHubRepository --> MongoDbClient
-    GoogleSheetsRepository --> MongoDbClient
+    UserRepository --> MongoAdapter
+    GitHubRepository --> MongoAdapter
+    GoogleSheetsRepository --> MongoAdapter
+    TokenBlacklistRepository --> MongoAdapter
+
+    GitHubRepository ..> CacheService
+    GoogleSheetsRepository ..> CacheService
 
     App --> Config
     App --> Logger
 
+    MiddlewareGroup --> AuthMiddleware
+    AuthMiddleware --> TokenService
+    AuthMiddleware --> SSEService
+
     class App {
         +express: Express
+        +configureCors()
         +configureMiddleware()
         +configureRoutes()
-        +start()
+        +configureErrorHandling()
+        +initialize()
     }
 
     class MiddlewareGroup {
         ErrorHandlerMiddleware
         LoggingMiddleware
+        AuthMiddleware
         CorsMiddleware
         BodyParserMiddleware
         SecurityHeadersMiddleware
@@ -60,15 +75,13 @@ classDiagram
     class MetricsService {
         <<implements IMetricsService>>
         +getAllMetrics(progressCallback, timePeriod)
-    }
-
-    class MetricsRepository {
-        +fetchMetrics()
+        +cancelOperation()
     }
 
     class GitHubRepository {
         <<implements IGitHubRepository>>
         +fetchPullRequests(timePeriod, progressCallback)
+        +cancelOperation()
     }
 
     class GoogleSheetsRepository {
@@ -81,17 +94,23 @@ classDiagram
         +calculateMetrics(pullRequests)
     }
 
+    class ProgressTracker {
+        +trackProgress(current, total, message)
+        +setReportInterval(interval)
+    }
+
     class SSEService {
         <<implements ISSEService>>
-        +initialize(res)
-        +sendEvent(event, data)
-        +progressCallback()
+        +createConnection(id, res)
+        +sendEvent(connectionId, event, data)
+        +endConnection(connectionId)
+        +handleClientDisconnection(connectionId)
     }
 
     class ApiResponse {
         <<implements IApiResponse>>
         +createSuccessResponse(data)
-        +createErrorResponse(message, statusCode)
+        +createErrorResponse(message, details, statusCode)
     }
 
     class MetricsController {
@@ -105,11 +124,16 @@ classDiagram
         +logout(req, res, next)
     }
 
-    class AuthService {
+    class AuthenticationService {
         +login(email, password)
-        +register(email, password)
         +refreshToken(refreshToken)
         +logout(refreshToken)
+    }
+
+    class UserService {
+        +registerUser(email, password)
+        +getUserById(id)
+        +updateUserProfile(id, data)
     }
 
     class HealthCheckController {
@@ -155,6 +179,11 @@ classDiagram
         +getValues(spreadsheetId, range)
     }
 
+    class MongoAdapter {
+        +getCollection(name)
+        +getDb()
+    }
+
     class Logger {
         +info(message, meta)
         +error(message, error, meta)
@@ -172,6 +201,13 @@ classDiagram
         +connect()
         +getDb()
         +close()
+    }
+
+    class CacheService {
+        +get(key)
+        +set(key, value, ttl)
+        +delete(key)
+        +clear()
     }
 ```
 
@@ -238,19 +274,21 @@ Here's a high-level description of an improved target architecture:
 - Generic, reusable components (e.g., a more flexible SSEService, generalized MetricCalculator).
 - Clear error handling and middleware integration.
 
+## Target Architecture
+
 ```mermaid
 classDiagram
-    %% Layers
+      %% Layers
     class PresentationLayer
     class BusinessLogicLayer
     class DataAccessLayer
 
-    %% Cross-cutting Concerns
+     %% Cross-cutting Concerns
     class CrossCuttingConcerns {
         Logger
         Config
-        ErrorHandler
-        EventEmitter
+        CacheService
+        ApiResponse
     }
 
     %% Presentation Layer
@@ -271,7 +309,6 @@ classDiagram
     BusinessLogicLayer --> ProgressTracker
 
     %% Data Access Layer
-    DataAccessLayer --> MetricsRepository
     DataAccessLayer --> UserRepository
     DataAccessLayer --> GitHubRepository
     DataAccessLayer --> GoogleSheetsRepository
@@ -294,17 +331,18 @@ classDiagram
     AuthController --> UserService
     HealthCheckController --> HealthCheckService
 
-    MetricsService --> MetricsRepository
+    MetricsService --> GitHubRepository
+    MetricsService --> GoogleSheetsRepository
     MetricsService --> MetricCalculator
     MetricsService --> ProgressTracker
     AuthenticationService --> TokenManagementService
     AuthenticationService --> UserService
+    AuthenticationService --> BcryptService
     UserService --> UserRepository
-    HealthCheckService --> MetricsRepository
-    HealthCheckService --> UserRepository
-
-    MetricsRepository --> GitHubRepository
-    MetricsRepository --> GoogleSheetsRepository
+    UserService --> BcryptService
+    HealthCheckService --> MongoAdapter
+    TokenManagementService --> TokenBlacklistRepository
+    TokenManagementService --> JwtService
 
     GitHubRepository --> GitHubAdapter
     GoogleSheetsRepository --> GoogleSheetsAdapter
@@ -313,15 +351,14 @@ classDiagram
 
     %% New connections
     MiddlewareGroup --> AuthMiddleware
+    MiddlewareGroup --> ErrorHandlerMiddleware
     AuthMiddleware --> TokenManagementService
     AuthMiddleware --> SSEService
 
-    SSEService --> EventEmitter
-    SSEService --> ProgressTracker
+    GitHubRepository ..> CacheService
+    GoogleSheetsRepository ..> CacheService
 
-    TokenManagementService --> TokenBlacklistRepository
-
-    %% Class definitions (updated and new)
+    %% Class definitions
     class App {
         +configureMiddleware()
         +configureRoutes()
@@ -329,11 +366,15 @@ classDiagram
     }
 
     class MiddlewareGroup {
-        ErrorHandlingMiddleware
+        ErrorHandlerMiddleware
         LoggingMiddleware
         AuthMiddleware
         CorsMiddleware
         BodyParserMiddleware
+    }
+
+    class ErrorHandlerMiddleware {
+        +handle(err, req, res, next)
     }
 
     class AuthMiddleware {
@@ -396,7 +437,6 @@ classDiagram
         +endResponse()
         +handleClientDisconnection()
         +handleError(error)
-        +progressCallback(current, total, message)
     }
 
     class ProgressTracker {
@@ -410,7 +450,7 @@ classDiagram
     }
 
     class GoogleSheetsRepository {
-        +getMetricsData()
+        +getMetricsData(progressCallback)
     }
 
     class TokenBlacklistRepository {
@@ -419,8 +459,25 @@ classDiagram
         +removeExpired()
     }
 
-    class EventEmitter {
-        +on(event, listener)
-        +emit(event, ...args)
+    class CacheService {
+        +get(key)
+        +set(key, value, ttl)
+        +delete(key)
+        +clear()
+    }
+
+    class BcryptService {
+        +hash(data, saltOrRounds)
+        +compare(data, encrypted)
+    }
+
+    class JwtService {
+        +sign(payload, secret, options)
+        +verify(token, secret)
+    }
+
+    class MongoAdapter {
+        +getCollection(name)
+        +getDb()
     }
 ```
