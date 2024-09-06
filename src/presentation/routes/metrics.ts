@@ -22,37 +22,23 @@ const getAuthMiddleware = () =>
   container.get<IAuthMiddleware>(TYPES.AuthMiddleware);
 
 const getLogger = () => container.get<ILogger>(TYPES.Logger);
-const getApiResponse = () => container.get<IApiResponse>(TYPES.ApiResponse);
 
 router.get(
   '/metrics',
   (req: IAuthRequest, res: Response, next: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics endpoint');
-    return getAuthMiddleware().handle(req, res, err => {
-      if (err) {
-        logger.warn('Authentication failed:', err);
-        return res
-          .status(401)
-          .json(getApiResponse().createErrorResponse('No token provided', 401));
-      }
-      next();
-    });
+    return getAuthMiddleware().handle(req, res, next);
+  },
+  (req: IAuthRequest, res: Response, next: NextFunction) => {
+    const metricsController = getMetricsController();
+    metricsController.setupSSE(req, res, next);
   },
   (req: IAuthRequest, res: Response, next: NextFunction) => {
     const logger = getLogger();
     try {
-      // Parse time period from query params, default to 90 days if not provided
       const timePeriod = parseInt(req.query.timePeriod as string) || 90;
       logger.debug(`Metrics requested for time period: ${timePeriod} days`);
-
-      // Check for error query parameter
-      if (req.query.error === 'true') {
-        logger.warn('Simulated error triggered');
-        const simulatedError = new Error('Simulated error');
-        simulatedError.name = 'SimulatedError';
-        return next(simulatedError);
-      }
 
       const metricsController = getMetricsController();
       if (!metricsController) {

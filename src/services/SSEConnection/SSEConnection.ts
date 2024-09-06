@@ -86,13 +86,17 @@ export class SSEConnection implements ISSEConnection {
   }
 
   private setupSSE(): void {
-    this.res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    });
-    this.writeToResponse(':\n\n'); // Keep-alive
-    this.logger.info(`SSE setup complete for connection: ${this.id}`);
+    if (!this.res.headersSent) {
+      this.res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+      });
+      this.writeToResponse(':\n\n'); // Keep-alive
+      this.logger.info(`SSE setup complete for connection: ${this.id}`);
+    } else {
+      this.logger.warn(`Headers already sent for connection: ${this.id}`);
+    }
   }
 
   private setupTimeout(): void {

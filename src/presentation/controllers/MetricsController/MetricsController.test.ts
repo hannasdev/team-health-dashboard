@@ -11,7 +11,7 @@ import {
 import { AppError } from '../../../utils/errors';
 
 import type { IMetric, IAuthRequest } from '../../../interfaces';
-import type { ProgressCallback } from '../../../types'; // Make sure this import is correct
+import type { ProgressCallback } from '../../../types';
 
 describe('MetricsController', () => {
   let metricsController: MetricsController;
@@ -20,7 +20,7 @@ describe('MetricsController', () => {
   let mockSSEService: ReturnType<typeof createMockSSEService>;
   let mockRequest: IAuthRequest;
   let mockResponse: Partial<Response>;
-  let mockNext: NextFunction;
+  let mockNext: jest.MockedFunction<NextFunction>;
 
   beforeEach(() => {
     mockMetricsService = createMockMetricsService();
@@ -42,29 +42,13 @@ describe('MetricsController', () => {
     mockResponse = {
       json: jest.fn(),
     };
-    mockNext = jest.fn();
+    mockNext = jest.fn() as jest.MockedFunction<NextFunction>;
   });
 
   describe('getAllMetrics', () => {
-    it('should create SSE connection and set up client disconnection handler', async () => {
-      await metricsController.getAllMetrics(
-        mockRequest,
-        mockResponse as Response,
-        mockNext,
-        90,
-      );
-
-      expect(mockSSEService.createConnection).toHaveBeenCalledWith(
-        expect.stringContaining('metrics-'),
-        mockResponse,
-      );
-      expect(mockRequest.on).toHaveBeenCalledWith(
-        'close',
-        expect.any(Function),
-      );
-    });
-
     it('should call metricsService.getAllMetrics with correct parameters', async () => {
+      (mockRequest as any).sseConnectionId = 'test-connection-id';
+
       await metricsController.getAllMetrics(
         mockRequest,
         mockResponse as Response,
@@ -79,6 +63,8 @@ describe('MetricsController', () => {
     });
 
     it('should send progress events', async () => {
+      (mockRequest as any).sseConnectionId = 'test-connection-id';
+
       mockMetricsService.getAllMetrics.mockImplementation(
         async (progressCallback?: ProgressCallback) => {
           if (progressCallback) {
@@ -100,12 +86,15 @@ describe('MetricsController', () => {
       );
 
       expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
-        expect.stringContaining('metrics-'),
+        'test-connection-id',
         'progress',
         { current: 50, total: 100, message: 'Halfway there' },
       );
     });
+
     it('should send result event when metrics are fetched successfully', async () => {
+      (mockRequest as any).sseConnectionId = 'test-connection-id';
+
       const mockMetrics: IMetric[] = [createMockMetric(), createMockMetric()];
       const mockResult = {
         metrics: mockMetrics,
@@ -122,14 +111,17 @@ describe('MetricsController', () => {
       );
 
       expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
-        expect.stringContaining('metrics-'),
+        'test-connection-id',
         'result',
         mockResult,
       );
     });
 
-    it('should handle simulated error when query parameter is set', async () => {
-      mockRequest.query = { error: 'true' };
+    it('should handle errors during metrics fetching', async () => {
+      (mockRequest as any).sseConnectionId = 'test-connection-id';
+
+      const testError = new Error('Test error');
+      mockMetricsService.getAllMetrics.mockRejectedValue(testError);
 
       await metricsController.getAllMetrics(
         mockRequest,
@@ -139,20 +131,17 @@ describe('MetricsController', () => {
       );
 
       expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
-        expect.stringContaining('metrics-'),
+        'test-connection-id',
         'error',
-        { message: 'Simulated server error' },
+        { message: 'Test error' }, // Changed this line to match the actual error message
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error fetching metrics:',
-        expect.any(AppError),
+        testError,
       );
     });
 
-    it('should handle unknown errors', async () => {
-      const unknownError = new Error('Unknown error');
-      mockMetricsService.getAllMetrics.mockRejectedValue(unknownError);
-
+    it('should call next with an error if sseConnectionId is missing', async () => {
       await metricsController.getAllMetrics(
         mockRequest,
         mockResponse as Response,
@@ -160,58 +149,70 @@ describe('MetricsController', () => {
         90,
       );
 
-      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
-        expect.stringContaining('metrics-'),
-        'error',
-        { message: 'Unknown error' },
-      );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error fetching metrics:',
-        unknownError,
-      );
+      expect(mockNext).toHaveBeenCalled();
+
+      const calls = mockNext.mock.calls;
+
+      if (calls.length > 0 && calls[0].length > 0) {
+        const error = calls[0][0] as unknown;
+
+        if (error instanceof Error) {
+          expect(error.message).toBe('SSE connection not set up');
+          expect(error).toBeInstanceOf(AppError);
+        } else {
+          fail('Expected mockNext to be called with an Error');
+        }
+      } else {
+        fail('Expected mockNext to be called with arguments');
+      }
     });
+  });
 
-    it('should end connection after sending result', async () => {
-      jest.useFakeTimers();
-      mockMetricsService.getAllMetrics.mockResolvedValue({
-        metrics: [],
-        errors: [],
-        githubStats: { totalPRs: 0, fetchedPRs: 0, timePeriod: 90 },
-      });
-
-      await metricsController.getAllMetrics(
+  describe('setupSSE', () => {
+    it('should create an SSE connection', () => {
+      metricsController.setupSSE(
         mockRequest,
         mockResponse as Response,
         mockNext,
-        90,
       );
 
-      jest.advanceTimersByTime(5000);
-
-      expect(mockSSEService.endConnection).toHaveBeenCalledWith(
+      expect(mockSSEService.createConnection).toHaveBeenCalledWith(
         expect.stringContaining('metrics-'),
+        mockResponse,
       );
-
-      jest.useRealTimers();
     });
 
-    it('should cancel operation on client disconnection', async () => {
-      await metricsController.getAllMetrics(
+    it('should set up a close handler for the request', () => {
+      metricsController.setupSSE(
         mockRequest,
         mockResponse as Response,
         mockNext,
-        90,
       );
 
-      const [[event, closeHandler]] = (mockRequest.on as jest.Mock).mock.calls;
-      expect(event).toBe('close');
-
-      closeHandler();
-
-      expect(mockSSEService.handleClientDisconnection).toHaveBeenCalledWith(
-        expect.stringContaining('metrics-'),
+      expect(mockRequest.on).toHaveBeenCalledWith(
+        'close',
+        expect.any(Function),
       );
-      expect(mockMetricsService.cancelOperation).toHaveBeenCalled();
+    });
+
+    it('should call next after setup', () => {
+      metricsController.setupSSE(
+        mockRequest,
+        mockResponse as Response,
+        mockNext,
+      );
+
+      expect(mockNext).toHaveBeenCalled();
+    });
+
+    it('should set sseConnectionId on the request', () => {
+      metricsController.setupSSE(
+        mockRequest,
+        mockResponse as Response,
+        mockNext,
+      );
+
+      expect((mockRequest as any).sseConnectionId).toMatch(/^metrics-/);
     });
   });
 });

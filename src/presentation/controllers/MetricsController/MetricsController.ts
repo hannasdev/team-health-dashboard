@@ -26,15 +26,10 @@ export class MetricsController implements IMetricsController {
     next: NextFunction,
     timePeriod: number,
   ): Promise<void> => {
-    const connectionId = `metrics-${Date.now()}`;
-    this.sseService.createConnection(connectionId, res);
-
-    const closeHandler = () => {
-      this.sseService.handleClientDisconnection(connectionId);
-      this.metricsService.cancelOperation();
-    };
-
-    req.on('close', closeHandler);
+    const connectionId = (req as any).sseConnectionId;
+    if (!connectionId) {
+      return next(new AppError(500, 'SSE connection not set up'));
+    }
 
     try {
       if (req.query.error === 'true') {
@@ -54,6 +49,7 @@ export class MetricsController implements IMetricsController {
 
       this.sseService.sendEvent(connectionId, 'result', result);
 
+      // End the SSE connection after sending the result
       setTimeout(() => {
         this.sseService.endConnection(connectionId);
       }, 5000); // 5 seconds delay
@@ -67,5 +63,22 @@ export class MetricsController implements IMetricsController {
       });
       this.sseService.endConnection(connectionId);
     }
+  };
+
+  public setupSSE = (req: Request, res: Response, next: NextFunction): void => {
+    const connectionId = `metrics-${Date.now()}`;
+    this.sseService.createConnection(connectionId, res);
+
+    const closeHandler = () => {
+      this.sseService.handleClientDisconnection(connectionId);
+      this.metricsService.cancelOperation();
+    };
+
+    req.on('close', closeHandler);
+
+    // Attach the connectionId to the request for later use
+    (req as any).sseConnectionId = connectionId;
+
+    next();
   };
 }
