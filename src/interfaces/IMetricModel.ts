@@ -1,5 +1,4 @@
 // src/interfaces/IMetricModel.ts
-
 export interface IMetric {
   id: string;
   metric_category: string;
@@ -10,3 +9,7 @@ export interface IMetric {
   additional_info: string;
   source: string;
 }
+
+import { Document } from 'mongoose';
+
+export interface IMetricDocument extends IMetric, Document {}

@@ -31,6 +31,7 @@ export class AuthenticationService implements IAuthenticationService {
   async login(
     email: string,
     password: string,
+    shortLived: boolean = false,
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
     const user = await this.userRepository.findByEmail(email);
     if (!user || !(await this.bcryptService.compare(password, user.password))) {
@@ -38,17 +39,22 @@ export class AuthenticationService implements IAuthenticationService {
       throw new InvalidCredentialsError();
     }
     this.logger.info(`Successful login for user: ${email}`);
-    const accessToken = this.tokenService.generateAccessToken({
-      id: user.id,
-      email: user.email,
-    });
+    const accessToken = shortLived
+      ? this.tokenService.generateShortLivedAccessToken({
+          id: user.id,
+          email: user.email,
+        })
+      : this.tokenService.generateAccessToken({
+          id: user.id,
+          email: user.email,
+        });
     const refreshToken = this.tokenService.generateRefreshToken({
       id: user.id,
     });
     return { user, accessToken, refreshToken };
   }
 
-  async refreshToken(
+  public async refreshToken(
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }> {
     try {
@@ -56,30 +62,21 @@ export class AuthenticationService implements IAuthenticationService {
         throw new InvalidRefreshTokenError('Refresh token has been revoked');
       }
 
-      this.logger.debug('Validating refresh token');
       const decoded = this.tokenService.validateRefreshToken(refreshToken);
-      this.logger.debug('Refresh token validated successfully', {
-        userId: decoded.id,
-      });
-
-      this.logger.debug('Looking up user');
       const user = await this.userRepository.findById(decoded.id);
       if (!user) {
         throw new InvalidRefreshTokenError('User not found');
       }
 
-      this.logger.debug('Blacklisting old refresh token');
       await this.tokenBlacklistService.blacklistToken(
         refreshToken,
         decoded.exp * 1000,
       );
 
-      this.logger.debug('Generating new tokens');
       const newAccessToken = this.tokenService.generateAccessToken({
         id: user.id,
         email: user.email,
       });
-
       const newRefreshToken = this.tokenService.generateRefreshToken({
         id: user.id,
       });

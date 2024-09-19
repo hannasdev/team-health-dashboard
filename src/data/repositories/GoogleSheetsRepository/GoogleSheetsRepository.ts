@@ -1,9 +1,5 @@
 import { injectable, inject } from 'inversify';
 
-import {
-  Cacheable,
-  CacheableClass,
-} from '../../../cross-cutting/CacheDecorator/index.js';
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
@@ -11,17 +7,23 @@ import type {
   IGoogleSheetsClient,
   IGoogleSheetsRepository,
   IConfig,
-  ICacheService,
   IMetric,
   ILogger,
 } from '../../../interfaces';
-import type { ProgressCallback } from '../../../types/index.js';
+import type { GoogleSheetsMetricModel } from '../../../types/index.js';
 
+/**
+ * Implements the `IGoogleSheetsRepository` interface and provides methods to fetch and store metrics from Google Sheets.
+ *
+ * This class is responsible for:
+ * - Fetching data from Google Sheets and processing the rows
+ * - Storing the metrics in the database
+ * - Retrieving the metrics from the database
+ *
+ * The class uses caching to improve performance and reduce the number of requests to Google Sheets.
+ */
 @injectable()
-export class GoogleSheetsRepository
-  extends CacheableClass
-  implements IGoogleSheetsRepository
-{
+export class GoogleSheetsRepository implements IGoogleSheetsRepository {
   private spreadsheetId: string;
 
   constructor(
@@ -29,93 +31,110 @@ export class GoogleSheetsRepository
     private googleSheetsClient: IGoogleSheetsClient,
     @inject(TYPES.Config) private configService: IConfig,
     @inject(TYPES.Logger) private logger: ILogger,
-    @inject(TYPES.CacheService) cacheService: ICacheService,
+    @inject(TYPES.GoogleSheetsMetricModel)
+    private GoogleSheetsMetric: GoogleSheetsMetricModel,
   ) {
-    super(cacheService);
     this.spreadsheetId = this.configService.GOOGLE_SHEETS_ID;
     if (!this.spreadsheetId) {
       this.logger.error('Google Sheets ID is not set correctly');
     }
   }
 
-  @Cacheable('googlesheets-metrics', 3600) // Cache for 1 hour
-  async fetchMetrics(progressCallback?: ProgressCallback): Promise<IMetric[]> {
+  public async fetchRawData(): Promise<any[][]> {
     try {
-      progressCallback?.(0, 100, 'Starting to fetch data from Google Sheets');
-
+      this.logger.info('Starting to fetch data from Google Sheets');
       const response = await this.googleSheetsClient.getValues(
         this.spreadsheetId,
-        'A:F', // This range is correct for the new structure
+        'A:F',
       );
-
-      progressCallback?.(
-        50,
-        100,
-        'Data fetched from Google Sheets, processing rows',
-      );
-
-      const rows = response.data.values;
-
-      if (!rows || rows.length <= 1) {
-        progressCallback?.(100, 100, 'No data found in Google Sheets');
-        return [];
-      }
-
-      // Skip the header row
-      const metrics = rows
-        .slice(1)
-        .map((row: any[], index: number) => {
-          if (row.length < 4) {
-            this.logger.warn(`Skipping row with insufficient data: ${row}`);
-            return null;
-          }
-
-          const [
-            timestamp,
-            metric_category,
-            metric_name,
-            value,
-            unit = '',
-            additional_info = '',
-          ] = row;
-
-          if (
-            !timestamp ||
-            !metric_category ||
-            !metric_name ||
-            value === undefined
-          ) {
-            this.logger.warn(
-              `Skipping row with missing essential data: ${row}`,
-            );
-            return null;
-          }
-
-          return {
-            id: `sheet-${index}`,
-            metric_category,
-            metric_name,
-            value: Number(value),
-            timestamp: new Date(timestamp),
-            unit,
-            additional_info,
-            source: 'Google Sheets',
-          };
-        })
-        .filter((metric: IMetric | null): metric is IMetric => metric !== null);
-
-      progressCallback?.(100, 100, 'Finished processing Google Sheets data');
-      return metrics;
+      this.logger.info('Data fetched from Google Sheets');
+      return response.data.values;
     } catch (error) {
       this.logger.error(
-        'Error fetching data from Google Sheets:',
+        'Failed to fetch data from Google Sheets:',
         error as Error,
       );
-      progressCallback?.(100, 100, 'Error fetching data from Google Sheets');
       throw new AppError(
         500,
         `Failed to fetch data from Google Sheets: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
+    }
+  }
+
+  public async storeMetrics(metrics: IMetric[]): Promise<void> {
+    try {
+      await this.GoogleSheetsMetric.insertMany(
+        metrics.map(metric => ({
+          metric_category: metric.metric_category,
+          metric_name: metric.metric_name,
+          value: metric.value,
+          timestamp: metric.timestamp,
+          unit: metric.unit,
+          additional_info: metric.additional_info,
+          source: metric.source,
+        })),
+      );
+      this.logger.info(`Stored ${metrics.length} metrics`);
+    } catch (error) {
+      this.logger.error('Error storing metrics:', error as Error);
+      throw new AppError(500, 'Failed to store metrics');
+    }
+  }
+
+  public async getMetrics(
+    page: number = 1,
+    pageSize: number = 20,
+  ): Promise<IMetric[]> {
+    try {
+      const skip = (page - 1) * pageSize;
+      const metrics = await this.GoogleSheetsMetric.find()
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(pageSize)
+        .lean()
+        .exec();
+
+      return metrics.map(metric => ({
+        id: metric._id.toString(),
+        metric_category: metric.metric_category,
+        metric_name: metric.metric_name,
+        value: metric.value,
+        timestamp: metric.timestamp,
+        unit: metric.unit,
+        additional_info: metric.additional_info,
+        source: metric.source,
+      }));
+    } catch (error) {
+      this.logger.error(
+        'Error fetching metrics from database:',
+        error as Error,
+      );
+      throw new AppError(500, 'Failed to fetch metrics from database');
+    }
+  }
+
+  public async getTotalMetricsCount(): Promise<number> {
+    try {
+      return await this.GoogleSheetsMetric.countDocuments();
+    } catch (error) {
+      this.logger.error('Error counting metrics:', error as Error);
+      throw new AppError(500, 'Failed to count metrics');
+    }
+  }
+
+  public async updateMetrics(metrics: IMetric[]): Promise<void> {
+    try {
+      for (const metric of metrics) {
+        await this.GoogleSheetsMetric.findOneAndUpdate(
+          { id: metric.id },
+          metric,
+          { upsert: true, new: true },
+        );
+      }
+      this.logger.info(`Updated ${metrics.length} metrics`);
+    } catch (error) {
+      this.logger.error('Error updating metrics:', error as Error);
+      throw new AppError(500, 'Failed to update metrics');
     }
   }
 }

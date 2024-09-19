@@ -1,5 +1,6 @@
 // src/repositories/github/GitHubRepository.ts
 import { injectable, inject } from 'inversify';
+import { Model } from 'mongoose';
 
 import {
   Cacheable,
@@ -9,16 +10,18 @@ import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
 import type {
+  IGitHubPullRequest,
   IGitHubClient,
-  IConfig,
-  ICacheService,
   IPullRequest,
   IGitHubRepository,
   IGraphQLResponse,
   IGraphQLPullRequest,
   ILogger,
+  IMetric,
+  IConfig,
+  ICacheService,
+  IMetricDocument,
 } from '../../../interfaces';
-import type { ProgressCallback } from '../../../types/index.js';
 
 @injectable()
 export class GitHubRepository
@@ -28,12 +31,15 @@ export class GitHubRepository
   private owner: string;
   private repo: string;
   private readonly timeout: number = 300000; // 5 minutes timeout
-  private isCancelled: boolean = false;
 
   constructor(
     @inject(TYPES.GitHubClient) private client: IGitHubClient,
     @inject(TYPES.Config) private configService: IConfig,
     @inject(TYPES.Logger) private logger: ILogger,
+    @inject(TYPES.GitHubPullRequestModel)
+    private GitHubPullRequest: Model<IGitHubPullRequest>,
+    @inject(TYPES.GitHubMetricModel)
+    private GitHubMetric: Model<IMetricDocument>,
     @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
     super(cacheService);
@@ -44,34 +50,30 @@ export class GitHubRepository
     }
   }
 
+  /**
+   * Fetches pull requests from the GitHub repository within a specified time period.
+   *
+   * @param timePeriod - The time period in days to fetch pull requests for.
+   * @returns An object containing the fetched pull requests, the total number of pull requests, the number of fetched pull requests, and the time period.
+   * @throws {AppError} If there is an error fetching the pull requests.
+   */
   @Cacheable('github-prs', 3600) // Cache for 1 hour
-  async fetchPullRequests(
-    timePeriod: number,
-    progressCallback?: ProgressCallback,
-  ): Promise<{
+  public async fetchPullRequests(timePeriod: number): Promise<{
     pullRequests: IPullRequest[];
     totalPRs: number;
     fetchedPRs: number;
     timePeriod: number;
   }> {
-    if (this.isCancelled) {
-      throw new AppError(499, 'Operation cancelled');
-    }
-
     const { since } = this.getDateRange(timePeriod);
     let pullRequests: IPullRequest[] = [];
     let hasNextPage = true;
     let cursor: string | null = null;
-    let estimatedTotal = 0;
+    let totalPRs = 0;
 
     const startTime = Date.now();
 
     try {
-      while (hasNextPage && !this.isCancelled) {
-        if (this.isCancelled) {
-          throw new AppError(499, 'Operation cancelled');
-        }
-
+      while (hasNextPage) {
         if (Date.now() - startTime > this.timeout) {
           throw new Error('Operation timed out');
         }
@@ -91,23 +93,15 @@ export class GitHubRepository
 
         pullRequests = [...pullRequests, ...newPRs];
 
-        // Update estimated total after first fetch
-        if (estimatedTotal === 0) {
-          estimatedTotal = Math.max(100, newPRs.length * 2); // Assume at least one more page
-        }
-
         hasNextPage = response.repository.pullRequests.pageInfo.hasNextPage;
         cursor = response.repository.pullRequests.pageInfo.endCursor;
 
-        progressCallback?.(
-          pullRequests.length,
-          estimatedTotal,
-          `Fetched ${pullRequests.length} pull requests`,
-        );
-
-        if (pullRequests.length > estimatedTotal) {
-          estimatedTotal = pullRequests.length + 100; // Assume at least one more page
+        // Update totalPRs if it's available in the response
+        if (response.repository.pullRequests.totalCount) {
+          totalPRs = response.repository.pullRequests.totalCount;
         }
+
+        this.logger.info(`Fetched ${pullRequests.length} pull requests`);
 
         if (
           newPRs.length > 0 &&
@@ -123,31 +117,192 @@ export class GitHubRepository
 
       return {
         pullRequests: filteredPullRequests,
-        totalPRs: filteredPullRequests.length,
+        totalPRs: totalPRs,
         fetchedPRs: filteredPullRequests.length,
-        timePeriod,
+        timePeriod: timePeriod,
       };
     } catch (error) {
-      if (this.isCancelled) {
-        throw new AppError(499, 'Operation cancelled');
-      }
-
       this.logger.error('Error fetching pull requests:', error as Error);
       throw new AppError(
         500,
         `Failed to fetch pull requests: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
-    } finally {
-      this.isCancelled = false; // Reset cancellation flag
     }
   }
 
-  public cancelOperation(): void {
-    this.isCancelled = true;
+  public async storeRawPullRequests(
+    pullRequests: IPullRequest[],
+  ): Promise<void> {
+    try {
+      await this.GitHubPullRequest.insertMany(
+        pullRequests.map(pr => ({
+          number: pr.number,
+          title: pr.title,
+          state: pr.state,
+          author: pr.author.login,
+          createdAt: new Date(pr.createdAt),
+          updatedAt: new Date(pr.updatedAt),
+          closedAt: pr.closedAt ? new Date(pr.closedAt) : null,
+          mergedAt: pr.mergedAt ? new Date(pr.mergedAt) : null,
+          additions: pr.additions,
+          deletions: pr.deletions,
+          changedFiles: pr.changedFiles,
+        })),
+      );
+      this.logger.info(`Stored ${pullRequests.length} raw pull requests`);
+    } catch (error) {
+      this.logger.error('Error storing raw pull requests:', error as Error);
+      throw new AppError(500, 'Failed to store raw pull requests');
+    }
+  }
+
+  public async getRawPullRequests(
+    page: number = 1,
+    pageSize: number = 20,
+  ): Promise<IPullRequest[]> {
+    try {
+      const skip = (page - 1) * pageSize;
+
+      const pullRequests = await this.GitHubPullRequest.find({
+        processed: false,
+      })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(pageSize)
+        .lean()
+        .exec();
+
+      const mappedPullRequests = pullRequests.map(
+        this.mapMongoDocumentToPullRequest,
+      );
+
+      return mappedPullRequests;
+    } catch (error) {
+      this.logger.error(
+        'Error fetching pull requests from database:',
+        error as Error,
+      );
+      throw new AppError(500, 'Failed to fetch pull requests from database');
+    }
+  }
+
+  public async storeProcessedMetrics(metrics: IMetric[]): Promise<void> {
+    try {
+      await this.GitHubMetric.insertMany(metrics);
+      this.logger.info(`Stored ${metrics.length} processed metrics`);
+    } catch (error) {
+      this.logger.error('Error storing processed metrics:', error as Error);
+      throw new AppError(500, 'Failed to store processed metrics');
+    }
+  }
+
+  public async getProcessedMetrics(
+    page: number,
+    pageSize: number,
+  ): Promise<IMetric[]> {
+    try {
+      return await this.GitHubMetric.find()
+        .sort({ timestamp: -1 })
+        .skip((page - 1) * pageSize)
+        .limit(pageSize)
+        .lean()
+        .exec();
+    } catch (error) {
+      this.logger.error('Error fetching processed metrics:', error as Error);
+      throw new AppError(500, 'Failed to fetch processed metrics');
+    }
+  }
+
+  public async getTotalPRCount(): Promise<number> {
+    try {
+      return await this.GitHubPullRequest.countDocuments();
+    } catch (error) {
+      this.logger.error('Error counting pull requests:', error as Error);
+      throw new AppError(500, 'Failed to count pull requests');
+    }
+  }
+
+  public async syncPullRequests(timePeriod: number): Promise<void> {
+    try {
+      const { pullRequests } = await this.fetchPullRequests(timePeriod);
+      for (const pr of pullRequests) {
+        await this.GitHubPullRequest.findOneAndUpdate(
+          { number: pr.number },
+          this.mapToMongoDocument(pr),
+          { upsert: true, new: true },
+        );
+      }
+      this.logger.info(`Synced ${pullRequests.length} pull requests`);
+    } catch (error) {
+      this.logger.error('Error syncing pull requests:', error as Error);
+      throw new AppError(500, 'Failed to sync pull requests');
+    }
+  }
+
+  public async markPullRequestsAsProcessed(ids: string[]): Promise<void> {
+    try {
+      await this.GitHubPullRequest.updateMany(
+        { _id: { $in: ids } },
+        { $set: { processed: true, processedAt: new Date() } },
+      );
+      this.logger.info(`Marked ${ids.length} pull requests as processed`);
+    } catch (error) {
+      this.logger.error(
+        'Error marking pull requests as processed:',
+        error as Error,
+      );
+      throw new AppError(500, 'Failed to mark pull requests as processed');
+    }
+  }
+
+  private mapMongoDocumentToPullRequest(doc: any): IPullRequest {
+    return {
+      id: doc.id,
+      number: doc.number,
+      title: doc.title,
+      state: doc.state as 'open' | 'closed' | 'merged',
+      author: doc.author,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+      closedAt: doc.closedAt,
+      mergedAt: doc.mergedAt,
+      additions: doc.additions,
+      deletions: doc.deletions,
+      changedFiles: doc.changedFiles,
+      commits: doc.commits,
+      baseRefName: doc.baseRefName,
+      baseRefOid: doc.baseRefOid || '',
+      headRefName: doc.headRefName || '',
+      headRefOid: doc.headRefOid || '',
+      processed: doc.processed || false,
+      processedAt: doc.processedAt,
+    };
+  }
+
+  private mapToMongoDocument(pr: IPullRequest): any {
+    return {
+      number: pr.number,
+      title: pr.title,
+      state: pr.state,
+      author: pr.author.login,
+      createdAt: new Date(pr.createdAt),
+      updatedAt: new Date(pr.updatedAt),
+      closedAt: pr.closedAt ? new Date(pr.closedAt) : null,
+      mergedAt: pr.mergedAt ? new Date(pr.mergedAt) : null,
+      additions: pr.additions,
+      deletions: pr.deletions,
+      changedFiles: pr.changedFiles,
+      commits: { totalCount: pr.commits.totalCount },
+      baseRefName: pr.baseRefName,
+      baseRefOid: pr.baseRefOid,
+      headRefName: pr.headRefName,
+      headRefOid: pr.headRefOid,
+    };
   }
 
   private mapToPullRequest(node: IGraphQLPullRequest): IPullRequest {
     return {
+      id: node.id,
       number: node.number,
       title: node.title,
       state: this.mapState(node.state),
@@ -166,6 +321,8 @@ export class GitHubRepository
       baseRefOid: node.baseRefOid,
       headRefName: node.headRefName,
       headRefOid: node.headRefOid,
+      processed: false,
+      processedAt: null,
     };
   }
 
@@ -192,6 +349,7 @@ export class GitHubRepository
               endCursor
             }
             nodes {
+              id
               number
               title
               state
@@ -225,39 +383,6 @@ export class GitHubRepository
     return {
       since: since.toISOString(),
       until: now.toISOString(),
-    };
-  }
-
-  private getMockPullRequestsData(timePeriod: number): {
-    pullRequests: IPullRequest[];
-    totalPRs: number;
-    fetchedPRs: number;
-    timePeriod: number;
-  } {
-    return {
-      pullRequests: [
-        {
-          number: 1,
-          title: 'Test PR',
-          state: 'open',
-          author: { login: 'testuser' },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          closedAt: null,
-          mergedAt: null,
-          commits: { totalCount: 1 },
-          additions: 10,
-          deletions: 5,
-          changedFiles: 2,
-          baseRefName: 'main',
-          baseRefOid: 'base-sha',
-          headRefName: 'feature',
-          headRefOid: 'head-sha',
-        },
-      ],
-      totalPRs: 1,
-      fetchedPRs: 1,
-      timePeriod,
     };
   }
 }

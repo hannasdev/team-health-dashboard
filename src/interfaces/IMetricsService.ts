@@ -1,15 +1,14 @@
 // src/interfaces/IMetricsService.ts
-import type { IMetric } from './IMetricModel.js';
-import type { ProgressCallback } from '../types/index.js';
+import type { IMetric } from './index.js';
 
 export interface IMetricsService {
+  fetchAndStoreAllData(): Promise<void>;
   getAllMetrics(
-    progressCallback?: ProgressCallback,
-    timePeriod?: number,
+    page: number,
+    pageSize: number,
   ): Promise<{
-    metrics: IMetric[]; // Make sure IMetric is defined correctly
-    errors: { source: string; message: string }[];
+    metrics: IMetric[];
     githubStats: { totalPRs: number; fetchedPRs: number; timePeriod: number };
   }>;
-  cancelOperation(): void;
+  syncAllData(): Promise<void>;
 }

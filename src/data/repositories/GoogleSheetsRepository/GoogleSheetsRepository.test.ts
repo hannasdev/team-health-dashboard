@@ -1,210 +1,226 @@
-import { Container } from 'inversify';
+// src/__tests__/repositories/GoogleSheetsRepository.test.ts
 
-import { GoogleSheetsRepository } from './GoogleSheetsRepository.js';
+import { Container } from 'inversify';
+import { Types } from 'mongoose';
+
+import { GoogleSheetsRepository } from './GoogleSheetsRepository';
 import {
-  createMockLogger,
-  createMockCacheService,
   createMockGoogleSheetsClient,
-} from '../../../__mocks__/index.js';
-import { Config } from '../../../cross-cutting/Config/config.js';
-import { ProgressCallback } from '../../../types/index.js';
-import { TYPES } from '../../../utils/types.js';
+  createMockLogger,
+  createMockConfig,
+  createMockGoogleSheetsMetricModel,
+  createMockMetric,
+} from '../../../__mocks__/index';
+import { GoogleSheetsMetricModel } from '../../../types/index';
+import { AppError } from '../../../utils/errors';
+import { TYPES } from '../../../utils/types';
 
 import type {
+  ILogger,
   IGoogleSheetsClient,
   IConfig,
-  ICacheService,
-  ILogger,
-  IMetric,
-  IGoogleSheetsRepository,
-} from '../../../interfaces/index.js';
+} from '../../../interfaces/index';
 
 describe('GoogleSheetsRepository', () => {
   let container: Container;
-  let googleSheetsRepository: IGoogleSheetsRepository;
-  let mockClient: jest.Mocked<IGoogleSheetsClient>;
-  let mockConfig: IConfig;
+  let googleSheetsRepository: GoogleSheetsRepository;
+  let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
   let mockLogger: jest.Mocked<ILogger>;
-  let mockCacheService: jest.Mocked<ICacheService>;
-
-  const testConfig = {
-    REPO_OWNER: 'github_owner_test',
-    REPO_REPO: 'github_repo_test',
-    JWT_SECRET: 'test-secret',
-    REPO_TOKEN: 'test-github-token',
-    GOOGLE_SHEETS_PRIVATE_KEY: 'test-google-sheets-private-key',
-    GOOGLE_SHEETS_CLIENT_EMAIL: 'test-client-email@example.com',
-    GOOGLE_SHEETS_SHEET_ID: 'test-sheet-id',
-    MONGODB_URI: 'mongodb://localhost:27017/test-db',
-    PORT: 3000,
-    CORS_ORIGIN: 'http://localhost:3000',
-    NODE_ENV: 'test',
-  };
+  let mockConfig: jest.Mocked<IConfig>;
+  let mockGoogleSheetsMetricModel: jest.Mocked<GoogleSheetsMetricModel>;
 
   beforeEach(() => {
-    mockConfig = Config.getInstance(testConfig);
-    mockLogger = createMockLogger();
-    mockCacheService = createMockCacheService();
-    mockClient = createMockGoogleSheetsClient();
-
     container = new Container();
+    mockGoogleSheetsClient = createMockGoogleSheetsClient();
+    mockLogger = createMockLogger();
+    mockConfig = createMockConfig();
+    mockGoogleSheetsMetricModel = createMockGoogleSheetsMetricModel();
+
     container
-      .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
-      .toConstantValue(mockClient);
-    container.bind<IConfig>(TYPES.Config).toConstantValue(mockConfig);
-    container.bind<ILogger>(TYPES.Logger).toConstantValue(mockLogger);
+      .bind(TYPES.GoogleSheetsClient)
+      .toConstantValue(mockGoogleSheetsClient);
+    container.bind(TYPES.Config).toConstantValue(mockConfig);
+    container.bind(TYPES.Logger).toConstantValue(mockLogger);
     container
-      .bind<ICacheService>(TYPES.CacheService)
-      .toConstantValue(mockCacheService);
-    container
-      .bind<IGoogleSheetsRepository>(TYPES.GoogleSheetsRepository)
-      .to(GoogleSheetsRepository);
+      .bind(TYPES.GoogleSheetsMetricModel)
+      .toConstantValue(mockGoogleSheetsMetricModel);
+    container.bind(GoogleSheetsRepository).toSelf();
 
-    googleSheetsRepository = container.get<IGoogleSheetsRepository>(
-      TYPES.GoogleSheetsRepository,
-    );
-
-    jest.resetAllMocks();
+    googleSheetsRepository = container.get(GoogleSheetsRepository);
   });
 
-  it('should fetch metrics from Google Sheets', async () => {
-    const mockSheetData = {
-      data: {
-        values: [
-          ['Timestamp', 'Category', 'Name', 'Value', 'Unit', 'Additional Info'],
-          [
-            '2023-01-01',
-            'Test Category',
-            'Test Metric',
-            '10',
-            'count',
-            'Test Info',
-          ],
-        ],
-      },
-    };
+  describe('fetchRawData', () => {
+    it('should fetch data from Google Sheets successfully', async () => {
+      const mockData = [
+        ['header1', 'header2'],
+        ['value1', 'value2'],
+      ];
+      mockGoogleSheetsClient.getValues.mockResolvedValue({
+        data: { values: mockData },
+      });
 
-    mockClient.getValues.mockResolvedValueOnce(mockSheetData);
+      const result = await googleSheetsRepository.fetchRawData();
 
-    const result = await googleSheetsRepository.fetchMetrics();
+      expect(result).toEqual(mockData);
+      expect(mockGoogleSheetsClient.getValues).toHaveBeenCalledWith(
+        mockConfig.GOOGLE_SHEETS_ID,
+        'A:F',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Starting to fetch data from Google Sheets',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Data fetched from Google Sheets',
+      );
+    });
 
-    expect(result).toEqual([
-      expect.objectContaining<Partial<IMetric>>({
-        id: 'sheet-0',
-        metric_category: 'Test Category',
-        metric_name: 'Test Metric',
-        value: 10,
-        timestamp: new Date('2023-01-01'),
-        unit: 'count',
-        additional_info: 'Test Info',
-        source: 'Google Sheets',
-      }),
-    ]);
+    it('should throw an AppError when fetching fails', async () => {
+      mockGoogleSheetsClient.getValues.mockRejectedValue(
+        new Error('API Error'),
+      );
 
-    expect(result).toHaveLength(1);
-
-    expect(mockClient.getValues).toHaveBeenCalledWith(
-      mockConfig.GOOGLE_SHEETS_ID,
-      'A:F',
-    );
+      await expect(googleSheetsRepository.fetchRawData()).rejects.toThrow(
+        AppError,
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to fetch data from Google Sheets:',
+        expect.any(Error),
+      );
+    });
   });
 
-  it('should handle empty sheet data', async () => {
-    mockClient.getValues.mockResolvedValueOnce({ data: { values: [] } });
+  describe('storeMetrics', () => {
+    it('should store metrics successfully', async () => {
+      const mockMetrics = [createMockMetric(), createMockMetric()];
+      mockGoogleSheetsMetricModel.insertMany.mockResolvedValue([]);
 
-    const result = await googleSheetsRepository.fetchMetrics();
+      await googleSheetsRepository.storeMetrics(mockMetrics);
 
-    expect(result).toHaveLength(0);
+      expect(mockGoogleSheetsMetricModel.insertMany).toHaveBeenCalledWith(
+        mockMetrics.map(metric => ({
+          metric_category: metric.metric_category,
+          metric_name: metric.metric_name,
+          value: metric.value,
+          timestamp: metric.timestamp,
+          unit: metric.unit,
+          additional_info: metric.additional_info,
+          source: metric.source,
+        })),
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `Stored ${mockMetrics.length} metrics`,
+      );
+    });
+
+    it('should throw an AppError when storing fails', async () => {
+      const mockMetrics = [createMockMetric()];
+      mockGoogleSheetsMetricModel.insertMany.mockRejectedValue(
+        new Error('DB Error'),
+      );
+
+      await expect(
+        googleSheetsRepository.storeMetrics(mockMetrics),
+      ).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error storing metrics:',
+        expect.any(Error),
+      );
+    });
   });
 
-  it('should skip rows with insufficient data', async () => {
-    const mockSheetData = {
-      data: {
-        values: [
-          ['Timestamp', 'Category', 'Name', 'Value', 'Unit', 'Additional Info'],
-          ['2023-01-01', 'Test Category', 'Test Metric'], // Insufficient data
-          [
-            '2023-01-02',
-            'Valid Category',
-            'Valid Metric',
-            '20',
-            'count',
-            'Valid Info',
-          ],
-        ],
-      },
-    };
+  describe('getMetrics', () => {
+    it('should get metrics successfully', async () => {
+      const mockMetrics = [
+        { _id: new Types.ObjectId(), ...createMockMetric() },
+        { _id: new Types.ObjectId(), ...createMockMetric() },
+      ];
+      mockGoogleSheetsMetricModel.find.mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(mockMetrics),
+      } as any);
 
-    mockClient.getValues.mockResolvedValueOnce(mockSheetData);
+      const result = await googleSheetsRepository.getMetrics(1, 20);
 
-    const result = await googleSheetsRepository.fetchMetrics();
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe(mockMetrics[0]._id.toString());
+      expect(mockGoogleSheetsMetricModel.find).toHaveBeenCalled();
+    });
 
-    expect(result).toHaveLength(1);
-    expect(result[0].metric_name).toBe('Valid Metric');
+    it('should throw an AppError when fetching metrics fails', async () => {
+      mockGoogleSheetsMetricModel.find.mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockRejectedValue(new Error('DB Error')),
+      } as any);
+
+      await expect(googleSheetsRepository.getMetrics()).rejects.toThrow(
+        AppError,
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching metrics from database:',
+        expect.any(Error),
+      );
+    });
   });
 
-  it('should call progress callback if provided', async () => {
-    const mockSheetData = {
-      data: {
-        values: [
-          ['Timestamp', 'Category', 'Name', 'Value', 'Unit', 'Additional Info'],
-          [
-            '2023-01-01',
-            'Test Category',
-            'Test Metric',
-            '10',
-            'count',
-            'Test Info',
-          ],
-        ],
-      },
-    };
+  describe('getTotalMetricsCount', () => {
+    it('should get total metrics count successfully', async () => {
+      mockGoogleSheetsMetricModel.countDocuments.mockResolvedValue(100);
 
-    mockClient.getValues.mockResolvedValueOnce(mockSheetData);
+      const result = await googleSheetsRepository.getTotalMetricsCount();
 
-    const mockProgressCallback: ProgressCallback = jest.fn();
+      expect(result).toBe(100);
+      expect(mockGoogleSheetsMetricModel.countDocuments).toHaveBeenCalled();
+    });
 
-    await googleSheetsRepository.fetchMetrics(mockProgressCallback);
+    it('should throw an AppError when counting metrics fails', async () => {
+      mockGoogleSheetsMetricModel.countDocuments.mockRejectedValue(
+        new Error('DB Error'),
+      );
 
-    expect(mockProgressCallback).toHaveBeenCalledWith(
-      100,
-      100,
-      'Finished processing Google Sheets data',
-    );
+      await expect(
+        googleSheetsRepository.getTotalMetricsCount(),
+      ).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error counting metrics:',
+        expect.any(Error),
+      );
+    });
   });
 
-  it('should handle errors during API requests', async () => {
-    const error = new Error('API Error');
-    mockClient.getValues.mockRejectedValue(error);
+  describe('updateMetrics', () => {
+    it('should update metrics successfully', async () => {
+      const mockMetrics = [createMockMetric(), createMockMetric()];
+      mockGoogleSheetsMetricModel.findOneAndUpdate.mockResolvedValue(null);
 
-    await expect(googleSheetsRepository.fetchMetrics()).rejects.toThrow(
-      'Failed to fetch data from Google Sheets: API Error',
-    );
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      'Error fetching data from Google Sheets:',
-      error,
-    );
-  });
+      await googleSheetsRepository.updateMetrics(mockMetrics);
 
-  it('should use cache when available', async () => {
-    const cachedMetrics: IMetric[] = [
-      {
-        id: 'cached-metric',
-        metric_category: 'Cached Category',
-        metric_name: 'Cached Metric',
-        value: 100,
-        timestamp: new Date(),
-        unit: 'count',
-        additional_info: 'Cached Info',
-        source: 'Google Sheets',
-      },
-    ];
+      expect(
+        mockGoogleSheetsMetricModel.findOneAndUpdate,
+      ).toHaveBeenCalledTimes(2);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `Updated ${mockMetrics.length} metrics`,
+      );
+    });
 
-    mockCacheService.get.mockResolvedValueOnce(cachedMetrics);
+    it('should throw an AppError when updating metrics fails', async () => {
+      const mockMetrics = [createMockMetric()];
+      mockGoogleSheetsMetricModel.findOneAndUpdate.mockRejectedValue(
+        new Error('DB Error'),
+      );
 
-    const result = await googleSheetsRepository.fetchMetrics();
-
-    expect(result).toEqual(cachedMetrics);
-    expect(mockClient.getValues).not.toHaveBeenCalled();
+      await expect(
+        googleSheetsRepository.updateMetrics(mockMetrics),
+      ).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error updating metrics:',
+        expect.any(Error),
+      );
+    });
   });
 });

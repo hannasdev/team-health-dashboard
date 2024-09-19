@@ -1,4 +1,5 @@
 export interface IGraphQLPullRequest {
+  id: string;
   number: number;
   title: string;
   state: string;

@@ -18,18 +18,22 @@ import type {
  */
 @injectable()
 export class MetricCalculator implements IMetricCalculator {
-  /**
-   * Calculates all metrics for the given pull requests.
-   *
-   * @param {IPullRequest[]} pullRequests - An array of pull requests to calculate metrics for.
-   * @returns {IMetric[]} An array of calculated metrics.
-   */
-  calculateMetrics(pullRequests: IPullRequest[]): IMetric[] {
-    return [
-      this.calculatePRCount(pullRequests),
-      this.calculatePRCycleTime(pullRequests),
-      this.calculatePRSize(pullRequests),
-    ];
+  public calculateMetrics(data: IPullRequest[] | IMetric[]): IMetric[] {
+    if (this.isPullRequestArray(data)) {
+      return this.calculateGitHubMetrics(data);
+    } else {
+      return this.calculateGoogleSheetsMetrics(data);
+    }
+  }
+
+  private calculateGitHubMetrics(pullRequests: IPullRequest[]): IMetric[] {
+    const metrics: IMetric[] = [];
+
+    metrics.push(this.calculatePRCount(pullRequests));
+    metrics.push(this.calculatePRCycleTime(pullRequests));
+    metrics.push(this.calculatePRSize(pullRequests));
+
+    return metrics;
   }
 
   private calculatePRCount(pullRequests: IPullRequest[]): IMetric {
@@ -105,5 +109,18 @@ export class MetricCalculator implements IMetricCalculator {
       additional_info: `Based on ${pullRequests.length} PRs`,
       source: 'GitHub',
     };
+  }
+
+  private calculateGoogleSheetsMetrics(metrics: IMetric[]): IMetric[] {
+    // For Google Sheets, we might not need to do any additional calculation
+    // as the data is already in the IMetric format. However, you can add any
+    // additional processing or validation here if needed.
+    return metrics;
+  }
+
+  private isPullRequestArray(
+    data: IPullRequest[] | IMetric[],
+  ): data is IPullRequest[] {
+    return data.length > 0 && 'number' in data[0];
   }
 }

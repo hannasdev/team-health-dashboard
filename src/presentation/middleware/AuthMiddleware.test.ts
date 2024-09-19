@@ -1,3 +1,5 @@
+// src/presentation/middleware/AuthMiddleware.test.ts
+
 import { Response, NextFunction } from 'express';
 import { Container } from 'inversify';
 
@@ -6,32 +8,32 @@ import {
   createMockTokenService,
   createMockTokenBlacklistService,
   createMockLogger,
-  createMockAuthRequest,
   createMockAuthenticationService,
-  createMockSSEService,
-} from '../../__mocks__/index.js';
+  createMockAuthRequest,
+  createMockResponse,
+} from '../../__mocks__';
 import { UnauthorizedError } from '../../utils/errors';
 import { TYPES } from '../../utils/types';
 
 describe('AuthMiddleware', () => {
+  let container: Container;
   let authMiddleware: AuthMiddleware;
   let mockTokenService: ReturnType<typeof createMockTokenService>;
   let mockTokenBlacklistService: ReturnType<
     typeof createMockTokenBlacklistService
   >;
   let mockLogger: ReturnType<typeof createMockLogger>;
-  let mockAuthService: ReturnType<typeof createMockAuthenticationService>;
-  let mockSSEService: ReturnType<typeof createMockSSEService>;
-  let container: Container;
+  let mockAuthenticationService: ReturnType<
+    typeof createMockAuthenticationService
+  >;
 
   beforeEach(() => {
+    container = new Container();
     mockTokenService = createMockTokenService();
     mockTokenBlacklistService = createMockTokenBlacklistService();
     mockLogger = createMockLogger();
-    mockAuthService = createMockAuthenticationService();
-    mockSSEService = createMockSSEService();
+    mockAuthenticationService = createMockAuthenticationService();
 
-    container = new Container();
     container.bind(TYPES.TokenService).toConstantValue(mockTokenService);
     container
       .bind(TYPES.TokenBlacklistService)
@@ -39,157 +41,197 @@ describe('AuthMiddleware', () => {
     container.bind(TYPES.Logger).toConstantValue(mockLogger);
     container
       .bind(TYPES.AuthenticationService)
-      .toConstantValue(mockAuthService);
-    container.bind(TYPES.SSEService).toConstantValue(mockSSEService);
+      .toConstantValue(mockAuthenticationService);
 
     authMiddleware = container.resolve(AuthMiddleware);
   });
 
-  const createMockContext = (options: {
-    authHeader?: string;
-    refreshToken?: string;
-    tokenValidation?: any;
-    isTokenBlacklisted?: boolean;
-    isSSE?: boolean;
-  }) => {
-    const req = createMockAuthRequest({
-      headers: {
-        authorization: options.authHeader,
-        accept: options.isSSE ? 'text/event-stream' : 'application/json',
-      },
-      cookies: { refreshToken: options.refreshToken },
-      on: jest.fn(),
-    });
-    const res = {
-      setHeader: jest.fn(),
-      cookie: jest.fn(),
-      headersSent: false,
-    } as unknown as Response;
-    const next = jest.fn();
-
-    mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(
-      options.isTokenBlacklisted || false,
-    );
-    mockTokenService.validateAccessToken.mockReturnValue(
-      options.tokenValidation,
-    );
-
-    return { req, res, next };
-  };
-
-  describe('SSE-specific scenarios', () => {
-    it('should create SSE connection for SSE requests', async () => {
-      const { req, res, next } = createMockContext({
-        authHeader: 'Bearer valid_token',
-        tokenValidation: {
-          id: '123',
-          email: 'test@example.com',
-          exp: Math.floor(Date.now() / 1000) + 3600,
-        },
-        isSSE: true,
-      });
-
-      await authMiddleware.handle(req, res, next);
-
-      expect(mockSSEService.createConnection).toHaveBeenCalledWith(
-        expect.stringContaining('auth-'),
-        res,
-      );
-      expect(next).toHaveBeenCalled();
-    });
-
-    it('should set up token expiration check for SSE connections', async () => {
-      jest.useFakeTimers();
-
-      const { req, res, next } = createMockContext({
-        authHeader: 'Bearer valid_token',
-        tokenValidation: {
-          id: '123',
-          email: 'test@example.com',
-          exp: Math.floor(Date.now() / 1000) + 30, // Token expires in 30 seconds
-        },
-        isSSE: true,
-      });
-
-      await authMiddleware.handle(req, res, next);
-
-      // Fast-forward time by 1 minute
-      jest.advanceTimersByTime(60000);
-
-      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
-        expect.stringContaining('auth-'),
-        'error',
-        { message: 'Token expired' },
-      );
-      expect(mockSSEService.endConnection).toHaveBeenCalled();
-
-      jest.useRealTimers();
-    });
-
-    it('should clean up on client disconnect for SSE connections', async () => {
-      const { req, res, next } = createMockContext({
-        authHeader: 'Bearer valid_token',
-        tokenValidation: {
-          id: '123',
-          email: 'test@example.com',
-          exp: Math.floor(Date.now() / 1000) + 3600,
-        },
-        isSSE: true,
-      });
-
-      await authMiddleware.handle(req, res, next);
-
-      expect(req.on).toHaveBeenCalledWith('close', expect.any(Function));
-
-      // Simulate client disconnect
-      const closeHandler = (req.on as jest.Mock).mock.calls[0][1];
-      closeHandler();
-
-      expect(mockSSEService.handleClientDisconnection).toHaveBeenCalledWith(
-        expect.stringContaining('auth-'),
-      );
-    });
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  describe('Generic Scenarios', () => {
-    it('should handle authentication errors for both REST and SSE requests', async () => {
-      const { req, res, next } = createMockContext({
-        authHeader: 'Bearer invalid_token',
+  describe('handle', () => {
+    it('should authenticate valid token and call next', async () => {
+      const req = createMockAuthRequest({
+        headers: { authorization: 'Bearer valid_token' },
       });
+      const res = createMockResponse();
+      const next = jest.fn();
 
-      mockTokenService.validateAccessToken.mockImplementation(() => {
-        throw new Error('Invalid token');
+      mockTokenService.validateAccessToken.mockReturnValue({
+        id: '123',
+        email: 'test@example.com',
+        exp: Math.floor(Date.now() / 1000) + 3600,
       });
+      mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
 
-      // Test REST request
-      await authMiddleware.handle(req, res, next);
+      await authMiddleware.handle(
+        req,
+        res as unknown as Response,
+        next as NextFunction,
+      );
+
+      expect(next).toHaveBeenCalledWith();
+      expect(req.user).toEqual({
+        id: '123',
+        email: 'test@example.com',
+        exp: expect.any(Number),
+      });
+    });
+
+    it('should throw UnauthorizedError for missing token', async () => {
+      const req = createMockAuthRequest();
+      const res = createMockResponse();
+      const next = jest.fn();
+
+      await authMiddleware.handle(
+        req,
+        res as unknown as Response,
+        next as NextFunction,
+      );
 
       expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Authentication error'),
-      );
-
-      // Reset mocks
-      jest.clearAllMocks();
-
-      // Test SSE request
-      req.headers.accept = 'text/event-stream';
-      res.headersSent = true;
-
-      await authMiddleware.handle(req, res, next);
-
-      expect(mockSSEService.createConnection).toHaveBeenCalled();
-      expect(mockSSEService.sendEvent).toHaveBeenCalledWith(
-        expect.stringContaining('auth-error-'),
-        'error',
-        { message: 'Invalid token' },
-      );
-      expect(mockSSEService.endConnection).toHaveBeenCalled();
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.stringContaining('Authentication error'),
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Authentication error: No token provided',
       );
     });
-  });
 
-  // ... (other existing tests for REST scenarios)
+    it('should throw UnauthorizedError for invalid token format', async () => {
+      const req = createMockAuthRequest({
+        headers: { authorization: 'InvalidFormat token' },
+      });
+      const res = createMockResponse();
+      const next = jest.fn();
+
+      await authMiddleware.handle(
+        req,
+        res as unknown as Response,
+        next as NextFunction,
+      );
+
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Authentication error: Invalid token format',
+      );
+    });
+
+    it('should throw UnauthorizedError for blacklisted token', async () => {
+      const req = createMockAuthRequest({
+        headers: { authorization: 'Bearer blacklisted_token' },
+      });
+      const res = createMockResponse();
+      const next = jest.fn();
+
+      mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(true);
+
+      await authMiddleware.handle(
+        req,
+        res as unknown as Response,
+        next as NextFunction,
+      );
+
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Authentication error: Token has been revoked',
+      );
+    });
+
+    it('should refresh token if it is about to expire', async () => {
+      const req = createMockAuthRequest({
+        headers: { authorization: 'Bearer expiring_token' },
+        query: { refreshToken: 'valid_refresh_token' },
+      });
+      const res = createMockResponse();
+      const next = jest.fn();
+
+      mockTokenService.validateAccessToken
+        .mockReturnValueOnce({
+          id: '123',
+          email: 'test@example.com',
+          exp: Math.floor(Date.now() / 1000) + 60, // 1 minute to expiration
+        })
+        .mockReturnValueOnce({
+          id: '123',
+          email: 'test@example.com',
+          exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour to expiration
+        });
+      mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
+      mockAuthenticationService.refreshToken.mockResolvedValue({
+        accessToken: 'new_access_token',
+        refreshToken: 'new_refresh_token',
+      });
+
+      await authMiddleware.handle(
+        req,
+        res as unknown as Response,
+        next as NextFunction,
+      );
+
+      expect(mockAuthenticationService.refreshToken).toHaveBeenCalledWith(
+        'valid_refresh_token',
+      );
+      expect(res.cookie).toHaveBeenCalledWith(
+        'refreshToken',
+        'new_refresh_token',
+        expect.any(Object),
+      );
+      expect(res.setHeader).toHaveBeenCalledWith('X-Token-Refreshed', 'true');
+      expect(next).toHaveBeenCalledWith();
+    });
+
+    it('should set X-Token-Expiring header if token is about to expire and no refresh token provided', async () => {
+      const req = createMockAuthRequest({
+        headers: { authorization: 'Bearer expiring_token' },
+      });
+      const res = createMockResponse();
+      const next = jest.fn();
+
+      mockTokenService.validateAccessToken.mockReturnValue({
+        id: '123',
+        email: 'test@example.com',
+        exp: Math.floor(Date.now() / 1000) + 60, // 1 minute to expiration
+      });
+      mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
+
+      await authMiddleware.handle(
+        req,
+        res as unknown as Response,
+        next as NextFunction,
+      );
+
+      expect(res.setHeader).toHaveBeenCalledWith('X-Token-Expiring', 'true');
+      expect(next).toHaveBeenCalledWith();
+    });
+
+    it('should handle token refresh failure', async () => {
+      const req = createMockAuthRequest({
+        headers: { authorization: 'Bearer expiring_token' },
+        query: { refreshToken: 'invalid_refresh_token' },
+      });
+      const res = createMockResponse();
+      const next = jest.fn();
+
+      mockTokenService.validateAccessToken.mockReturnValue({
+        id: '123',
+        email: 'test@example.com',
+        exp: Math.floor(Date.now() / 1000) + 60, // 1 minute to expiration
+      });
+      mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
+      mockAuthenticationService.refreshToken.mockRejectedValue(
+        new Error('Refresh failed'),
+      );
+
+      await authMiddleware.handle(
+        req,
+        res as unknown as Response,
+        next as NextFunction,
+      );
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to refresh token',
+        expect.any(Error),
+      );
+      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+  });
 });

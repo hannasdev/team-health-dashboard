@@ -1,10 +1,9 @@
 // src/interfaces/IGitHubService.ts
-import { IFetchDataResult } from './IFetchDataResult.js';
-import { ProgressCallback } from '../types/index.js';
+import { IMetric } from './index.js';
 
 export interface IGitHubService {
-  fetchData(
-    progressCallback?: ProgressCallback,
-    timePeriod?: number,
-  ): Promise<IFetchDataResult>;
+  fetchAndStoreRawData(timePeriod: number): Promise<void>;
+  getProcessedMetrics(page: number, pageSize: number): Promise<IMetric[]>;
+  syncData(timePeriod: number): Promise<void>;
+  getTotalPRCount(): Promise<number>;
 }

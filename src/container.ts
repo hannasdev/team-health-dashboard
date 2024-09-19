@@ -18,7 +18,8 @@ import { Logger } from './cross-cutting/Logger/index.js';
 import { GitHubAdapter } from './data/adapters/GitHubAdapter/GitHubAdapter.js';
 import { GoogleSheetsAdapter } from './data/adapters/GoogleSheetAdapter/GoogleSheetAdapter.js';
 import { MongoAdapter } from './data/adapters/MongoAdapter/MongoAdapter.js';
-import { NodeEventEmitterAdapter } from './data/adapters/NodeEventEmitterAdapter/NodeEventEmitterAdapter.js';
+import { GitHubPullRequest } from './data/models/GitHubPullRequest.js';
+import { GoogleSheetsMetric } from './data/models/GoogleSheetsMetric.js';
 import { GitHubRepository } from './data/repositories/GitHubRepository/GitHubRepository.js';
 import { GoogleSheetsRepository } from './data/repositories/GoogleSheetsRepository/GoogleSheetsRepository.js';
 import { UserRepository } from './data/repositories/UserRepository/UserRepository.js';
@@ -34,7 +35,6 @@ import { MetricCalculator } from './services/MetricsCalculator/MetricsCalculator
 import { MetricsService } from './services/MetricsService/MetricsService.js';
 import { MongoDbClient } from './services/MongoDbClient/MongoDbClient.js';
 import { ProgressTracker } from './services/ProgressTracker/ProgressTracker.js';
-import { SSEService } from './services/SSEService/SSEService.js';
 import TokenBlacklistService from './services/TokenBlacklistService/index.js';
 import { TokenService } from './services/TokenService/index.js';
 import { UserService } from './services/UserService/UserService.js';
@@ -52,6 +52,7 @@ import type {
   IConfig,
   IErrorHandler,
   IGitHubClient,
+  IGitHubPullRequest,
   IGitHubRepository,
   IGoogleSheetsClient,
   IGoogleSheetsRepository,
@@ -64,14 +65,14 @@ import type {
   IMongoAdapter,
   IMongoDbClient,
   IProgressTracker,
-  ISSEService,
   ITeamHealthDashboardApp,
   ITokenBlacklistService,
   ITokenService,
   IUserRepository,
   IUserService,
-  IEventEmitter,
 } from './interfaces/index.js';
+import type { GoogleSheetsMetricModel } from './types/index.js';
+import type { Model } from 'mongoose';
 
 const config = Config.getInstance();
 
@@ -106,10 +107,6 @@ export function setupContainer(
     .inSingletonScope();
 
   // 3. Adapters (Clients for external services)
-  container
-    .bind<IEventEmitter>(TYPES.EventEmitter)
-    .to(NodeEventEmitterAdapter)
-    .inSingletonScope();
   container.bind<IMongoAdapter>(TYPES.MongoAdapter).to(MongoAdapter);
   container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
   container
@@ -117,10 +114,16 @@ export function setupContainer(
     .to(GoogleSheetsAdapter);
 
   // 3. Repositories (Depend on config, logger, and potentially cache)
+  container
+    .bind<Model<IGitHubPullRequest>>(TYPES.GitHubPullRequestModel)
+    .toConstantValue(GitHubPullRequest);
   container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
   container
     .bind<IGitHubRepository>(TYPES.GitHubRepository)
     .to(GitHubRepository);
+  container
+    .bind<GoogleSheetsMetricModel>(TYPES.GoogleSheetsMetricModel)
+    .toConstantValue(GoogleSheetsMetric);
   container
     .bind<IGoogleSheetsRepository>(TYPES.GoogleSheetsRepository)
     .to(GoogleSheetsRepository);
@@ -154,10 +157,6 @@ export function setupContainer(
   container
     .bind<IApplication>(TYPES.Application)
     .to(TeamHealthDashboardApp)
-    .inSingletonScope();
-  container
-    .bind<ISSEService>(TYPES.SSEService)
-    .to(SSEService)
     .inSingletonScope();
 
   if (isTestMode) {

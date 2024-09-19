@@ -1,323 +1,195 @@
-// src/__tests__/services/metrics/MetricsService.test.ts
-import { ProgressCallback } from 'types/index.js';
+// src/services/MetricsService/MetricsService.test.ts
+import { Container } from 'inversify';
 
-import { MetricsService } from './MetricsService.js';
+import { MetricsService } from './MetricsService';
 import {
   createMockLogger,
+  createMockGitHubService,
+  createMockGoogleSheetsService,
   createMockMetric,
-  createMockGoogleSheetsRepository,
-  createMockGitHubRepository,
-  createMockPullRequest,
-  createMockMetricCalculator,
-} from '../../__mocks__/index.js';
-import { AppError } from '../../utils/errors.js';
+} from '../../__mocks__';
+import { TYPES } from '../../utils/types';
 
 import type {
-  IMetricCalculator,
-  IMetricsService,
-  IMetric,
   ILogger,
-} from '../../interfaces/index.js';
+  IGitHubService,
+  IGoogleSheetsService,
+} from '../../interfaces';
 
 describe('MetricsService', () => {
-  let metricsService: IMetricsService;
-  let mockGoogleSheetsRepository: ReturnType<
-    typeof createMockGoogleSheetsRepository
-  >;
-  let mockGitHubRepository: ReturnType<typeof createMockGitHubRepository>;
-  let mockLogger: ILogger;
-  let mockMetricCalculator: jest.Mocked<IMetricCalculator>;
+  let container: Container;
+  let metricsService: MetricsService;
+  let mockLogger: jest.Mocked<ILogger>;
+  let mockGitHubService: jest.Mocked<IGitHubService>;
+  let mockGoogleSheetsService: jest.Mocked<IGoogleSheetsService>;
 
   beforeEach(() => {
-    jest.resetAllMocks();
-    mockGoogleSheetsRepository = createMockGoogleSheetsRepository();
-    mockGitHubRepository = createMockGitHubRepository();
+    container = new Container();
     mockLogger = createMockLogger();
-    mockMetricCalculator = createMockMetricCalculator();
-    metricsService = new MetricsService(
-      mockGoogleSheetsRepository,
-      mockGitHubRepository,
-      mockLogger,
-      mockMetricCalculator,
-    );
+    mockGitHubService = createMockGitHubService();
+    mockGoogleSheetsService = createMockGoogleSheetsService();
+
+    container.bind<ILogger>(TYPES.Logger).toConstantValue(mockLogger);
+    container
+      .bind<IGitHubService>(TYPES.GitHubService)
+      .toConstantValue(mockGitHubService);
+    container
+      .bind<IGoogleSheetsService>(TYPES.GoogleSheetsService)
+      .toConstantValue(mockGoogleSheetsService);
+    container.bind<MetricsService>(MetricsService).toSelf();
+
+    metricsService = container.get<MetricsService>(MetricsService);
   });
 
-  describe('fetchData', () => {
-    it('should fetch and combine metrics from Google Sheets and GitHub with progress updates', async () => {
-      const mockSheetMetrics = [createMockMetric({ source: 'Google Sheets' })];
-      const mockGitHubResult = {
-        pullRequests: [createMockPullRequest()],
-        totalPRs: 1,
-        fetchedPRs: 1,
-        timePeriod: 90,
-      };
-
-      mockGoogleSheetsRepository.fetchMetrics.mockImplementation(
-        async (progressCallback?: ProgressCallback) => {
-          progressCallback?.(0, 100, 'Starting Google Sheets fetch');
-          progressCallback?.(100, 100, 'Finished Google Sheets fetch');
-          return mockSheetMetrics;
-        },
-      );
-
-      mockGitHubRepository.fetchPullRequests.mockImplementation(
-        async (timePeriod: number, progressCallback?: ProgressCallback) => {
-          progressCallback?.(0, 100, 'Starting GitHub fetch');
-          progressCallback?.(100, 100, 'Finished GitHub fetch');
-          return mockGitHubResult;
-        },
-      );
-
-      const mockProgressCallback = jest.fn();
-
-      const result = await metricsService.getAllMetrics(mockProgressCallback);
-
-      expect(result.metrics.length).toBe(4); // 1 from Google Sheets + 3 from GitHub
-      expect(result.errors).toHaveLength(0);
-      expect(result.githubStats).toEqual(
-        expect.objectContaining({
-          totalPRs: expect.any(Number),
-          fetchedPRs: expect.any(Number),
-          timePeriod: expect.any(Number),
+  describe('getAllMetrics', () => {
+    it('should fetch and combine metrics from both services', async () => {
+      const mockGitHubMetrics = [
+        createMockMetric({
+          source: 'GitHub',
+          timestamp: new Date('2023-01-02'),
         }),
+      ];
+      const mockGoogleSheetsMetrics = [
+        createMockMetric({
+          source: 'Google Sheets',
+          timestamp: new Date('2023-01-01'),
+        }),
+      ];
+
+      mockGitHubService.getProcessedMetrics.mockResolvedValue(
+        mockGitHubMetrics,
       );
-
-      expect(mockMetricCalculator.calculateMetrics).toHaveBeenCalledWith(
-        mockGitHubResult.pullRequests,
+      mockGoogleSheetsService.getMetrics.mockResolvedValue(
+        mockGoogleSheetsMetrics,
       );
+      mockGitHubService.getTotalPRCount.mockResolvedValue(100);
+      mockGoogleSheetsService.getTotalMetricsCount.mockResolvedValue(50);
 
-      // Check that the progress callback was called
-      expect(mockProgressCallback).toHaveBeenCalledTimes(5);
-      expect(mockProgressCallback).toHaveBeenNthCalledWith(
-        1,
-        0,
-        100,
-        'Google Sheets: 0% complete',
-      );
-      expect(mockProgressCallback).toHaveBeenNthCalledWith(
-        2,
-        50,
-        100,
-        'Google Sheets: 100% complete',
-      );
-      expect(mockProgressCallback).toHaveBeenNthCalledWith(
-        3,
-        50,
-        100,
-        'GitHub: 0% complete',
-      );
-      expect(mockProgressCallback).toHaveBeenNthCalledWith(
-        4,
-        100,
-        100,
-        'GitHub: 100% complete',
-      );
-      expect(mockProgressCallback).toHaveBeenNthCalledWith(
-        5,
-        100,
-        100,
-        'Completed fetching all metrics',
-      );
-    });
+      const result = await metricsService.getAllMetrics(1, 10);
 
-    it('should handle errors from Google Sheets repository', async () => {
-      mockGoogleSheetsRepository.fetchMetrics.mockRejectedValue(
-        new Error('Google Sheets API error'),
-      );
-      mockGitHubRepository.fetchPullRequests.mockResolvedValue({
-        pullRequests: [],
-        totalPRs: 0,
-        fetchedPRs: 0,
-        timePeriod: 90,
-      });
-
-      const result = await metricsService.getAllMetrics();
-
-      expect(result.metrics.length).toBeGreaterThan(0); // GitHub metrics should still be present
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].source).toBe('Google Sheets');
-    });
-
-    it('should handle errors from both repositories with progress updates', async () => {
-      mockGoogleSheetsRepository.fetchMetrics.mockImplementation(
-        async (progressCallback?: ProgressCallback) => {
-          progressCallback?.(0, 100, 'Google Sheets: 0% complete');
-          throw new Error('Google Sheets API error');
-        },
-      );
-
-      mockGitHubRepository.fetchPullRequests.mockImplementation(
-        async (timePeriod: number, progressCallback?: ProgressCallback) => {
-          progressCallback?.(0, 100, 'Google Sheets: 0% complete');
-          throw new Error('GitHub API error');
-        },
-      );
-
-      const mockProgressCallback = jest.fn();
-
-      await expect(
-        metricsService.getAllMetrics(mockProgressCallback),
-      ).rejects.toThrow(AppError);
-
-      expect(mockProgressCallback).toHaveBeenCalledTimes(2);
-      expect(mockProgressCallback).toHaveBeenNthCalledWith(
-        1,
-        0,
-        100,
-        'Google Sheets: 0% complete',
-      );
-      expect(mockProgressCallback).toHaveBeenNthCalledWith(
-        2,
-        0,
-        100,
-        'GitHub: 0% complete',
-      );
-    });
-
-    it('should log errors from services', async () => {
-      const googleSheetsError = new Error('Google Sheets API error');
-      const gitHubError = new Error('GitHub API error');
-
-      mockGoogleSheetsRepository.fetchMetrics.mockRejectedValue(
-        googleSheetsError,
-      );
-      mockGitHubRepository.fetchPullRequests.mockRejectedValue(gitHubError);
-
-      await expect(metricsService.getAllMetrics()).rejects.toThrow(AppError);
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error fetching Google Sheets data:',
-        googleSheetsError,
-      );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error fetching GitHub data:',
-        gitHubError,
-      );
-    });
-
-    it('should return partial data when only one data source fails', async () => {
-      const mockSheetMetrics = [createMockMetric()];
-      mockGoogleSheetsRepository.fetchMetrics.mockResolvedValue(
-        mockSheetMetrics,
-      );
-      mockGitHubRepository.fetchPullRequests.mockRejectedValue(
-        new Error('GitHub API error'),
-      );
-
-      const result = await metricsService.getAllMetrics();
-
-      expect(result.metrics).toEqual(mockSheetMetrics);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].source).toBe('GitHub');
-    });
-
-    it('should not deduplicate metrics from different sources', async () => {
-      const sheetMetric = createMockMetric({
-        id: 'metric-1',
-        source: 'Google Sheets',
-      });
-
-      mockGoogleSheetsRepository.fetchMetrics.mockResolvedValue([sheetMetric]);
-      mockGitHubRepository.fetchPullRequests.mockResolvedValue({
-        pullRequests: [createMockPullRequest()],
-        totalPRs: 1,
+      expect(result.metrics).toHaveLength(2);
+      expect(result.metrics[0].source).toBe('GitHub');
+      expect(result.metrics[1].source).toBe('Google Sheets');
+      expect(result.githubStats).toEqual({
+        totalPRs: 100,
         fetchedPRs: 1,
         timePeriod: 90,
       });
-
-      const result = await metricsService.getAllMetrics();
-
-      expect(result.metrics.length).toBe(4); // 1 from Google Sheets + 3 from GitHub
-      expect(result.metrics).toContainEqual(
-        expect.objectContaining({ source: 'Google Sheets' }),
-      );
-      expect(result.metrics.filter(m => m.source === 'GitHub').length).toBe(3);
+      expect(result.totalMetrics).toBe(150);
     });
 
-    it("should handle case where one service returns data and the other doesn't", async () => {
-      const mockSheetMetrics: IMetric[] = [
-        {
-          id: 'sheet-1',
-          metric_category: 'Test Category',
-          metric_name: 'Test Metric',
-          value: 10,
-          timestamp: new Date(),
-          unit: 'count',
-          additional_info: 'Test info',
-          source: 'Google Sheets',
-        },
+    it('should handle errors and log them', async () => {
+      const error = new Error('Test error');
+      mockGitHubService.getProcessedMetrics.mockRejectedValue(error);
+
+      await expect(metricsService.getAllMetrics(1, 10)).rejects.toThrow(
+        'Failed to fetch metrics',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching metrics:',
+        error,
+      );
+    });
+  });
+
+  describe('fetchAndStoreAllData', () => {
+    it('should fetch and store data from both services', async () => {
+      await metricsService.fetchAndStoreAllData();
+
+      expect(mockGitHubService.fetchAndStoreRawData).toHaveBeenCalledWith(90);
+      expect(mockGoogleSheetsService.fetchAndStoreMetrics).toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Raw data fetched and stored successfully',
+      );
+    });
+
+    it('should handle errors and log them', async () => {
+      const error = new Error('Test error');
+      mockGitHubService.fetchAndStoreRawData.mockRejectedValue(error);
+
+      await expect(metricsService.fetchAndStoreAllData()).rejects.toThrow(
+        'Failed to fetch and store raw data',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching and storing raw data:',
+        error,
+      );
+    });
+  });
+
+  describe('syncAllData', () => {
+    it('should sync data from both services', async () => {
+      await metricsService.syncAllData();
+
+      expect(mockGitHubService.syncData).toHaveBeenCalledWith(90);
+      expect(mockGoogleSheetsService.syncMetrics).toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'All data synced successfully',
+      );
+    });
+
+    it('should handle errors and log them', async () => {
+      const error = new Error('Test error');
+      mockGitHubService.syncData.mockRejectedValue(error);
+
+      await expect(metricsService.syncAllData()).rejects.toThrow(
+        'Failed to sync data',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error syncing data:',
+        error,
+      );
+    });
+  });
+
+  // Test private method indirectly
+  describe('combineAndSortMetrics (indirectly)', () => {
+    it('should combine and sort metrics correctly', async () => {
+      const mockGitHubMetrics = [
+        createMockMetric({
+          source: 'GitHub',
+          timestamp: new Date('2023-01-03'),
+        }),
+        createMockMetric({
+          source: 'GitHub',
+          timestamp: new Date('2023-01-01'),
+        }),
       ];
-      mockGoogleSheetsRepository.fetchMetrics.mockResolvedValue(
-        mockSheetMetrics,
-      );
-      mockGitHubRepository.fetchPullRequests.mockRejectedValue(
-        new Error('GitHub API error'),
-      );
-
-      const result = await metricsService.getAllMetrics();
-
-      expect(result.metrics).toEqual(mockSheetMetrics);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].source).toBe('GitHub');
-    });
-
-    it.each([
-      [new Date(2023, 0, 1), new Date(2023, 0, 2)],
-      [new Date(2023, 0, 2), new Date(2023, 0, 1)],
-    ])(
-      'should not deduplicate metrics with different timestamps',
-      async date1 => {
-        const sheetMetric = createMockMetric({
-          id: 'metric-1',
+      const mockGoogleSheetsMetrics = [
+        createMockMetric({
           source: 'Google Sheets',
-          timestamp: date1,
-        });
+          timestamp: new Date('2023-01-04'),
+        }),
+        createMockMetric({
+          source: 'Google Sheets',
+          timestamp: new Date('2023-01-02'),
+        }),
+      ];
 
-        mockGoogleSheetsRepository.fetchMetrics.mockResolvedValue([
-          sheetMetric,
-        ]);
-        mockGitHubRepository.fetchPullRequests.mockResolvedValue({
-          pullRequests: [createMockPullRequest()],
-          totalPRs: 1,
-          fetchedPRs: 1,
-          timePeriod: 90,
-        });
-
-        const result = await metricsService.getAllMetrics();
-
-        expect(result.metrics.length).toBe(4);
-        expect(result.metrics).toContainEqual(
-          expect.objectContaining({ source: 'Google Sheets' }),
-        );
-        expect(result.metrics.filter(m => m.source === 'GitHub').length).toBe(
-          3,
-        );
-      },
-    );
-
-    it('should handle timeouts gracefully', async () => {
-      jest.useFakeTimers();
-      const timeoutError = new Error('Timeout');
-
-      mockGoogleSheetsRepository.fetchMetrics.mockRejectedValue(timeoutError);
-      mockGitHubRepository.fetchPullRequests.mockRejectedValue(timeoutError);
-
-      const getAllMetricsPromise = metricsService.getAllMetrics();
-
-      jest.runAllTimers();
-
-      await expect(getAllMetricsPromise).rejects.toThrow(AppError);
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error fetching Google Sheets data:',
-        timeoutError,
+      mockGitHubService.getProcessedMetrics.mockResolvedValue(
+        mockGitHubMetrics,
       );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Error fetching GitHub data:',
-        timeoutError,
+      mockGoogleSheetsService.getMetrics.mockResolvedValue(
+        mockGoogleSheetsMetrics,
       );
+      mockGitHubService.getTotalPRCount.mockResolvedValue(100);
+      mockGoogleSheetsService.getTotalMetricsCount.mockResolvedValue(50);
 
-      jest.useRealTimers();
+      const result = await metricsService.getAllMetrics(1, 10);
+
+      expect(result.metrics).toHaveLength(4);
+      expect(result.metrics.map(m => m.source)).toEqual([
+        'Google Sheets',
+        'GitHub',
+        'Google Sheets',
+        'GitHub',
+      ]);
+      expect(result.metrics.map(m => m.timestamp)).toEqual([
+        new Date('2023-01-04'),
+        new Date('2023-01-03'),
+        new Date('2023-01-02'),
+        new Date('2023-01-01'),
+      ]);
     });
   });
 });

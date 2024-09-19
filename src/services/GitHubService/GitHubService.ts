@@ -1,112 +1,77 @@
 // src/services/github/GitHubService.ts
 import { injectable, inject } from 'inversify';
 
+import {
+  Cacheable,
+  CacheableClass,
+} from '../../cross-cutting/CacheDecorator/index.js';
+import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
-  IMetricCalculator,
   IGitHubRepository,
-  IProgressTracker,
-  IFetchDataResult,
   IGitHubService,
-  IPullRequest,
   IMetric,
   ILogger,
+  ICacheService,
 } from '../../interfaces/index.js';
-import type { ProgressCallback } from '../../types/index.js';
 
-/**
- * GitHubService
- *
- * This service orchestrates the fetching of GitHub data and calculation of metrics.
- * It uses the GitHubRepository to fetch data, the MetricCalculator to compute metrics,
- * and the ProgressTracker to report progress.
- *
- * @implements {IGitHubService}
- */
 @injectable()
-export class GitHubService implements IGitHubService {
-  private readonly MAX_PAGES = 100;
-
+export class GitHubService extends CacheableClass implements IGitHubService {
   constructor(
     @inject(TYPES.GitHubRepository) private repository: IGitHubRepository,
-    @inject(TYPES.MetricCalculator)
-    private metricCalculator: IMetricCalculator,
-    @inject(TYPES.ProgressTracker) private progressTracker: IProgressTracker,
     @inject(TYPES.Logger) private logger: ILogger,
-  ) {}
+    @inject(TYPES.CacheService) cacheService: ICacheService,
+  ) {
+    super(cacheService);
+  }
 
-  async fetchData(
-    progressCallback?: ProgressCallback,
-    timePeriod: number = 90,
-  ): Promise<IFetchDataResult> {
+  @Cacheable('github-raw-data', 3600) // Cache for 1 hour
+  public async fetchAndStoreRawData(timePeriod: number): Promise<void> {
     try {
-      const pullRequestsData = await this.fetchAllPullRequests(
-        timePeriod,
-        (current, total, message) => {
-          // Directly use the progress tracker and callback
-          this.progressTracker.trackProgress(current, total, message);
-          progressCallback?.(current, total, message);
-        },
+      const { pullRequests, totalPRs, fetchedPRs } =
+        await this.repository.fetchPullRequests(timePeriod);
+      await this.repository.storeRawPullRequests(pullRequests);
+      this.logger.info(
+        `Fetched ${fetchedPRs} pull requests out of ${totalPRs} total PRs for the last ${timePeriod} days`,
       );
-      const metrics = this.calculateMetrics(pullRequestsData.pullRequests);
-
-      return {
-        metrics,
-        totalPRs: pullRequestsData.totalPRs,
-        fetchedPRs: pullRequestsData.fetchedPRs,
-        timePeriod: pullRequestsData.timePeriod,
-      };
     } catch (error) {
-      this.handleFetchError(error);
+      this.logger.error(
+        'Error fetching and storing raw GitHub data:',
+        error as Error,
+      );
+      throw new AppError(500, 'Failed to fetch and store raw GitHub data');
     }
   }
 
-  private async fetchAllPullRequests(
-    timePeriod: number,
-    progressCallback?: ProgressCallback, // Make this parameter optional
-  ): Promise<{
-    pullRequests: IPullRequest[];
-    totalPRs: number;
-    fetchedPRs: number;
-    timePeriod: number;
-  }> {
-    return this.repository.fetchPullRequests(
-      timePeriod,
-      progressCallback ? progressCallback : undefined,
-    );
+  public async getProcessedMetrics(
+    page: number,
+    pageSize: number,
+  ): Promise<IMetric[]> {
+    try {
+      return await this.repository.getProcessedMetrics(page, pageSize);
+    } catch (error) {
+      this.logger.error('Error fetching processed metrics:', error as Error);
+      throw new AppError(500, 'Failed to fetch processed metrics');
+    }
   }
 
-  /**
-   * Calculates metrics for the given pull requests.
-   *
-   * @private
-   * @param {IPullRequest[]} pullRequests - The pull requests to calculate metrics for.
-   * @returns {IMetric[]} Array of calculated metrics.
-   */
-  private calculateMetrics(pullRequests: IPullRequest[]): IMetric[] {
-    this.logger.info(
-      `Calculating metrics for ${pullRequests.length} pull requests`,
-    );
-    return this.metricCalculator.calculateMetrics(pullRequests);
+  public async syncData(timePeriod: number): Promise<void> {
+    try {
+      await this.repository.syncPullRequests(timePeriod);
+      this.logger.info(`Synced GitHub data for the last ${timePeriod} days`);
+    } catch (error) {
+      this.logger.error('Error syncing GitHub data:', error as Error);
+      throw new AppError(500, 'Failed to sync GitHub data');
+    }
   }
 
-  /**
-   * Handles errors that occur during data fetching.
-   *
-   * @private
-   * @param {unknown} error - The error that occurred.
-   * @throws {Error} Always throws an error with a formatted message.
-   */
-  private handleFetchError(error: unknown): never {
-    this.logger.error(
-      'Error fetching GitHub data:',
-      error instanceof Error ? error : undefined,
-    );
-    throw new Error(
-      `Failed to fetch GitHub data: ${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`,
-    );
+  public async getTotalPRCount(): Promise<number> {
+    try {
+      return await this.repository.getTotalPRCount();
+    } catch (error) {
+      this.logger.error('Error getting total PR count:', error as Error);
+      throw new AppError(500, 'Failed to get total PR count');
+    }
   }
 }

@@ -21,7 +21,7 @@ export class TokenService implements ITokenService {
     @inject(TYPES.Config) private config: IConfig,
   ) {}
 
-  generateAccessToken(
+  public generateAccessToken(
     payload: { id: string; email: string },
     expiresIn?: string | number,
   ): string {
@@ -30,19 +30,28 @@ export class TokenService implements ITokenService {
     });
   }
 
-  generateRefreshToken(payload: { id: string }): string {
+  public generateRefreshToken(payload: { id: string }): string {
     return this.jwtService.sign(payload, this.config.REFRESH_TOKEN_SECRET, {
       expiresIn: this.config.REFRESH_TOKEN_EXPIRY,
     });
   }
 
-  generatePasswordResetToken(payload: { id: string }): string {
+  public generatePasswordResetToken(payload: { id: string }): string {
     return this.jwtService.sign(payload, this.config.JWT_SECRET, {
       expiresIn: '1h', // Password reset tokens typically have a short lifespan
     });
   }
 
-  validateAccessToken(token: string): {
+  public generateShortLivedAccessToken(payload: {
+    id: string;
+    email: string;
+  }): string {
+    return this.jwtService.sign(payload, this.config.JWT_SECRET, {
+      expiresIn: '1m', // Set a short expiration time, e.g., 1 minute
+    });
+  }
+
+  public validateAccessToken(token: string): {
     id: string;
     email: string;
     exp: number;
@@ -63,7 +72,7 @@ export class TokenService implements ITokenService {
     }
   }
 
-  validateRefreshToken(token: string): { id: string; exp: number } {
+  public validateRefreshToken(token: string): { id: string; exp: number } {
     try {
       const decoded = this.jwtService.verify(
         token,
@@ -75,7 +84,7 @@ export class TokenService implements ITokenService {
     }
   }
 
-  validatePasswordResetToken(token: string): { id: string } {
+  public validatePasswordResetToken(token: string): { id: string } {
     try {
       return this.jwtService.verify(token, this.config.JWT_SECRET) as {
         id: string;
@@ -85,7 +94,7 @@ export class TokenService implements ITokenService {
     }
   }
 
-  decodeToken(token: string): any {
+  public decodeToken(token: string): any {
     return this.jwtService.decode(token);
   }
 }

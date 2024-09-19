@@ -1,6 +1,8 @@
 // src/interfaces/IPullRequest.ts
 
+// This is the interface for the PullRequest model (our internal storage)
 export interface IPullRequest {
+  id: string;
   number: number;
   title: string;
   state: 'open' | 'closed' | 'merged';
@@ -21,4 +23,6 @@ export interface IPullRequest {
   baseRefOid: string;
   headRefName: string;
   headRefOid: string;
+  processed: boolean;
+  processedAt: string | null;
 }

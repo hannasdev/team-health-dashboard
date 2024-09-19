@@ -1,5 +1,3 @@
-// src/__tests__/repositories/GitHubRepository.test.ts
-
 import { Container } from 'inversify';
 
 import { GitHubRepository } from './GitHubRepository.js';
@@ -7,19 +5,21 @@ import {
   createMockLogger,
   createMockCacheService,
   createMockGitHubClient,
+  createMockMongooseModel,
+  createMockPullRequest,
+  createMockMetric,
 } from '../../../__mocks__/index.js';
 import { Config } from '../../../cross-cutting/Config/config.js';
-import { ProgressCallback } from '../../../types/index.js';
 import { TYPES } from '../../../utils/types.js';
 
 import type {
-  IGraphQLResponse,
   IGitHubClient,
   IConfig,
   ICacheService,
   ILogger,
-  IPullRequest,
   IGitHubRepository,
+  IGitHubPullRequest,
+  IMetricDocument,
 } from '../../../interfaces/index.js';
 
 describe('GitHubRepository', () => {
@@ -29,6 +29,12 @@ describe('GitHubRepository', () => {
   let mockConfig: IConfig;
   let mockLogger: jest.Mocked<ILogger>;
   let mockCacheService: jest.Mocked<ICacheService>;
+  let mockGitHubPullRequestModel: ReturnType<
+    typeof createMockMongooseModel<IGitHubPullRequest>
+  >;
+  let mockGitHubMetricModel: ReturnType<
+    typeof createMockMongooseModel<IMetricDocument>
+  >;
 
   const testConfig = {
     REPO_OWNER: 'github_owner_test',
@@ -50,6 +56,9 @@ describe('GitHubRepository', () => {
     mockLogger = createMockLogger();
     mockCacheService = createMockCacheService();
     mockClient = createMockGitHubClient();
+    mockGitHubPullRequestModel = createMockMongooseModel<IGitHubPullRequest>();
+    mockGitHubPullRequestModel.updateMany = jest.fn();
+    mockGitHubMetricModel = createMockMongooseModel<IMetricDocument>();
 
     container = new Container();
     container
@@ -61,280 +70,296 @@ describe('GitHubRepository', () => {
       .bind<ICacheService>(TYPES.CacheService)
       .toConstantValue(mockCacheService);
     container
-      .bind<IGitHubRepository>(TYPES.GitHubRepository)
-      .to(GitHubRepository);
+      .bind(TYPES.GitHubPullRequestModel)
+      .toConstantValue(mockGitHubPullRequestModel);
+    container
+      .bind(TYPES.GitHubMetricModel)
+      .toConstantValue(mockGitHubMetricModel);
+    container.bind(TYPES.GitHubRepository).to(GitHubRepository);
 
-    gitHubRepository = container.get<IGitHubRepository>(TYPES.GitHubRepository);
+    gitHubRepository = container.get<GitHubRepository>(TYPES.GitHubRepository);
 
     jest.resetAllMocks();
   });
 
-  it('should fetch pull requests for the specified time period', async () => {
-    const now = new Date();
-    const sixDaysAgo = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
-    const mockGraphQLResponse: IGraphQLResponse = {
-      repository: {
-        pullRequests: {
-          pageInfo: {
-            hasNextPage: false,
-            endCursor: null,
+  describe('fetchPullRequests', () => {
+    it('should fetch pull requests for the specified time period', async () => {
+      const mockPRs = [
+        createMockPullRequest(),
+        createMockPullRequest({ number: 2 }),
+      ];
+      mockClient.graphql.mockResolvedValueOnce({
+        repository: {
+          pullRequests: {
+            pageInfo: { hasNextPage: false, endCursor: null },
+            nodes: mockPRs,
+            totalCount: 2,
           },
-          nodes: [
-            {
-              number: 1,
-              title: 'Test PR 1',
-              state: 'OPEN',
-              author: { login: 'user1' },
-              createdAt: now.toISOString(),
-              updatedAt: now.toISOString(),
-              closedAt: null,
-              mergedAt: null,
-              commits: { totalCount: 1 },
-              additions: 10,
-              deletions: 5,
-              changedFiles: 2,
-              baseRefName: 'main',
-              baseRefOid: 'base-sha',
-              headRefName: 'feature',
-              headRefOid: 'head-sha',
-            },
-            {
-              number: 2,
-              title: 'Test PR 2',
-              state: 'CLOSED',
-              author: { login: 'user2' },
-              createdAt: sixDaysAgo.toISOString(),
-              updatedAt: sixDaysAgo.toISOString(),
-              closedAt: now.toISOString(),
-              mergedAt: now.toISOString(),
-              commits: { totalCount: 2 },
-              additions: 20,
-              deletions: 15,
-              changedFiles: 3,
-              baseRefName: 'main',
-              baseRefOid: 'base-sha-2',
-              headRefName: 'feature-2',
-              headRefOid: 'head-sha-2',
-            },
-          ],
-          totalCount: 2,
         },
-      },
-    };
+      });
 
-    mockClient.graphql.mockResolvedValueOnce(mockGraphQLResponse);
+      const result = await gitHubRepository.fetchPullRequests(7);
 
-    const result = await gitHubRepository.fetchPullRequests(7);
-
-    expect(result).toEqual({
-      pullRequests: expect.arrayContaining([
-        expect.objectContaining<Partial<IPullRequest>>({
-          number: 1,
-          title: 'Test PR 1',
+      expect(result).toEqual({
+        pullRequests: mockPRs,
+        totalPRs: 2,
+        fetchedPRs: 2,
+        timePeriod: 7,
+      });
+      expect(mockClient.graphql).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'query($owner: String!, $repo: String!, $cursor: String)',
+        ),
+        expect.objectContaining({
+          owner: 'github_owner_test',
+          repo: 'github_repo_test',
+          cursor: null,
         }),
-        expect.objectContaining<Partial<IPullRequest>>({
-          number: 2,
-          title: 'Test PR 2',
-        }),
-      ]),
-      totalPRs: 2,
-      fetchedPRs: 2,
-      timePeriod: 7,
+      );
     });
 
-    expect(result.pullRequests).toHaveLength(2);
+    it('should handle pagination', async () => {
+      const mockPRs1 = Array(100).fill(createMockPullRequest());
+      const mockPRs2 = Array(50).fill(createMockPullRequest({ number: 2 }));
 
-    expect(mockClient.graphql).toHaveBeenCalledWith(
-      expect.stringContaining(
-        'query($owner: String!, $repo: String!, $cursor: String)',
-      ),
-      expect.objectContaining({
-        owner: 'github_owner_test',
-        repo: 'github_repo_test',
-        cursor: null,
-      }),
-    );
-  });
-
-  it('should handle pagination', async () => {
-    const mockGraphQLResponse1: IGraphQLResponse = {
-      repository: {
-        pullRequests: {
-          pageInfo: {
-            hasNextPage: true,
-            endCursor: 'cursor1',
+      mockClient.graphql
+        .mockResolvedValueOnce({
+          repository: {
+            pullRequests: {
+              pageInfo: { hasNextPage: true, endCursor: 'cursor1' },
+              nodes: mockPRs1,
+              totalCount: 150,
+            },
           },
-          nodes: Array(100).fill({
-            number: 1,
-            title: 'Test PR',
-            state: 'OPEN',
-            author: { login: 'user1' },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            closedAt: null,
-            mergedAt: null,
-            commits: { totalCount: 1 },
-            additions: 10,
-            deletions: 5,
-            changedFiles: 2,
-            baseRefName: 'main',
-            baseRefOid: 'base-sha',
-            headRefName: 'feature',
-            headRefOid: 'head-sha',
-          }),
-          totalCount: 100,
-        },
-      },
-    };
-
-    const mockGraphQLResponse2: IGraphQLResponse = {
-      repository: {
-        pullRequests: {
-          pageInfo: {
-            hasNextPage: false,
-            endCursor: null,
+        })
+        .mockResolvedValueOnce({
+          repository: {
+            pullRequests: {
+              pageInfo: { hasNextPage: false, endCursor: null },
+              nodes: mockPRs2,
+              totalCount: 150,
+            },
           },
-          nodes: Array(50).fill({
-            number: 2,
-            title: 'Test PR 2',
-            state: 'CLOSED',
-            author: { login: 'user2' },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            closedAt: new Date().toISOString(),
-            mergedAt: new Date().toISOString(),
-            commits: { totalCount: 2 },
-            additions: 20,
-            deletions: 15,
-            changedFiles: 3,
-            baseRefName: 'main',
-            baseRefOid: 'base-sha-2',
-            headRefName: 'feature-2',
-            headRefOid: 'head-sha-2',
-          }),
-          totalCount: 50,
-        },
-      },
-    };
+        });
 
-    mockClient.graphql
-      .mockResolvedValueOnce(mockGraphQLResponse1)
-      .mockResolvedValueOnce(mockGraphQLResponse2);
+      const result = await gitHubRepository.fetchPullRequests(7);
 
-    const result = await gitHubRepository.fetchPullRequests(7);
-
-    expect(result).toEqual({
-      pullRequests: expect.arrayContaining([
-        expect.objectContaining<Partial<IPullRequest>>({
-          number: expect.any(Number),
-          title: expect.any(String),
-        }),
-      ]),
-      totalPRs: 150,
-      fetchedPRs: 150,
-      timePeriod: 7,
+      expect(result).toEqual({
+        pullRequests: expect.arrayContaining([...mockPRs1, ...mockPRs2]),
+        totalPRs: 150,
+        fetchedPRs: 150,
+        timePeriod: 7,
+      });
+      expect(mockClient.graphql).toHaveBeenCalledTimes(2);
     });
 
-    expect(result.pullRequests).toHaveLength(150);
-    expect(mockClient.graphql).toHaveBeenCalledTimes(2);
+    it('should handle errors during API requests', async () => {
+      const error = new Error('API Error');
+      mockClient.graphql.mockRejectedValue(error);
+
+      await expect(gitHubRepository.fetchPullRequests(7)).rejects.toThrow(
+        'Failed to fetch pull requests: API Error',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching pull requests:',
+        error,
+      );
+    });
+
+    it('should use cache when available', async () => {
+      const cachedResult = {
+        pullRequests: [createMockPullRequest()],
+        totalPRs: 1,
+        fetchedPRs: 1,
+        timePeriod: 7,
+      };
+      mockCacheService.get.mockResolvedValueOnce(cachedResult);
+
+      const result = await gitHubRepository.fetchPullRequests(7);
+
+      expect(result).toEqual(cachedResult);
+      expect(mockClient.graphql).not.toHaveBeenCalled();
+    });
   });
 
-  it('should call progress callback if provided', async () => {
-    const mockGraphQLResponse: IGraphQLResponse = {
-      repository: {
-        pullRequests: {
-          pageInfo: {
-            hasNextPage: false,
-            endCursor: null,
-          },
-          nodes: Array(50).fill({
-            number: 1,
-            title: 'Test PR',
-            state: 'OPEN',
-            author: { login: 'user1' },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            closedAt: null,
-            mergedAt: null,
-            commits: { totalCount: 1 },
-            additions: 10,
-            deletions: 5,
-            changedFiles: 2,
-            baseRefName: 'main',
-            baseRefOid: 'base-sha',
-            headRefName: 'feature',
-            headRefOid: 'head-sha',
+  describe('storeRawPullRequests', () => {
+    it('should store raw pull requests', async () => {
+      const pullRequests = [createMockPullRequest()];
+
+      await gitHubRepository.storeRawPullRequests(pullRequests);
+
+      expect(mockGitHubPullRequestModel.insertMany).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            number: pullRequests[0].number,
+            title: pullRequests[0].title,
+            state: pullRequests[0].state,
+            author: pullRequests[0].author.login,
           }),
-          totalCount: 50,
-        },
-      },
-    };
+        ]),
+      );
+    });
 
-    mockClient.graphql.mockResolvedValueOnce(mockGraphQLResponse);
+    it('should handle errors when storing raw pull requests', async () => {
+      const pullRequests = [createMockPullRequest()];
+      const error = new Error('Database error');
+      mockGitHubPullRequestModel.insertMany.mockRejectedValue(error);
 
-    const mockProgressCallback: ProgressCallback = jest.fn();
-
-    await gitHubRepository.fetchPullRequests(7, mockProgressCallback);
-
-    expect(mockProgressCallback).toHaveBeenCalledWith(
-      50,
-      expect.any(Number),
-      'Fetched 50 pull requests',
-    );
+      await expect(
+        gitHubRepository.storeRawPullRequests(pullRequests),
+      ).rejects.toThrow('Failed to store raw pull requests');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error storing raw pull requests:',
+        error,
+      );
+    });
   });
 
-  it('should handle errors during API requests', async () => {
-    const error = new Error('API Error');
-    mockClient.graphql.mockRejectedValue(error);
+  describe('getRawPullRequests', () => {
+    it('should get raw pull requests from database', async () => {
+      const mockRawPullRequests = [
+        createMockPullRequest(),
+        createMockPullRequest(),
+      ];
+      mockGitHubPullRequestModel.find = jest.fn().mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(mockRawPullRequests),
+      });
 
-    await expect(gitHubRepository.fetchPullRequests(7)).rejects.toThrow(
-      'Failed to fetch pull requests: API Error',
-    );
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      'Error fetching pull requests:',
-      error,
-    );
+      try {
+        const result = await gitHubRepository.getRawPullRequests(1, 20);
+        expect(result).toEqual(mockRawPullRequests);
+        expect(mockGitHubPullRequestModel.find).toHaveBeenCalledWith({
+          processed: false,
+        });
+        expect(mockGitHubPullRequestModel.find().sort).toHaveBeenCalledWith({
+          createdAt: -1,
+        });
+        expect(mockGitHubPullRequestModel.find().skip).toHaveBeenCalledWith(0);
+        expect(mockGitHubPullRequestModel.find().limit).toHaveBeenCalledWith(
+          20,
+        );
+      } catch (error) {
+        console.error('Test failed with error:', error);
+        throw error;
+      }
+    });
+
+    it('should handle errors when fetching raw pull requests', async () => {
+      mockGitHubPullRequestModel.find.mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockRejectedValue(new Error('Database error')),
+      });
+
+      await expect(gitHubRepository.getRawPullRequests(1, 20)).rejects.toThrow(
+        'Failed to fetch pull requests from database',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching pull requests from database:',
+        expect.any(Error),
+      );
+    });
   });
 
-  it('should use cache when available', async () => {
-    const cachedPRs = {
-      pullRequests: [
-        {
-          number: 1,
-          title: 'Cached PR',
-          state: 'OPEN',
-          author: { login: 'user1' },
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          closedAt: null,
-          mergedAt: null,
-          commits: { totalCount: 1 },
-          additions: 10,
-          deletions: 5,
-          changedFiles: 2,
-          baseRefName: 'main',
-          baseRefOid: 'base-sha',
-          headRefName: 'feature',
-          headRefOid: 'head-sha',
-        },
-      ],
-      totalPRs: 1,
-      fetchedPRs: 1,
-      timePeriod: 7,
-    };
+  describe('storeProcessedMetrics', () => {
+    it('should store processed metrics', async () => {
+      const metrics = [createMockMetric(), createMockMetric()];
 
-    mockCacheService.get.mockResolvedValueOnce(cachedPRs);
+      await gitHubRepository.storeProcessedMetrics(metrics);
 
-    const result = await gitHubRepository.fetchPullRequests(7);
-
-    expect(result).toEqual(cachedPRs);
-    expect(mockClient.graphql).not.toHaveBeenCalled();
+      expect(mockGitHubMetricModel.insertMany).toHaveBeenCalledWith(metrics);
+    });
   });
 
-  it('should cancel operation', async () => {
-    gitHubRepository.cancelOperation();
-    await expect(gitHubRepository.fetchPullRequests(90)).rejects.toThrow(
-      'Operation cancelled',
-    );
+  describe('getProcessedMetrics', () => {
+    it('should get processed metrics from database', async () => {
+      const mockMetrics = [createMockMetric(), createMockMetric()];
+      mockGitHubMetricModel.find.mockReturnValue({
+        sort: jest.fn().mockReturnThis(),
+        skip: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        lean: jest.fn().mockReturnThis(),
+        exec: jest.fn().mockResolvedValue(mockMetrics),
+      });
+
+      const result = await gitHubRepository.getProcessedMetrics(1, 20);
+
+      expect(result).toEqual(mockMetrics);
+      expect(mockGitHubMetricModel.find().sort).toHaveBeenCalledWith({
+        timestamp: -1,
+      });
+      expect(mockGitHubMetricModel.find().skip).toHaveBeenCalledWith(0);
+      expect(mockGitHubMetricModel.find().limit).toHaveBeenCalledWith(20);
+    });
+  });
+
+  describe('getTotalPRCount', () => {
+    it('should return the total count of pull requests', async () => {
+      mockGitHubPullRequestModel.countDocuments.mockResolvedValue(100);
+
+      const result = await gitHubRepository.getTotalPRCount();
+
+      expect(result).toBe(100);
+      expect(mockGitHubPullRequestModel.countDocuments).toHaveBeenCalled();
+    });
+  });
+
+  describe('syncPullRequests', () => {
+    it('should sync pull requests', async () => {
+      const mockPRs = [createMockPullRequest(), createMockPullRequest()];
+      jest.spyOn(gitHubRepository, 'fetchPullRequests').mockResolvedValue({
+        pullRequests: mockPRs,
+        totalPRs: 2,
+        fetchedPRs: 2,
+        timePeriod: 7,
+      });
+
+      await gitHubRepository.syncPullRequests(7);
+
+      expect(gitHubRepository.fetchPullRequests).toHaveBeenCalledWith(7);
+      expect(mockGitHubPullRequestModel.findOneAndUpdate).toHaveBeenCalledTimes(
+        2,
+      );
+    });
+  });
+
+  describe('markPullRequestsAsProcessed', () => {
+    it('should mark pull requests as processed', async () => {
+      const ids = ['1', '2', '3'];
+      mockGitHubPullRequestModel.updateMany.mockResolvedValue({
+        modifiedCount: ids.length,
+      });
+
+      await gitHubRepository.markPullRequestsAsProcessed(ids);
+
+      expect(mockGitHubPullRequestModel.updateMany).toHaveBeenCalledWith(
+        { _id: { $in: ids } },
+        { $set: { processed: true, processedAt: expect.any(Date) } },
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        `Marked ${ids.length} pull requests as processed`,
+      );
+    });
+
+    it('should handle errors when marking pull requests as processed', async () => {
+      const ids = ['1', '2', '3'];
+      mockGitHubPullRequestModel.updateMany.mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(
+        gitHubRepository.markPullRequestsAsProcessed(ids),
+      ).rejects.toThrow('Failed to mark pull requests as processed');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error marking pull requests as processed:',
+        expect.any(Error),
+      );
+    });
   });
 });

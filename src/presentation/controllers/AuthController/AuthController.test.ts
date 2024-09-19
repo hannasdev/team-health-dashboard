@@ -80,6 +80,7 @@ describe('AuthController', () => {
       expect(mockAuthenticationService.login).toHaveBeenCalledWith(
         'test@example.com',
         'password123',
+        false,
       );
       expect(mockApiResponse.createSuccessResponse).toHaveBeenCalledWith({
         accessToken: 'mock-access-token',
@@ -119,6 +120,7 @@ describe('AuthController', () => {
       expect(mockAuthenticationService.login).toHaveBeenCalledWith(
         'test@example.com',
         'wrongpassword',
+        false,
       );
       expect(next).toHaveBeenCalledWith(expect.any(InvalidInputError));
     });

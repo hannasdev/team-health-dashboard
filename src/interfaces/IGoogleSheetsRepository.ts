@@ -1,12 +1,9 @@
-import { IMetric } from './IMetricModel.js';
-import { ProgressCallback } from '../types/index.js';
+import type { IMetric } from './index.js';
 
 export interface IGoogleSheetsRepository {
-  /**
-   * Fetches metrics data from Google Sheets.
-   *
-   * @param progressCallback Optional callback for reporting progress.
-   * @returns A promise that resolves to an array of metrics.
-   */
-  fetchMetrics(progressCallback?: ProgressCallback): Promise<IMetric[]>;
+  fetchRawData(): Promise<any[][]>;
+  storeMetrics(metrics: IMetric[]): Promise<void>;
+  getMetrics(page: number, pageSize: number): Promise<IMetric[]>;
+  getTotalMetricsCount(): Promise<number>;
+  updateMetrics(metrics: IMetric[]): Promise<void>;
 }

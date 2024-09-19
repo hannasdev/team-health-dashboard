@@ -33,11 +33,16 @@ export class AuthController implements IAuthController {
     next: NextFunction,
   ): Promise<void> {
     try {
-      const { email, password } = req.body;
+      const { email, password, shortLived = false } = req.body;
       if (!email || !password) {
         throw new InvalidInputError('Email and password are required');
       }
-      const result = await this.authenticationService.login(email, password);
+
+      const result = await this.authenticationService.login(
+        email,
+        password,
+        shortLived,
+      );
       res.json(
         this.apiResponse.createSuccessResponse({
           ...result,

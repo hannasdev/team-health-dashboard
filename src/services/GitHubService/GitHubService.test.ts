@@ -1,180 +1,160 @@
+// src/services/GitHubService/GitHubService.test.ts
+
 import { Container } from 'inversify';
 
-import { GitHubService } from './GitHubService.js';
+import { GitHubService } from './GitHubService';
 import {
-  createMockLogger,
   createMockGitHubRepository,
-  createMockMetricCalculator,
-  createMockProgressTracker,
-} from '../../__mocks__/index.js';
-import { ProgressCallback } from '../../types/index.js';
-import { TYPES } from '../../utils/types.js';
+  createMockLogger,
+  createMockCacheService,
+  createMockPullRequest,
+  createMockMetric,
+} from '../../__mocks__/index';
+import { AppError } from '../../utils/errors';
+import { TYPES } from '../../utils/types';
 
 import type {
   IGitHubRepository,
-  IMetricCalculator,
-  IProgressTracker,
   ILogger,
-  IMetric,
+  ICacheService,
   IPullRequest,
-  IGitHubService,
-} from '../../interfaces/index.js';
+  IMetric,
+} from '../../interfaces/index';
 
 describe('GitHubService', () => {
   let container: Container;
-  let gitHubService: IGitHubService;
-  let mockGitHubRepository: jest.Mocked<IGitHubRepository>;
-  let mockMetricCalculator: jest.Mocked<IMetricCalculator>;
-  let mockProgressTracker: jest.Mocked<IProgressTracker>;
+  let gitHubService: GitHubService;
+  let mockRepository: jest.Mocked<IGitHubRepository>;
   let mockLogger: jest.Mocked<ILogger>;
+  let mockCacheService: jest.Mocked<ICacheService>;
 
   beforeEach(() => {
-    mockLogger = createMockLogger();
-    mockGitHubRepository = createMockGitHubRepository();
-    mockMetricCalculator = createMockMetricCalculator();
-    mockProgressTracker = createMockProgressTracker();
-
     container = new Container();
+    mockRepository = createMockGitHubRepository();
+    mockLogger = createMockLogger();
+    mockCacheService = createMockCacheService();
+
     container
       .bind<IGitHubRepository>(TYPES.GitHubRepository)
-      .toConstantValue(mockGitHubRepository);
-    container
-      .bind<IMetricCalculator>(TYPES.MetricCalculator)
-      .toConstantValue(mockMetricCalculator);
-    container
-      .bind<IProgressTracker>(TYPES.ProgressTracker)
-      .toConstantValue(mockProgressTracker);
+      .toConstantValue(mockRepository);
     container.bind<ILogger>(TYPES.Logger).toConstantValue(mockLogger);
-    container.bind<IGitHubService>(TYPES.GitHubService).to(GitHubService);
+    container
+      .bind<ICacheService>(TYPES.CacheService)
+      .toConstantValue(mockCacheService);
+    container.bind<GitHubService>(GitHubService).toSelf();
 
-    gitHubService = container.get<IGitHubService>(TYPES.GitHubService);
-
-    jest.resetAllMocks();
+    gitHubService = container.get<GitHubService>(GitHubService);
   });
 
-  it('should fetch pull requests and calculate metrics', async () => {
-    const mockPRs: Partial<IPullRequest>[] = [
-      { number: 1, createdAt: '2023-01-01T00:00:00Z' },
-      { number: 2, createdAt: '2023-01-02T00:00:00Z' },
-    ];
+  describe('fetchAndStoreRawData', () => {
+    it('should fetch and store raw pull request data successfully', async () => {
+      const mockPullRequests: IPullRequest[] = [
+        createMockPullRequest(),
+        createMockPullRequest(),
+      ];
+      mockRepository.fetchPullRequests.mockResolvedValue({
+        pullRequests: mockPullRequests,
+        totalPRs: 100,
+        fetchedPRs: 2,
+        timePeriod: 30,
+      });
 
-    mockGitHubRepository.fetchPullRequests.mockResolvedValue({
-      pullRequests: mockPRs as IPullRequest[],
-      totalPRs: mockPRs.length,
-      fetchedPRs: mockPRs.length,
-      timePeriod: 90,
+      await gitHubService.fetchAndStoreRawData(30);
+
+      expect(mockRepository.fetchPullRequests).toHaveBeenCalledWith(30);
+      expect(mockRepository.storeRawPullRequests).toHaveBeenCalledWith(
+        mockPullRequests,
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining(
+          'Fetched 2 pull requests out of 100 total PRs for the last 30 days',
+        ),
+      );
     });
 
-    const mockMetrics: IMetric[] = [
-      {
-        id: 'test-metric',
-        metric_category: 'Test',
-        metric_name: 'Test Metric',
-        value: 42,
-        timestamp: new Date(),
-        unit: 'count',
-        additional_info: '',
-        source: 'GitHub',
-      },
-    ];
+    it('should throw an AppError when fetching fails', async () => {
+      mockRepository.fetchPullRequests.mockRejectedValue(
+        new Error('API Error'),
+      );
 
-    mockMetricCalculator.calculateMetrics.mockReturnValue(mockMetrics);
-
-    const result = await gitHubService.fetchData();
-
-    expect(mockGitHubRepository.fetchPullRequests).toHaveBeenCalledWith(
-      90,
-      expect.any(Function),
-    );
-    expect(mockMetricCalculator.calculateMetrics).toHaveBeenCalledWith(mockPRs);
-    expect(result).toEqual({
-      metrics: mockMetrics,
-      totalPRs: 2,
-      fetchedPRs: 2,
-      timePeriod: 90,
+      await expect(gitHubService.fetchAndStoreRawData(30)).rejects.toThrow(
+        AppError,
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching and storing raw GitHub data:',
+        expect.any(Error),
+      );
     });
   });
 
-  it('should fetch data with custom time period', async () => {
-    const customTimePeriod = 30;
-    const mockPRs: Partial<IPullRequest>[] = [
-      { number: 1, createdAt: '2023-01-01T00:00:00Z' },
-    ];
+  describe('getProcessedMetrics', () => {
+    it('should return processed metrics', async () => {
+      const mockMetrics: IMetric[] = [createMockMetric(), createMockMetric()];
+      mockRepository.getProcessedMetrics.mockResolvedValue(mockMetrics);
 
-    mockGitHubRepository.fetchPullRequests.mockResolvedValue({
-      pullRequests: mockPRs as IPullRequest[],
-      totalPRs: mockPRs.length,
-      fetchedPRs: mockPRs.length,
-      timePeriod: customTimePeriod,
+      const result = await gitHubService.getProcessedMetrics(1, 10);
+
+      expect(result).toEqual(mockMetrics);
+      expect(mockRepository.getProcessedMetrics).toHaveBeenCalledWith(1, 10);
     });
-    mockMetricCalculator.calculateMetrics.mockReturnValue([]);
 
-    const result = await gitHubService.fetchData(undefined, customTimePeriod);
+    it('should throw an AppError when fetching processed metrics fails', async () => {
+      mockRepository.getProcessedMetrics.mockRejectedValue(
+        new Error('DB Error'),
+      );
 
-    expect(mockGitHubRepository.fetchPullRequests).toHaveBeenCalledWith(
-      customTimePeriod,
-      expect.any(Function),
-    );
-    expect(result.timePeriod).toBe(customTimePeriod);
-  });
-
-  it('should use progress tracker and progress callback when provided', async () => {
-    const progressCallback: ProgressCallback = jest.fn();
-    const mockPRs: Partial<IPullRequest>[] = [
-      { number: 1, createdAt: '2023-01-01T00:00:00Z' },
-      { number: 2, createdAt: '2023-01-02T00:00:00Z' },
-    ];
-
-    mockGitHubRepository.fetchPullRequests.mockImplementation(
-      async (timePeriod, callback) => {
-        callback?.(1, 2, 'Fetching PR 1');
-        callback?.(2, 2, 'Fetching PR 2');
-        return {
-          pullRequests: mockPRs as IPullRequest[],
-          totalPRs: mockPRs.length,
-          fetchedPRs: mockPRs.length,
-          timePeriod,
-        };
-      },
-    );
-
-    await gitHubService.fetchData(progressCallback);
-
-    expect(mockProgressTracker.trackProgress).toHaveBeenCalledTimes(2);
-    expect(progressCallback).toHaveBeenCalledTimes(2);
-    expect(mockMetricCalculator.calculateMetrics).toHaveBeenCalledWith(mockPRs);
-  });
-
-  it('should handle errors during fetch', async () => {
-    const errorMessage = 'API Error';
-    mockGitHubRepository.fetchPullRequests.mockRejectedValue(
-      new Error(errorMessage),
-    );
-
-    await expect(gitHubService.fetchData()).rejects.toThrow(errorMessage);
-    expect(mockLogger.error).toHaveBeenCalledWith(
-      'Error fetching GitHub data:',
-      expect.any(Error),
-    );
-    expect(mockMetricCalculator.calculateMetrics).not.toHaveBeenCalled();
-  });
-
-  it('should handle empty pull requests', async () => {
-    mockGitHubRepository.fetchPullRequests.mockResolvedValue({
-      pullRequests: [],
-      totalPRs: 0,
-      fetchedPRs: 0,
-      timePeriod: 90,
+      await expect(gitHubService.getProcessedMetrics(1, 10)).rejects.toThrow(
+        AppError,
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error fetching processed metrics:',
+        expect.any(Error),
+      );
     });
-    mockMetricCalculator.calculateMetrics.mockReturnValue([]);
+  });
 
-    const result = await gitHubService.fetchData();
+  describe('syncData', () => {
+    it('should sync pull requests data', async () => {
+      await gitHubService.syncData(30);
 
-    expect(result).toEqual({
-      metrics: [],
-      totalPRs: 0,
-      fetchedPRs: 0,
-      timePeriod: 90,
+      expect(mockRepository.syncPullRequests).toHaveBeenCalledWith(30);
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Synced GitHub data for the last 30 days',
+      );
+    });
+
+    it('should throw an AppError when syncing fails', async () => {
+      mockRepository.syncPullRequests.mockRejectedValue(
+        new Error('Sync Error'),
+      );
+
+      await expect(gitHubService.syncData(30)).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error syncing GitHub data:',
+        expect.any(Error),
+      );
+    });
+  });
+
+  describe('getTotalPRCount', () => {
+    it('should return the total PR count', async () => {
+      const expectedCount = 100;
+      mockRepository.getTotalPRCount.mockResolvedValue(expectedCount);
+
+      const result = await gitHubService.getTotalPRCount();
+
+      expect(result).toBe(expectedCount);
+      expect(mockRepository.getTotalPRCount).toHaveBeenCalled();
+    });
+
+    it('should throw an AppError when getting total PR count fails', async () => {
+      mockRepository.getTotalPRCount.mockRejectedValue(new Error('DB Error'));
+
+      await expect(gitHubService.getTotalPRCount()).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error getting total PR count:',
+        expect.any(Error),
+      );
     });
   });
 });

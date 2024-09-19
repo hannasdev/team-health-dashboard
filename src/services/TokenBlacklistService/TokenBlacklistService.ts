@@ -28,42 +28,63 @@ export class TokenBlacklistService implements ITokenBlacklistService {
     this.cleanupInterval = setInterval(() => this.cleanup(), interval);
   }
 
-  async blacklistToken(token: string, expiresAt: number): Promise<void> {
-    const collection = this.mongoClient
-      .getDb()
-      .collection(this.COLLECTION_NAME);
-    await collection.insertOne({ token, expiresAt });
-    this.logger.info(`Token blacklisted: ${token.substring(0, 10)}...`);
+  public async blacklistToken(token: string, expiresAt: number): Promise<void> {
+    try {
+      const collection = this.mongoClient
+        .getDb()
+        .collection(this.COLLECTION_NAME);
+      await collection.insertOne({ token, expiresAt });
+      this.logger.info(`Token blacklisted: ${token.substring(0, 10)}...`);
+    } catch (error) {
+      this.logger.error('Error blacklisting token:', error as Error);
+      throw error; // Re-throw the error after logging
+    }
   }
 
-  async isTokenBlacklisted(token: string): Promise<boolean> {
-    const collection = this.mongoClient
-      .getDb()
-      .collection(this.COLLECTION_NAME);
-    const result = await collection.findOne({ token });
-    const isBlacklisted = !!result;
-    this.logger.debug(
-      `Checking if token is blacklisted: ${token.substring(0, 10)}... Result: ${isBlacklisted}`,
-    );
-    return isBlacklisted;
+  public async isTokenBlacklisted(token: string): Promise<boolean> {
+    try {
+      const collection = this.mongoClient
+        .getDb()
+        .collection(this.COLLECTION_NAME);
+      const result = await collection.findOne({ token });
+      const isBlacklisted = !!result;
+      this.logger.debug(
+        `Checking if token is blacklisted: ${token.substring(0, 10)}... Result: ${isBlacklisted}`,
+      );
+      return isBlacklisted;
+    } catch (error) {
+      this.logger.error(
+        'Error checking if token is blacklisted:',
+        error as Error,
+      );
+      throw error; // Re-throw the error after logging
+    }
   }
 
-  async revokeAllUserTokens(userId: string): Promise<void> {
+  public async revokeAllUserTokens(userId: string): Promise<void> {
     // This method would require storing user ID with tokens, which we're not currently doing
     // For now, we'll log a warning
     this.logger.warn(`Revoke all tokens for user ${userId} not implemented`);
   }
 
-  async cleanup(): Promise<number> {
-    const collection = this.mongoClient
-      .getDb()
-      .collection(this.COLLECTION_NAME);
-    const now = Date.now();
-    const result = await collection.deleteMany({ expiresAt: { $lt: now } });
-    this.logger.info(
-      `Cleaned up ${result.deletedCount} expired blacklisted tokens`,
-    );
-    return result.deletedCount;
+  public async cleanup(): Promise<number> {
+    try {
+      const collection = this.mongoClient
+        .getDb()
+        .collection(this.COLLECTION_NAME);
+      const now = Date.now();
+      const result = await collection.deleteMany({ expiresAt: { $lt: now } });
+      this.logger.info(
+        `Cleaned up ${result.deletedCount} expired blacklisted tokens`,
+      );
+      return result.deletedCount;
+    } catch (error) {
+      this.logger.error(
+        'Error during token blacklist cleanup:',
+        error as Error,
+      );
+      return 0; // Return 0 instead of throwing the error
+    }
   }
 
   _testOnly_triggerCleanup(): Promise<number> {

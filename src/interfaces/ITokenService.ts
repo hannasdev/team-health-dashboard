@@ -7,6 +7,7 @@ export interface ITokenService {
     payload: { id: string; email: string },
     expiresIn?: string | number,
   ): string;
+  generateShortLivedAccessToken(payload: { id: string; email: string }): string;
   validateAccessToken(token: string): {
     id: string;
     email: string;

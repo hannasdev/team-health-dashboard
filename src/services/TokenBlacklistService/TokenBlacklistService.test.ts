@@ -54,6 +54,21 @@ describe('TokenBlacklistService', () => {
         expect.stringContaining('Token blacklisted'),
       );
     });
+
+    it('should handle errors when inserting a token', async () => {
+      const token = 'testToken';
+      const expiresAt = Date.now() + 3600000;
+      const error = new Error('Database error');
+      mockCollection.insertOne.mockRejectedValue(error);
+
+      await expect(
+        tokenBlacklistService.blacklistToken(token, expiresAt),
+      ).rejects.toThrow('Database error');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error blacklisting token:',
+        error,
+      );
+    });
   });
 
   describe('isTokenBlacklisted', () => {
@@ -80,6 +95,20 @@ describe('TokenBlacklistService', () => {
       expect(mockCollection.findOne).toHaveBeenCalledWith({ token });
       expect(mockLogger.debug).toHaveBeenCalledWith(
         expect.stringContaining('Result: false'),
+      );
+    });
+
+    it('should handle errors when checking if a token is blacklisted', async () => {
+      const token = 'testToken';
+      const error = new Error('Database error');
+      mockCollection.findOne.mockRejectedValue(error);
+
+      await expect(
+        tokenBlacklistService.isTokenBlacklisted(token),
+      ).rejects.toThrow('Database error');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error checking if token is blacklisted:',
+        error,
       );
     });
   });
@@ -123,6 +152,19 @@ describe('TokenBlacklistService', () => {
 
       // The cleanup method should have been called 5 times
       expect((tokenBlacklistService as any).cleanup).toHaveBeenCalledTimes(5);
+    });
+
+    it('should handle errors during cleanup', async () => {
+      const error = new Error('Cleanup error');
+      mockCollection.deleteMany.mockRejectedValue(error);
+
+      const result = await tokenBlacklistService._testOnly_triggerCleanup();
+
+      expect(result).toBe(0);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error during token blacklist cleanup:',
+        error,
+      );
     });
   });
 });

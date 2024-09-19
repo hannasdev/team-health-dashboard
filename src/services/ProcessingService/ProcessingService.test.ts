@@ -1,0 +1,138 @@
+import { Container } from 'inversify';
+import 'reflect-metadata';
+
+import {
+  createMockGitHubRepository,
+  createMockMetricCalculator,
+  createMockLogger,
+  createMockPullRequest,
+  createMockMetric,
+} from '../../__mocks__';
+import { ProcessingService } from '../../services/ProcessingService/ProcessingService';
+import { TYPES } from '../../utils/types';
+
+import type {
+  IGitHubRepository,
+  IMetricCalculator,
+  ILogger,
+  IPullRequest,
+  IMetric,
+} from '../../interfaces';
+
+describe('ProcessingService', () => {
+  let container: Container;
+  let processingService: ProcessingService;
+  let mockGitHubRepository: jest.Mocked<IGitHubRepository>;
+  let mockMetricCalculator: jest.Mocked<IMetricCalculator>;
+  let mockLogger: jest.Mocked<ILogger>;
+
+  beforeEach(() => {
+    container = new Container();
+    mockGitHubRepository = createMockGitHubRepository();
+    mockMetricCalculator = createMockMetricCalculator();
+    mockLogger = createMockLogger();
+
+    container
+      .bind<IGitHubRepository>(TYPES.GitHubRepository)
+      .toConstantValue(mockGitHubRepository);
+    container
+      .bind<IMetricCalculator>(TYPES.MetricCalculator)
+      .toConstantValue(mockMetricCalculator);
+    container.bind<ILogger>(TYPES.Logger).toConstantValue(mockLogger);
+    container.bind<ProcessingService>(ProcessingService).toSelf();
+
+    processingService = container.get<ProcessingService>(ProcessingService);
+  });
+
+  describe('processGitHubData', () => {
+    it('should handle empty pull requests', async () => {
+      mockGitHubRepository.getRawPullRequests.mockResolvedValue([]);
+
+      await processingService.processGitHubData();
+
+      expect(mockGitHubRepository.getRawPullRequests).toHaveBeenCalledTimes(1);
+      expect(mockMetricCalculator.calculateMetrics).not.toHaveBeenCalled();
+      expect(mockGitHubRepository.storeProcessedMetrics).not.toHaveBeenCalled();
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Finished processing all GitHub data',
+      );
+    });
+
+    it('should handle errors and log them', async () => {
+      const error = new Error('Test error');
+      mockGitHubRepository.getRawPullRequests.mockRejectedValue(error);
+
+      await expect(processingService.processGitHubData()).rejects.toThrow(
+        'Failed to process GitHub data',
+      );
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error in GitHub data processing:',
+        error,
+      );
+    });
+
+    it('should process multiple pages of pull requests', async () => {
+      const mockPullRequests1: IPullRequest[] = Array(100).fill(
+        createMockPullRequest({ number: 1 }),
+      );
+      const mockPullRequests2: IPullRequest[] = Array(50).fill(
+        createMockPullRequest({ number: 2 }),
+      );
+      const mockMetrics: IMetric[] = [createMockMetric({ id: 'metric1' })];
+
+      mockGitHubRepository.getRawPullRequests
+        .mockResolvedValueOnce(mockPullRequests1)
+        .mockResolvedValueOnce(mockPullRequests2)
+        .mockResolvedValueOnce([]);
+      mockMetricCalculator.calculateMetrics.mockReturnValue(mockMetrics);
+
+      await processingService.processGitHubData();
+
+      expect(mockGitHubRepository.getRawPullRequests).toHaveBeenCalledTimes(3);
+      expect(mockGitHubRepository.getRawPullRequests).toHaveBeenNthCalledWith(
+        1,
+        1,
+        100,
+      );
+      expect(mockGitHubRepository.getRawPullRequests).toHaveBeenNthCalledWith(
+        2,
+        2,
+        100,
+      );
+      expect(mockGitHubRepository.getRawPullRequests).toHaveBeenNthCalledWith(
+        3,
+        3,
+        100,
+      );
+
+      // CHANGED: Update the expected number of calls to 2
+      expect(mockMetricCalculator.calculateMetrics).toHaveBeenCalledTimes(2);
+      // CHANGED: Update the expectations for calculateMetrics calls
+      expect(mockMetricCalculator.calculateMetrics).toHaveBeenNthCalledWith(
+        1,
+        expect.arrayContaining([expect.objectContaining({ number: 1 })]),
+      );
+      expect(mockMetricCalculator.calculateMetrics).toHaveBeenNthCalledWith(
+        2,
+        expect.arrayContaining([expect.objectContaining({ number: 2 })]),
+      );
+
+      // CHANGED: Update the expectation for storeProcessedMetrics
+      expect(mockGitHubRepository.storeProcessedMetrics).toHaveBeenCalledTimes(
+        2,
+      );
+      expect(
+        mockGitHubRepository.storeProcessedMetrics,
+      ).toHaveBeenNthCalledWith(1, mockMetrics);
+      expect(
+        mockGitHubRepository.storeProcessedMetrics,
+      ).toHaveBeenNthCalledWith(2, mockMetrics);
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Finished processing all GitHub data',
+      );
+    });
+  });
+});

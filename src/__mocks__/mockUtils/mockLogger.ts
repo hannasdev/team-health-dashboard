@@ -1,19 +1,4 @@
-import type {
-  IBcryptService,
-  IJwtService,
-  ILogger,
-  ISSEService,
-  IApiResponse,
-} from '../interfaces';
-
-export function createMockSSEService(): jest.Mocked<ISSEService> {
-  return {
-    createConnection: jest.fn(),
-    sendEvent: jest.fn(),
-    endConnection: jest.fn(),
-    handleClientDisconnection: jest.fn(),
-  };
-}
+import type { ILogger } from '../../interfaces/index.js';
 
 export function createMockLogger(): jest.Mocked<ILogger> & {
   mockClear: () => void;
@@ -60,40 +45,5 @@ export function createMockLogger(): jest.Mocked<ILogger> & {
       loggedMessages.length = 0;
     },
     getLoggedMessages: () => [...loggedMessages],
-  };
-}
-
-export const createCacheDecoratorMock = () => {
-  const cacheable = jest.fn().mockImplementation(() => jest.fn());
-
-  class MockCacheableClass {
-    constructor(public cacheService: any) {}
-  }
-
-  return {
-    Cacheable: cacheable,
-    CacheableClass: MockCacheableClass,
-  };
-};
-
-export function createMockBcryptService(): jest.Mocked<IBcryptService> {
-  return {
-    hash: jest.fn(),
-    compare: jest.fn(),
-  };
-}
-
-export function createMockJwtService(): jest.Mocked<IJwtService> {
-  return {
-    sign: jest.fn(),
-    verify: jest.fn(),
-    decode: jest.fn(),
-  };
-}
-
-export function createMockApiResponse(): jest.Mocked<IApiResponse> {
-  return {
-    createSuccessResponse: jest.fn(),
-    createErrorResponse: jest.fn(),
   };
 }

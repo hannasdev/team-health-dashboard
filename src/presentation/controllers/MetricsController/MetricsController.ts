@@ -1,4 +1,4 @@
-// src/controllers/MetricsController.ts
+// src/controllers/MetricsController/MetricsController.ts
 import { Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
@@ -9,7 +9,7 @@ import type {
   IMetricsService,
   IMetricsController,
   ILogger,
-  ISSEService,
+  IApiResponse,
 } from '../../../interfaces/index.js';
 
 @injectable()
@@ -17,68 +17,53 @@ export class MetricsController implements IMetricsController {
   constructor(
     @inject(TYPES.MetricsService) private metricsService: IMetricsService,
     @inject(TYPES.Logger) private logger: ILogger,
-    @inject(TYPES.SSEService) private sseService: ISSEService,
+    @inject(TYPES.ApiResponse) private apiResponse: IApiResponse,
   ) {}
 
-  public getAllMetrics = async (
+  public async getAllMetrics(
     req: Request,
     res: Response,
     next: NextFunction,
-    timePeriod: number,
-  ): Promise<void> => {
-    const connectionId = (req as any).sseConnectionId;
-    if (!connectionId) {
-      return next(new AppError(500, 'SSE connection not set up'));
-    }
-
+  ): Promise<void> {
     try {
-      if (req.query.error === 'true') {
-        throw new AppError(500, 'Simulated server error');
-      }
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 20;
 
-      const result = await this.metricsService.getAllMetrics(
-        (current, total, message) => {
-          this.sseService.sendEvent(connectionId, 'progress', {
-            current,
-            total,
-            message,
-          });
-        },
-        timePeriod,
+      this.logger.info(
+        `Fetching metrics for page ${page} with page size ${pageSize}`,
       );
 
-      this.sseService.sendEvent(connectionId, 'result', result);
+      const result = await this.metricsService.getAllMetrics(page, pageSize);
 
-      // End the SSE connection after sending the result
-      setTimeout(() => {
-        this.sseService.endConnection(connectionId);
-      }, 5000); // 5 seconds delay
+      res.json(this.apiResponse.createSuccessResponse(result));
+
+      this.logger.info(`Successfully fetched metrics for page ${page}`);
     } catch (error) {
       this.logger.error('Error fetching metrics:', error as Error);
-      this.sseService.sendEvent(connectionId, 'error', {
-        message:
-          error instanceof Error
-            ? error.message
-            : 'An unknown error occurred while fetching metrics',
-      });
-      this.sseService.endConnection(connectionId);
+      next(new AppError(500, 'Failed to fetch metrics'));
     }
-  };
+  }
 
-  public setupSSE = (req: Request, res: Response, next: NextFunction): void => {
-    const connectionId = `metrics-${Date.now()}`;
-    this.sseService.createConnection(connectionId, res);
+  public async syncMetrics(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      this.logger.info('Starting metrics sync');
 
-    const closeHandler = () => {
-      this.sseService.handleClientDisconnection(connectionId);
-      this.metricsService.cancelOperation();
-    };
+      await this.metricsService.syncAllData();
 
-    req.on('close', closeHandler);
+      res.json(
+        this.apiResponse.createSuccessResponse({
+          message: 'Metrics synced successfully',
+        }),
+      );
 
-    // Attach the connectionId to the request for later use
-    (req as any).sseConnectionId = connectionId;
-
-    next();
-  };
+      this.logger.info('Metrics sync completed successfully');
+    } catch (error) {
+      this.logger.error('Error syncing metrics:', error as Error);
+      next(new AppError(500, 'Failed to sync metrics'));
+    }
+  }
 }

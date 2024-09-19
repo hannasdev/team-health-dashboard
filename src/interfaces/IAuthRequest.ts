@@ -7,6 +7,7 @@ export interface IAuthRequest extends Request {
   body: {
     email?: string;
     password?: string;
-    refreshToken?: string; // Add this line
+    refreshToken?: string;
+    shortLived?: boolean;
   };
 }
