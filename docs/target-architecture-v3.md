@@ -1,6 +1,6 @@
 # Target Architecture v3
 
-## Current Architecture (as of Sep 5, 2024)
+## Current Architecture (as of Sep 15, 2024)
 
 ```mermaid
 classDiagram
@@ -14,18 +14,19 @@ classDiagram
     HealthCheckRouter --> HealthCheckController
 
     MetricsController --> MetricsService
-    MetricsController --> SSEService
     AuthController --> AuthenticationService
     AuthController --> UserService
     AuthController --> ApiResponse
     HealthCheckController --> MongoDbClient
     HealthCheckController --> ApiResponse
 
-    MetricsService --> GitHubRepository
-    MetricsService --> GoogleSheetsRepository
-    MetricsService --> MetricCalculator
-    MetricsService --> ProgressTracker
-    SSEService --> ApiResponse
+    MetricsService --> GitHubService
+    MetricsService --> GoogleSheetsService
+    MetricsService --> ProcessingService
+
+    GitHubService --> GitHubRepository
+    GoogleSheetsService --> GoogleSheetsRepository
+    ProcessingService --> MetricCalculator
 
     AuthenticationService --> TokenService
     AuthenticationService --> UserRepository
@@ -52,7 +53,6 @@ classDiagram
 
     MiddlewareGroup --> AuthMiddleware
     AuthMiddleware --> TokenService
-    AuthMiddleware --> SSEService
 
     class App {
         +express: Express
@@ -73,48 +73,39 @@ classDiagram
     }
 
     class MetricsService {
-        <<implements IMetricsService>>
-        +getAllMetrics(progressCallback, timePeriod)
-        +cancelOperation()
+        +getAllMetrics(page, pageSize)
+        +fetchAndStoreAllData()
+        +syncAllData()
     }
 
-    class GitHubRepository {
-        <<implements IGitHubRepository>>
-        +fetchPullRequests(timePeriod, progressCallback)
-        +cancelOperation()
+    class GitHubService {
+        +fetchAndStoreRawData(timePeriod)
+        +processRawData()
+        +getMetrics(page, pageSize)
+        +syncData(timePeriod)
     }
 
-    class GoogleSheetsRepository {
-        <<implements IGoogleSheetsRepository>>
-        +fetchMetrics(progressCallback)
+    class GoogleSheetsService {
+        +fetchRawData()
+        +getMetrics(page, pageSize)
+        +syncMetrics()
+    }
+
+    class ProcessingService {
+        +processGitHubData()
     }
 
     class MetricCalculator {
-        <<implements IMetricCalculator>>
         +calculateMetrics(pullRequests)
     }
 
-    class ProgressTracker {
-        +trackProgress(current, total, message)
-        +setReportInterval(interval)
-    }
-
-    class SSEService {
-        <<implements ISSEService>>
-        +createConnection(id, res)
-        +sendEvent(connectionId, event, data)
-        +endConnection(connectionId)
-        +handleClientDisconnection(connectionId)
-    }
-
     class ApiResponse {
-        <<implements IApiResponse>>
         +createSuccessResponse(data)
         +createErrorResponse(message, details, statusCode)
     }
 
     class MetricsController {
-        +getAllMetrics(req, res, next, timePeriod)
+        +getAllMetrics(req, res, next)
     }
 
     class AuthController {
@@ -124,90 +115,8 @@ classDiagram
         +logout(req, res, next)
     }
 
-    class AuthenticationService {
-        +login(email, password)
-        +refreshToken(refreshToken)
-        +logout(refreshToken)
-    }
-
-    class UserService {
-        +registerUser(email, password)
-        +getUserById(id)
-        +updateUserProfile(id, data)
-    }
-
     class HealthCheckController {
         +getHealth(req, res)
-    }
-
-    class TokenService {
-        +generateAccessToken(payload)
-        +generateRefreshToken(payload)
-        +validateAccessToken(token)
-        +validateRefreshToken(token)
-    }
-
-    class TokenBlacklistService {
-        +blacklistToken(token, expiresAt)
-        +isTokenBlacklisted(token)
-    }
-
-    class UserRepository {
-        <<implements IUserRepository>>
-        +findByEmail(email)
-        +create(email, password)
-        +findById(id)
-    }
-
-    class JwtService {
-        +sign(payload, secret, options)
-        +verify(token, secret)
-    }
-
-    class BcryptService {
-        +hash(data, saltOrRounds)
-        +compare(data, encrypted)
-    }
-
-    class GitHubAdapter {
-        <<implements IGitHubClient>>
-        +graphql(query, variables)
-    }
-
-    class GoogleSheetsAdapter {
-        <<implements IGoogleSheetsClient>>
-        +getValues(spreadsheetId, range)
-    }
-
-    class MongoAdapter {
-        +getCollection(name)
-        +getDb()
-    }
-
-    class Logger {
-        +info(message, meta)
-        +error(message, error, meta)
-        +warn(message, meta)
-        +debug(message, meta)
-    }
-
-    class Config {
-        +getInstance()
-        +get propertyName()
-    }
-
-    class MongoDbClient {
-        <<implements IMongoDbClient>>
-        +connect()
-        +getDb()
-        +close()
-    }
-
-    class CacheService {
-        +get(key)
-        +set(key, value, ttl)
-        +delete(key)
-        +clear()
     }
 ```
 
@@ -215,25 +124,35 @@ classDiagram
 
 A reflection on the current state of architecture, and potential improvements.
 
-### Inconsistent Repository Pattern
+### Asynchronous Processing
 
-Issue: GitHubRepository and GoogleSheetsRepository are using adapters (GitHubAdapter and GoogleSheetsAdapter), while UserRepository directly uses MongoDbClient.
-Improvement: Consider introducing a MongoAdapter to maintain consistency across repositories. This would provide a uniform interface for database operations and make it easier to switch databases if needed.
+Issue: The current architecture lacks a clear mechanism for asynchronous processing of raw data.
+Improvement: Introduce a JobQueueSystem and WorkerProcess to manage asynchronous tasks, particularly for processing GitHub data.
+
+### Separation of Concerns
+
+Issue: ProcessingService is directly connected to MetricsService, which may not be ideal for separation of concerns.
+Improvement: Move ProcessingService to be triggered by the WorkerProcess, separating it from the main request flow.
+
+### Data Flow Clarity
+
+Issue: The flow of data from raw storage to processed metrics is not clearly defined.
+Improvement: Clearly define the path of data from GitHubRepository through ProcessingService and back to storage as processed metrics.
+
+### Google Sheets Data Handling
+
+Issue: Google Sheets data is treated similarly to GitHub data, but it doesn't require processing.
+Improvement: Simplify the Google Sheets data flow, removing unnecessary processing steps.
+
+### Caching Strategy
+
+Issue: The current use of CacheService is not clearly defined across repositories.
+Improvement: Implement a consistent caching strategy, particularly for frequently accessed data.
 
 ### MetricCalculator Placement
 
 Issue: MetricCalculator is tied directly to GitHubRepository, which might limit its reusability.
 Improvement: Consider moving MetricCalculator to the service layer, possibly as part of MetricsService. This would allow it to be used with data from multiple sources, not just GitHub.
-
-### Direct Database Access in HealthCheckController
-
-Issue: HealthCheckController directly uses MongoDbClient, bypassing the repository layer.
-Improvement: Introduce a HealthCheckService that encapsulates the health check logic, including database checks. This maintains separation of concerns and consistency with other controllers.
-
-### SSEService Coupling
-
-Issue: SSEService is tightly coupled with MetricsController and ApiResponse.
-Improvement: Consider making SSEService more generic, possibly moving it to a middleware or utility layer. This would allow it to be used by other controllers if needed.
 
 ### Config and Logger Usage
 
@@ -245,16 +164,6 @@ Improvement: Consider showing these as cross-cutting concerns, perhaps by indica
 Issue: AuthService seems to handle both authentication and user management.
 Improvement: Consider splitting this into separate services: AuthService for authentication/authorization and UserService for user management operations.
 
-### Lack of Clear Layer Separation
-
-Issue: The diagram doesn't clearly show the separation between different layers (e.g., presentation, business logic, data access).
-Improvement: Reorganize the diagram to clearly show these layers, which would make the architecture easier to understand and maintain.
-
-### TokenService and TokenBlacklistService Separation
-
-Issue: These two services are closely related but separated.
-Improvement: Consider merging them into a single TokenManagementService to encapsulate all token-related operations.
-
 ### Middleware Representation
 
 Issue: Middleware is grouped but its interaction with the application flow isn't clear.
@@ -265,104 +174,124 @@ Improvement: Consider showing how middleware integrates into the request process
 Issue: Error handling isn't clearly represented in the architecture.
 Improvement: Consider adding a global error handling mechanism or service that works across all layers of the application.
 
-Here's a high-level description of an improved target architecture:
+## Data Access Layer
 
-- Clearly defined layers: Presentation (Controllers), Business Logic (Services), Data Access (Repositories with consistent Adapter usage).
-  Cross-cutting concerns (Logging, Configuration) available to all layers.
-- Consistent pattern usage across similar components (e.g., all repositories using adapters).
-- Clear separation of responsibilities (e.g., separate Authentication and User Management services).
-- Generic, reusable components (e.g., a more flexible SSEService, generalized MetricCalculator).
-- Clear error handling and middleware integration.
+- GitHubRepository:
+  - Fetches data from GitHub API
+  - Stores raw data in MongoDB
+  - Retrieves processed metrics from MongoDB
+- GoogleSheetsRepository:
+  - Fetches data from Google Sheets API
+  - Stores and retrieves data in/from MongoDB (no processing needed)
+
+## Business Logic Layer
+
+- GitHubService:
+  - Orchestrates GitHub data fetching and storage
+  - Retrieves processed GitHub metrics
+- GoogleSheetsService:
+  - Orchestrates Google Sheets data fetching and storage
+  - Retrieves Google Sheets metrics
+- ProcessingService:
+  - Processes raw GitHub data
+  - Uses MetricCalculator
+  - Stores processed metrics in MongoDB
+- MetricCalculator:
+  - Calculates metrics from raw GitHub data
+- MetricsService:
+  - Orchestrates overall metrics retrieval process
+  - Combines metrics from GitHub and Google Sheets
+
+## Presentation Layer
+
+- MetricsController:
+  - Handles API requests for metrics
+  - Uses MetricsService to retrieve and return data
+
+## Data Flow
+
+1. GitHubRepository and GoogleSheetsRepository fetch and store raw data
+2. Job Queue System creates processing jobs
+3. Worker Process picks up jobs and triggers ProcessingService
+4. ProcessingService processes GitHub data using MetricCalculator
+5. Processed metrics are stored in MongoDB
+6. Upon API request, MetricsService retrieves processed metrics via GitHubService and GoogleSheetsService
+7. MetricsController returns combined metrics to the client
+
+Here's a high-level description of the new target architecture:
+
+- Clearly defined data flow: Raw data fetching, storage, processing, and retrieval.
+- Asynchronous processing mechanism using JobQueueSystem and WorkerProcess.
+- Clear separation between GitHub data (which needs processing) and Google Sheets data (which doesn't).
+- Consistent use of repositories for data access across all services.
+- Improved separation of concerns, with ProcessingService decoupled from MetricsService.
+- Retained SSE capabilities for real-time updates.
+- Maintained authentication and authorization flow.
 
 ## Target Architecture
 
 ```mermaid
 classDiagram
-      %% Layers
-    class PresentationLayer
-    class BusinessLogicLayer
-    class DataAccessLayer
+    App --> MetricsRouter
+    App --> AuthRouter
+    App --> HealthCheckRouter
+    App --> MiddlewareGroup
 
-     %% Cross-cutting Concerns
-    class CrossCuttingConcerns {
-        Logger
-        Config
-        CacheService
-        ApiResponse
-    }
-
-    %% Presentation Layer
-    PresentationLayer --> App
-    PresentationLayer --> MiddlewareGroup
-    PresentationLayer --> MetricsController
-    PresentationLayer --> AuthController
-    PresentationLayer --> HealthCheckController
-
-    %% Business Logic Layer
-    BusinessLogicLayer --> MetricsService
-    BusinessLogicLayer --> AuthenticationService
-    BusinessLogicLayer --> UserService
-    BusinessLogicLayer --> HealthCheckService
-    BusinessLogicLayer --> TokenManagementService
-    BusinessLogicLayer --> MetricCalculator
-    BusinessLogicLayer --> SSEService
-    BusinessLogicLayer --> ProgressTracker
-
-    %% Data Access Layer
-    DataAccessLayer --> UserRepository
-    DataAccessLayer --> GitHubRepository
-    DataAccessLayer --> GoogleSheetsRepository
-    DataAccessLayer --> TokenBlacklistRepository
-
-    %% Adapters
-    DataAccessLayer --> MongoAdapter
-    DataAccessLayer --> GitHubAdapter
-    DataAccessLayer --> GoogleSheetsAdapter
-
-    %% Connections between layers
-    App --> MetricsController
-    App --> AuthController
-    App --> HealthCheckController
-    App ..> CrossCuttingConcerns
+    MetricsRouter --> MetricsController
+    AuthRouter --> AuthController
+    HealthCheckRouter --> HealthCheckController
 
     MetricsController --> MetricsService
-    MetricsController --> SSEService
     AuthController --> AuthenticationService
     AuthController --> UserService
-    HealthCheckController --> HealthCheckService
+    AuthController --> ApiResponse
+    HealthCheckController --> MongoDbClient
+    HealthCheckController --> ApiResponse
 
-    MetricsService --> GitHubRepository
-    MetricsService --> GoogleSheetsRepository
-    MetricsService --> MetricCalculator
-    MetricsService --> ProgressTracker
-    AuthenticationService --> TokenManagementService
-    AuthenticationService --> UserService
-    AuthenticationService --> BcryptService
-    UserService --> UserRepository
-    UserService --> BcryptService
-    HealthCheckService --> MongoAdapter
-    TokenManagementService --> TokenBlacklistRepository
-    TokenManagementService --> JwtService
+    MetricsService --> GitHubService
+    MetricsService --> GoogleSheetsService
+
+    GitHubService --> GitHubRepository
+    GoogleSheetsService --> GoogleSheetsRepository
 
     GitHubRepository --> GitHubAdapter
     GoogleSheetsRepository --> GoogleSheetsAdapter
-    UserRepository --> MongoAdapter
-    TokenBlacklistRepository --> MongoAdapter
 
-    %% New connections
-    MiddlewareGroup --> AuthMiddleware
-    MiddlewareGroup --> ErrorHandlerMiddleware
-    AuthMiddleware --> TokenManagementService
-    AuthMiddleware --> SSEService
+    JobQueueSystem --> WorkerProcess
+    WorkerProcess --> ProcessingService
+    ProcessingService --> MetricCalculator
+    ProcessingService --> GitHubRepository
+
+    AuthenticationService --> TokenService
+    AuthenticationService --> UserRepository
+    AuthenticationService --> TokenBlacklistService
+    AuthenticationService --> BcryptService
+    UserService --> UserRepository
+
+    TokenService --> JwtService
+    TokenBlacklistService --> TokenBlacklistRepository
+
+    UserRepository --> MongoAdapter
+    GitHubRepository --> MongoAdapter
+    GoogleSheetsRepository --> MongoAdapter
+    TokenBlacklistRepository --> MongoAdapter
 
     GitHubRepository ..> CacheService
     GoogleSheetsRepository ..> CacheService
 
-    %% Class definitions
+    App --> Config
+    App --> Logger
+
+    MiddlewareGroup --> AuthMiddleware
+    AuthMiddleware --> TokenService
+
     class App {
+        +express: Express
+        +configureCors()
         +configureMiddleware()
         +configureRoutes()
-        +start()
+        +configureErrorHandling()
+        +initialize()
     }
 
     class MiddlewareGroup {
@@ -371,17 +300,48 @@ classDiagram
         AuthMiddleware
         CorsMiddleware
         BodyParserMiddleware
+        SecurityHeadersMiddleware
     }
 
-    class ErrorHandlerMiddleware {
-        +handle(err, req, res, next)
+    class MetricsService {
+        +getAllMetrics(page, pageSize)
+        +fetchAndStoreAllData()
+        +syncAllData()
     }
 
-    class AuthMiddleware {
-        +handle(req, res, next)
-        -handleSSEAuth(req, res, next, decoded)
-        -isTokenExpired(decoded)
-        -handleTokenRefresh(token, refreshToken, req, res)
+    class GitHubService {
+        +fetchAndStoreRawData(timePeriod)
+        +getMetrics(page, pageSize)
+        +syncData(timePeriod)
+    }
+
+    class GoogleSheetsService {
+        +fetchRawData()
+        +getMetrics(page, pageSize)
+        +syncMetrics()
+    }
+
+    class ProcessingService {
+        +processGitHubData()
+    }
+
+    class JobQueueSystem {
+        +addJob(jobData)
+        +processNextJob()
+    }
+
+    class WorkerProcess {
+        +start()
+        +processJob(job)
+    }
+
+    class MetricCalculator {
+        +calculateMetrics(pullRequests)
+    }
+
+    class ApiResponse {
+        +createSuccessResponse(data)
+        +createErrorResponse(message, details, statusCode)
     }
 
     class MetricsController {
@@ -399,85 +359,16 @@ classDiagram
         +getHealth(req, res)
     }
 
-    class MetricsService {
-        +getAllMetrics(timePeriod, progressCallback)
-        +cancelOperation()
-    }
-
-    class AuthenticationService {
-        +login(email, password)
-        +logout(refreshToken)
-        +refreshToken(refreshToken)
-    }
-
-    class UserService {
-        +registerUser(email, password)
-        +getUserById(id)
-        +updateUser(id, data)
-    }
-
-    class HealthCheckService {
-        +performHealthCheck()
-    }
-
-    class TokenManagementService {
-        +generateAccessToken(payload)
-        +generateRefreshToken(payload)
-        +validateToken(token)
-        +blacklistToken(token)
-    }
-
-    class MetricCalculator {
-        +calculateMetrics(data)
-    }
-
-    class SSEService {
-        +initialize(res)
-        +sendEvent(event, data)
-        +endResponse()
-        +handleClientDisconnection()
-        +handleError(error)
-    }
-
-    class ProgressTracker {
-        +trackProgress(current, total, message)
-        +getProgress()
-    }
-
     class GitHubRepository {
-        +fetchPullRequests(timePeriod, progressCallback)
-        +cancelOperation()
+        +fetchPullRequests(timePeriod)
+        +storeRawPullRequests(pullRequests)
+        +getProcessedMetrics(page, pageSize)
+        +storeProcessedMetrics(metrics)
     }
 
     class GoogleSheetsRepository {
-        +getMetricsData(progressCallback)
-    }
-
-    class TokenBlacklistRepository {
-        +addToBlacklist(token, expiresAt)
-        +isBlacklisted(token)
-        +removeExpired()
-    }
-
-    class CacheService {
-        +get(key)
-        +set(key, value, ttl)
-        +delete(key)
-        +clear()
-    }
-
-    class BcryptService {
-        +hash(data, saltOrRounds)
-        +compare(data, encrypted)
-    }
-
-    class JwtService {
-        +sign(payload, secret, options)
-        +verify(token, secret)
-    }
-
-    class MongoAdapter {
-        +getCollection(name)
-        +getDb()
+        +fetchRawData()
+        +storeMetrics(metrics)
+        +getMetrics(page, pageSize)
     }
 ```
