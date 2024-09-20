@@ -9,6 +9,7 @@ import type {
   IMetricCalculator,
   ILogger,
   IPullRequest,
+  IJobQueueService,
 } from '../../interfaces/index.js';
 
 /**
@@ -22,9 +23,23 @@ export class ProcessingService implements IProcessingService {
     @inject(TYPES.GitHubRepository) private repository: IGitHubRepository,
     @inject(TYPES.MetricCalculator) private metricCalculator: IMetricCalculator,
     @inject(TYPES.Logger) private logger: ILogger,
+    @inject(TYPES.JobQueueService) private jobQueue: IJobQueueService,
   ) {}
 
   public async processGitHubData(): Promise<void> {
+    try {
+      await this.jobQueue.scheduleJob('processGitHubData', {});
+      this.logger.info('Scheduled GitHub data processing job');
+    } catch (error) {
+      this.logger.error(
+        'Error scheduling GitHub data processing job:',
+        error as Error,
+      );
+      throw new AppError(500, 'Failed to schedule GitHub data processing');
+    }
+  }
+
+  public async processGitHubDataJob(): Promise<void> {
     try {
       const batchSize = 100;
       let page = 1;
@@ -54,7 +69,7 @@ export class ProcessingService implements IProcessingService {
 
       this.logger.info('Finished processing all GitHub data');
     } catch (error) {
-      this.logger.error('Error in GitHub data processing:', error as Error);
+      this.logger.error('Error in GitHub data processing job:', error as Error);
       throw new AppError(500, 'Failed to process GitHub data');
     }
   }

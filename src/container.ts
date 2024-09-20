@@ -30,10 +30,12 @@ import { AuthMiddleware } from './presentation/middleware/AuthMiddleware.js';
 import { ErrorHandler } from './presentation/middleware/ErrorHandler.js';
 import { AuthenticationService } from './services/AuthenticationService/AuthenticationService.js';
 import { BcryptService } from './services/BcryptService/index.js';
+import { JobQueueService } from './services/JobQueueService/JobQueueService.js';
 import { JwtService } from './services/JwtService/index.js';
 import { MetricCalculator } from './services/MetricsCalculator/MetricsCalculator.js';
 import { MetricsService } from './services/MetricsService/MetricsService.js';
 import { MongoDbClient } from './services/MongoDbClient/MongoDbClient.js';
+import { ProcessingService } from './services/ProcessingService/ProcessingService.js';
 import { ProgressTracker } from './services/ProgressTracker/ProgressTracker.js';
 import TokenBlacklistService from './services/TokenBlacklistService/index.js';
 import { TokenService } from './services/TokenService/index.js';
@@ -64,12 +66,14 @@ import type {
   IMetricsService,
   IMongoAdapter,
   IMongoDbClient,
+  IProcessingService,
   IProgressTracker,
   ITeamHealthDashboardApp,
   ITokenBlacklistService,
   ITokenService,
   IUserRepository,
   IUserService,
+  IJobQueueService,
 } from './interfaces/index.js';
 import type { GoogleSheetsMetricModel } from './types/index.js';
 import type { Model } from 'mongoose';
@@ -105,6 +109,10 @@ export function setupContainer(
     .bind<IMongoDbClient>(TYPES.MongoDbClient)
     .to(MongoDbClient)
     .inSingletonScope();
+  container
+    .bind<IProcessingService>(TYPES.ProcessingService)
+    .to(ProcessingService);
+  container.bind<IJobQueueService>(TYPES.JobQueueService).to(JobQueueService);
 
   // 3. Adapters (Clients for external services)
   container.bind<IMongoAdapter>(TYPES.MongoAdapter).to(MongoAdapter);
