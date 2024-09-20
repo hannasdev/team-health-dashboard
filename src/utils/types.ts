@@ -23,6 +23,7 @@ export const TYPES = {
   GoogleSheetsRepository: Symbol.for('IGoogleSheetsRepository'),
   GoogleSheetsService: Symbol.for('GoogleSheetsService'),
   HealthCheckController: Symbol.for('IHealthCheckController'),
+  JobQueueService: Symbol.for('IJobQueueService'),
   JwtService: Symbol.for('IJwtService'),
   LogFormat: Symbol.for('LogFormat'),
   LogLevel: Symbol.for('LogLevel'),

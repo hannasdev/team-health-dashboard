@@ -39,6 +39,7 @@ export {
   createMockCacheService,
   createMockGitHubService,
   createMockGoogleSheetsService,
+  createMockJobQueueService,
   createMockJwtService,
   createMockMetric,
   createMockMetricCalculator,

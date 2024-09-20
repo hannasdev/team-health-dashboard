@@ -19,3 +19,4 @@ export { createMockProgressTracker } from './mockProgressTracker';
 export { createMockTokenBlacklistService } from './mockTokenBlacklistService';
 export { createMockTokenService } from './mockTokenService';
 export { createMockUserService } from './mockUserService';
+export { createMockJobQueueService } from './mockJobQueueService';
