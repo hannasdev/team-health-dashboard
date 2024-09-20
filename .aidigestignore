@@ -18,3 +18,7 @@ package-lock.json
 .aidigestignore
 logs/error.log
 logs/combined.log
+.gitignore
+.dockerignore
+.vscode/
+src/__tests__/
