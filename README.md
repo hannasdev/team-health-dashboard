@@ -307,3 +307,27 @@ authenticate('user@example.com', 'password').then(success => {
 ```
 
 Utilises the MVC-pattern with dependency injection and inversion of control for improved testability.
+
+## Conventional Commits
+
+```txt
+feat: add user authentication API
+fix: resolve data race condition in job queue
+BREAKING CHANGE: refactor API response format
+```
+
+## Semantic Versioning
+
+MAJOR.MINOR.PATCH e.g. `1.2.3`
+
+- MAJOR version for incompatible API changes
+- MINOR version for backwards-compatible functionality additions
+- PATCH version for backwards-compatible bug fixes
+
+## Release Process
+
+1. Develop features in feature branches
+2. Merge feature branches into main using pull requests
+3. CI/CD pipeline automatically bumps version based on commit messages
+4. CI/CD pipeline generates changelog and creates a new Git tag
+5. CI/CD pipeline pushes the new version and changelog to the repository
