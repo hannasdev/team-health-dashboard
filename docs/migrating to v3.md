@@ -48,7 +48,7 @@ Adjustment: Moving it to the Business Logic layer (likely within MetricsService)
 - Move MetricCalculator to the Business Logic layer.
 - Refactor MetricsService to use MetricCalculator, making it independent of specific data sources.
 
-## Enhance SSEService
+## Enhance SSEService - [DEPRECATED]
 
 Existing: SSEService is already implemented but tightly coupled with MetricsController.
 Adjustment: This step is valid. We need to make SSEService more generic and move it to the Business Logic layer.
@@ -56,7 +56,7 @@ Adjustment: This step is valid. We need to make SSEService more generic and move
 - Refactor SSEService to be more generic and reusable across different controllers.
 - Move SSEService to the Business Logic layer.
 
-## Implement Clear Layer Separation
+## Implement Clear Layer Separation - [DONE]
 
 Existing: The codebase already has some layer separation, but it's not entirely clear.
 Adjustment: This step is more about reorganization and ensuring clear boundaries between layers.
