@@ -2,7 +2,7 @@ import type { Config } from 'jest';
 
 const config: Config = {
   verbose: true,
-  bail: 1,
+  bail: 5,
   preset: 'ts-jest/presets/default-esm',
   moduleFileExtensions: ['ts', 'js'],
   rootDir: './',
