@@ -1,11 +1,6 @@
-import { GitHubPullRequest } from '../../data/models/GitHubPullRequest';
 import { createMockMetric } from '../mockServices';
 
-import type {
-  IGitHubRepository,
-  IGitHubPullRequest,
-  IPullRequest,
-} from '../../interfaces/index';
+import type { IGitHubRepository, IPullRequest } from '../../interfaces/index';
 
 export const createMockGitHubRepository =
   (): jest.Mocked<IGitHubRepository> => ({

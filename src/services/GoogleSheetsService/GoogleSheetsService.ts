@@ -99,7 +99,7 @@ export class GoogleSheetsService
     }
 
     return {
-      id: `sheet-${index}`,
+      _id: `sheet-${index}`,
       metric_category,
       metric_name,
       value: Number(value),

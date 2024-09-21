@@ -95,7 +95,7 @@ export class GoogleSheetsRepository implements IGoogleSheetsRepository {
         .exec();
 
       return metrics.map(metric => ({
-        id: metric._id.toString(),
+        _id: metric._id.toString(),
         metric_category: metric.metric_category,
         metric_name: metric.metric_name,
         value: metric.value,
@@ -126,7 +126,7 @@ export class GoogleSheetsRepository implements IGoogleSheetsRepository {
     try {
       for (const metric of metrics) {
         await this.GoogleSheetsMetric.findOneAndUpdate(
-          { id: metric.id },
+          { _id: metric._id },
           metric,
           { upsert: true, new: true },
         );

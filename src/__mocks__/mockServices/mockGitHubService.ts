@@ -12,9 +12,9 @@ export function createMockGitHubService(): jest.Mocked<IGitHubService> {
     getProcessedMetrics: jest
       .fn()
       .mockResolvedValue([
-        createMockMetric({ id: 'github-pr-count', source: 'GitHub' }),
-        createMockMetric({ id: 'github-pr-cycle-time', source: 'GitHub' }),
-        createMockMetric({ id: 'github-pr-size', source: 'GitHub' }),
+        createMockMetric({ _id: 'github-pr-count', source: 'GitHub' }),
+        createMockMetric({ _id: 'github-pr-cycle-time', source: 'GitHub' }),
+        createMockMetric({ _id: 'github-pr-size', source: 'GitHub' }),
       ]),
     syncData: jest.fn().mockResolvedValue(undefined),
     getTotalPRCount: jest.fn().mockResolvedValue(100),

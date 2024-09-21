@@ -3,7 +3,7 @@ import type { IMetric } from '../../interfaces/IMetricModel.js';
 
 export class Metric implements IMetric {
   constructor(
-    public id: string,
+    public _id: string,
     public metric_category: string,
     public metric_name: string,
     public value: number,

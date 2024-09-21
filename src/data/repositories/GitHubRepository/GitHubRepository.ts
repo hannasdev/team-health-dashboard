@@ -1,6 +1,6 @@
 // src/repositories/github/GitHubRepository.ts
 import { injectable, inject } from 'inversify';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 
 import {
   Cacheable,
@@ -201,12 +201,13 @@ export class GitHubRepository
     pageSize: number,
   ): Promise<IMetric[]> {
     try {
-      return await this.GitHubMetric.find()
+      const metrics = await this.GitHubMetric.find()
         .sort({ timestamp: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean()
         .exec();
+      return metrics.map(this.mapToIMetric);
     } catch (error) {
       this.logger.error('Error fetching processed metrics:', error as Error);
       throw new AppError(500, 'Failed to fetch processed metrics');
@@ -253,6 +254,19 @@ export class GitHubRepository
       );
       throw new AppError(500, 'Failed to mark pull requests as processed');
     }
+  }
+
+  private mapToIMetric(doc: any): IMetric {
+    return {
+      _id: doc._id instanceof Types.ObjectId ? doc._id.toString() : doc._id,
+      metric_category: doc.metric_category,
+      metric_name: doc.metric_name,
+      value: doc.value,
+      timestamp: new Date(doc.timestamp),
+      unit: doc.unit,
+      additional_info: doc.additional_info,
+      source: doc.source,
+    };
   }
 
   private mapMongoDocumentToPullRequest(doc: any): IPullRequest {

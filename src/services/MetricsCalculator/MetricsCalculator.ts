@@ -38,7 +38,7 @@ export class MetricCalculator implements IMetricCalculator {
 
   private calculatePRCount(pullRequests: IPullRequest[]): IMetric {
     return {
-      id: 'github-pr-count',
+      _id: 'github-pr-count',
       metric_category: 'GitHub',
       metric_name: 'Pull Request Count',
       value: pullRequests.length,
@@ -72,7 +72,7 @@ export class MetricCalculator implements IMetricCalculator {
     const averageCycleTimeInHours = averageCycleTime / (1000 * 60 * 60);
 
     return {
-      id: 'github-pr-cycle-time',
+      _id: 'github-pr-cycle-time',
       metric_category: 'GitHub',
       metric_name: 'Average Time to Merge',
       value: Math.round(averageCycleTimeInHours),
@@ -100,7 +100,7 @@ export class MetricCalculator implements IMetricCalculator {
       pullRequests.length > 0 ? totalSize / pullRequests.length : 0;
 
     return {
-      id: 'github-avg-pr-size',
+      _id: 'github-avg-pr-size',
       metric_category: 'GitHub',
       metric_name: 'Average PR Size',
       value: Math.round(averageSize),

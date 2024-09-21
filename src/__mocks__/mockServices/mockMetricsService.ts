@@ -7,9 +7,9 @@ export function createMockMetricsService(): jest.Mocked<IMetricsService> {
       .mockImplementation(async (page?: number, pageSize?: number) => {
         return {
           metrics: [
-            createMockMetric({ id: 'github-pr-count', source: 'GitHub' }),
-            createMockMetric({ id: 'github-pr-cycle-time', source: 'GitHub' }),
-            createMockMetric({ id: 'github-pr-size', source: 'GitHub' }),
+            createMockMetric({ _id: 'github-pr-count', source: 'GitHub' }),
+            createMockMetric({ _id: 'github-pr-cycle-time', source: 'GitHub' }),
+            createMockMetric({ _id: 'github-pr-size', source: 'GitHub' }),
             createMockMetric({ source: 'Google Sheets' }),
             createMockMetric({ source: 'Google Sheets' }),
           ],
@@ -29,7 +29,7 @@ export function createMockMetricsService(): jest.Mocked<IMetricsService> {
 export const createMockMetric = (
   overrides: Partial<IMetric> = {},
 ): IMetric => ({
-  id: `metric-${Math.random().toString(36).substr(2, 9)}`,
+  _id: `metric-${Math.random().toString(36).substr(2, 9)}`,
   metric_category: 'Test Category',
   metric_name: 'Test Metric',
   value: 100,

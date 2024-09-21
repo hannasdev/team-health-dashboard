@@ -115,7 +115,7 @@ describe('ProcessingService', () => {
       const mockPullRequests2: IPullRequest[] = Array(50).fill(
         createMockPullRequest({ number: 2 }),
       );
-      const mockMetrics: IMetric[] = [createMockMetric({ id: 'metric1' })];
+      const mockMetrics: IMetric[] = [createMockMetric({ _id: 'metric1' })];
 
       mockGitHubRepository.getRawPullRequests
         .mockResolvedValueOnce(mockPullRequests1)

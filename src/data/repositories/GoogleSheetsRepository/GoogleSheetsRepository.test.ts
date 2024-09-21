@@ -131,8 +131,8 @@ describe('GoogleSheetsRepository', () => {
   describe('getMetrics', () => {
     it('should get metrics successfully', async () => {
       const mockMetrics = [
-        { _id: new Types.ObjectId(), ...createMockMetric() },
-        { _id: new Types.ObjectId(), ...createMockMetric() },
+        { id: new Types.ObjectId(), ...createMockMetric() },
+        { id: new Types.ObjectId(), ...createMockMetric() },
       ];
       mockGoogleSheetsMetricModel.find.mockReturnValue({
         sort: jest.fn().mockReturnThis(),
@@ -145,7 +145,7 @@ describe('GoogleSheetsRepository', () => {
       const result = await googleSheetsRepository.getMetrics(1, 20);
 
       expect(result).toHaveLength(2);
-      expect(result[0].id).toBe(mockMetrics[0]._id.toString());
+      expect(result[0]._id).toBe(mockMetrics[0]._id.toString());
       expect(mockGoogleSheetsMetricModel.find).toHaveBeenCalled();
     });
 

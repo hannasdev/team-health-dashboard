@@ -1,6 +1,7 @@
-// src/interfaces/IMetricModel.ts
+import { Document, Types } from 'mongoose';
+
 export interface IMetric {
-  id: string;
+  _id: string | Types.ObjectId; // CHANGED: Made _id required
   metric_category: string;
   metric_name: string;
   value: number;
@@ -10,6 +11,4 @@ export interface IMetric {
   source: string;
 }
 
-import { Document } from 'mongoose';
-
-export interface IMetricDocument extends IMetric, Document {}
+export interface IMetricDocument extends Omit<IMetric, '_id'>, Document {}

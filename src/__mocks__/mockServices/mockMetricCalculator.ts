@@ -5,7 +5,7 @@ import type { IMetric, IMetricCalculator } from '../../interfaces/index.js';
 // Mock Metric Factories for Specific Calculations
 export const createMockPRCountMetric = (pullRequestCount: number): IMetric =>
   createMockMetric({
-    id: 'github-pr-count',
+    _id: 'github-pr-count',
     metric_category: 'GitHub',
     metric_name: 'Pull Request Count',
     value: pullRequestCount,
@@ -18,7 +18,7 @@ export const createMockPRCycleTimeMetric = (
   mergedPRCount: number,
 ): IMetric =>
   createMockMetric({
-    id: 'github-pr-cycle-time',
+    _id: 'github-pr-cycle-time',
     metric_category: 'GitHub',
     metric_name: 'Average Time to Merge',
     value: averageCycleTimeHours,
@@ -31,7 +31,7 @@ export const createMockPRSizeMetric = (
   prCount: number,
 ): IMetric =>
   createMockMetric({
-    id: 'github-avg-pr-size',
+    _id: 'github-avg-pr-size',
     metric_category: 'GitHub',
     metric_name: 'Average PR Size',
     value: averageSize,
