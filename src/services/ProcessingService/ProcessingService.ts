@@ -1,6 +1,6 @@
 import { injectable, inject } from 'inversify';
 
-import { AppError } from '../../utils/errors';
+import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
