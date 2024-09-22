@@ -119,7 +119,7 @@ jobs:
 
   version-and-release:
     needs: [build, test-unit, e2e-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -137,11 +137,37 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
+      - name: Check for changes since last release
+        id: check_changes
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "::set-output name=has_changes::true"
+          else
+            git diff --quiet $LAST_TAG HEAD -- . ':!CHANGELOG.md' ':!package.json' ':!package-lock.json' || echo "::set-output name=has_changes::true"
+          fi
       - name: Bump version
-        run: npm run release
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          npm run release
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
       - name: Push changes
+        if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           git push --follow-tags origin main
+      - name: Create GitHub Release
+        if: steps.check_changes.outputs.has_changes == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          tag_name: v${{ env.NEW_VERSION }}
+          release_name: Release v${{ env.NEW_VERSION }}
+          body: |
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          draft: false
+          prerelease: false
 
   docker-build-and-push:
     needs: version-and-release
