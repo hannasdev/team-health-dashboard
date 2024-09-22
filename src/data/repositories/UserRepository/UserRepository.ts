@@ -1,30 +1,27 @@
-// src/repositories/user/UserRepository.ts
+// src/data/repositories/UserRepository/UserRepository.ts
+
 import { injectable, inject } from 'inversify';
-import { Collection, ObjectId } from 'mongodb';
+import mongoose from 'mongoose';
 
 import { UserNotFoundError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 import { User } from '../../models/User.js';
 
 import type {
+  IUser,
   ILogger,
   IUserRepository,
-  IMongoAdapter,
 } from '../../../interfaces/index.js';
 
 @injectable()
 export class UserRepository implements IUserRepository {
-  private collection: Collection;
-
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
-    @inject(TYPES.MongoAdapter) private mongoAdapter: IMongoAdapter,
-  ) {
-    this.collection = this.mongoAdapter.getCollection('users');
-  }
+    @inject(TYPES.UserModel) private UserModel: mongoose.Model<IUser>,
+  ) {}
 
-  async findByEmail(email: string): Promise<User | undefined> {
-    const user = await this.collection.findOne({ email });
+  async findByEmail(email: string): Promise<IUser | undefined> {
+    const user = await this.UserModel.findOne({ email });
 
     if (!user) {
       this.logger.debug(`User not found for email: ${email}`);
@@ -32,39 +29,39 @@ export class UserRepository implements IUserRepository {
     }
 
     this.logger.debug(`User found for email: ${email}`);
-    return new User(user._id.toString(), user.email, user.password);
+    return user;
   }
 
-  async findById(id: string): Promise<User | undefined> {
-    let objectId: ObjectId;
+  async findById(id: string): Promise<IUser | undefined> {
     try {
-      objectId = new ObjectId(id);
+      const user = await this.UserModel.findById(id);
+
+      if (!user) {
+        this.logger.debug(`User not found for id: ${id}`);
+        throw new UserNotFoundError(`User not found for id: ${id}`);
+      }
+
+      this.logger.debug(`User found for id: ${id}`);
+      return user;
     } catch (error) {
-      this.logger.debug(`Invalid ObjectId: ${id}`);
-      throw new UserNotFoundError(`User not found for id: ${id}`);
+      if (error instanceof mongoose.Error.CastError) {
+        this.logger.debug(`Invalid ObjectId: ${id}`);
+        throw new UserNotFoundError(`User not found for id: ${id}`);
+      }
+      throw error;
     }
-
-    const user = await this.collection.findOne({ _id: objectId });
-
-    if (!user) {
-      this.logger.debug(`User not found for id: ${id}`);
-      throw new UserNotFoundError(`User not found for id: ${id}`);
-    }
-
-    this.logger.debug(`User found for id: ${id}`);
-    return new User(user._id.toString(), user.email, user.password);
   }
 
-  async create(email: string, password: string): Promise<User> {
-    const result = await this.collection.insertOne({ email, password });
+  async create(email: string, password: string): Promise<IUser> {
+    const user = await this.UserModel.create({ email, password });
 
     this.logger.info(`New user created with email: ${email}`);
-    return new User(result.insertedId.toString(), email, password);
+    return user;
   }
 
   async updatePassword(id: string, newPassword: string): Promise<void> {
-    const result = await this.collection.updateOne(
-      { _id: new Object(id) },
+    const result = await this.UserModel.updateOne(
+      { _id: id },
       { $set: { password: newPassword } },
     );
 

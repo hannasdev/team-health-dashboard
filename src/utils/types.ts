@@ -41,4 +41,5 @@ export const TYPES = {
   TokenService: Symbol.for('ITokenService'),
   UserRepository: Symbol.for('IUserRepository'),
   UserService: Symbol.for('IUserService'),
+  UserModel: Symbol.for('IUserModel'),
 };

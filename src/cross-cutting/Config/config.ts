@@ -8,30 +8,11 @@ import { AppError } from '../../utils/errors.js';
 
 import type { IConfig } from '../../interfaces/index.js';
 
-/**
- * @class Config
- * @implements {IConfig}
- * @description Singleton class for managing application configuration.
- * Loads configuration from environment variables and provides default values.
- *
- * @example
- * const config = Config.getInstance();
- * console.log(config.DATABASE_URL);
- *
- * @example
- * // Override config for testing
- * const testConfig = Config.getInstance({ DATABASE_URL: 'mongodb://localhost:27017/test_db' });
- */
 export class Config implements IConfig {
   private static instance: Config | null = null;
 
   private config: IConfig;
 
-  /**
-   * @private
-   * @constructor
-   * @param {Partial<IConfig>} [env] - Optional partial configuration to override defaults and environment variables.
-   */
   private constructor(env?: Partial<IConfig>) {
     this.loadEnvFile();
     this.config = {
@@ -42,13 +23,6 @@ export class Config implements IConfig {
     this.validate();
   }
 
-  /**
-   * @static
-   * @method getInstance
-   * @param {Partial<IConfig>} [env] - Optional partial configuration to override defaults and environment variables.
-   * @returns {Config} The singleton instance of the Config class.
-   * @description Gets or creates the singleton instance of the Config class.
-   */
   public static getInstance(env?: Partial<IConfig>): Config {
     if (!Config.instance) {
       Config.instance = new Config(env);
@@ -77,9 +51,9 @@ export class Config implements IConfig {
       CORS_ORIGIN: '*',
       JWT_SECRET: 'your-secret-key', // Provide a safe default
       REFRESH_TOKEN_SECRET: 'refresh-token-key',
-      DATABASE_URL: '',
-      MONGO_CONNECT_TIMEOUT_MS: 10000,
-      MONGO_SERVER_SELECTION_TIMEOUT_MS: 10000,
+      DATABASE_URL: 'mongodb://localhost:27017/myapp',
+      MONGO_CONNECT_TIMEOUT_MS: 30000,
+      MONGO_SERVER_SELECTION_TIMEOUT_MS: 30000,
       LOG_LEVEL: 'info',
       LOG_FORMAT: 'json',
       LOG_FILE_PATH: './logs',
@@ -105,11 +79,11 @@ export class Config implements IConfig {
       REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET,
       DATABASE_URL: process.env.DATABASE_URL,
       MONGO_CONNECT_TIMEOUT_MS: parseInt(
-        process.env.MONGO_CONNECT_TIMEOUT_MS || '5000',
+        process.env.MONGO_CONNECT_TIMEOUT_MS || '30000',
         10,
       ),
       MONGO_SERVER_SELECTION_TIMEOUT_MS: parseInt(
-        process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS || '5000',
+        process.env.MONGO_SERVER_SELECTION_TIMEOUT_MS || '30000',
         10,
       ),
       LOG_LEVEL: process.env.LOG_LEVEL,
@@ -169,11 +143,11 @@ export class Config implements IConfig {
   }
 
   public get MONGO_CONNECT_TIMEOUT_MS(): number {
-    return this.config.MONGO_CONNECT_TIMEOUT_MS;
+    return this.config.MONGO_CONNECT_TIMEOUT_MS || 30000;
   }
 
   public get MONGO_SERVER_SELECTION_TIMEOUT_MS(): number {
-    return this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS;
+    return this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS || 30000;
   }
 
   public get LOG_LEVEL(): string {
@@ -233,12 +207,6 @@ export class Config implements IConfig {
     }
   }
 
-  /**
-   * @static
-   * @method resetInstance
-   * @description Resets the singleton instance. Primarily used for testing purposes.
-   * @warning This method should be used with caution, especially in production environments.
-   */
   public static resetInstance(): void {
     Config.instance = null;
   }

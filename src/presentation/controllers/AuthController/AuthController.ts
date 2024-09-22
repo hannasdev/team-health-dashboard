@@ -3,9 +3,7 @@
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { User } from 'data/models/User.js';
-
-import { InvalidInputError } from '../../../utils/errors.js';
+import { InvalidInputError, AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
 import type {
@@ -15,6 +13,8 @@ import type {
   ILogger,
   IApiResponse,
   IUserService,
+  IUser,
+  SanitizedUser,
 } from '../../../interfaces/index.js';
 
 @injectable()
@@ -50,7 +50,11 @@ export class AuthController implements IAuthController {
         }),
       );
     } catch (error) {
-      next(error);
+      if (error instanceof InvalidInputError) {
+        next(new AppError(401, 'No token provided', 'ERR_UNAUTHORIZED'));
+      } else {
+        next(error);
+      }
     }
   }
 
@@ -126,8 +130,11 @@ export class AuthController implements IAuthController {
     }
   }
 
-  private sanitizeUser(user: User): Omit<User, 'password'> {
-    const { password, ...sanitizedUser } = user;
-    return sanitizedUser;
+  private sanitizeUser(user: IUser): SanitizedUser {
+    const { password, ...sanitizedData } = user.toObject();
+    return {
+      ...sanitizedData,
+      toObject: () => sanitizedData,
+    };
   }
 }

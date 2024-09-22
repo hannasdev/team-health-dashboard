@@ -29,18 +29,30 @@ export class MetricsController implements IMetricsController {
       const page = parseInt(req.query.page as string) || 1;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
 
+      if (isNaN(page) || isNaN(pageSize) || page < 1 || pageSize < 1) {
+        throw new AppError(400, 'Invalid pagination parameters');
+      }
+
       this.logger.info(
         `Fetching metrics for page ${page} with page size ${pageSize}`,
       );
 
       const result = await this.metricsService.getAllMetrics(page, pageSize);
 
+      if (!result) {
+        throw new AppError(500, 'Metrics service returned null result');
+      }
+
       res.json(this.apiResponse.createSuccessResponse(result));
 
       this.logger.info(`Successfully fetched metrics for page ${page}`);
     } catch (error) {
-      this.logger.error('Error fetching metrics:', error as Error);
-      next(new AppError(500, 'Failed to fetch metrics'));
+      if (error instanceof AppError) {
+        next(error);
+      } else {
+        this.logger.error('Error fetching metrics:', error as Error);
+        next(new AppError(500, 'Failed to fetch metrics'));
+      }
     }
   }
 

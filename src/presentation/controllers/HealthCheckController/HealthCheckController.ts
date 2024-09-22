@@ -2,6 +2,7 @@
 
 import { Request, Response } from 'express';
 import { injectable, inject } from 'inversify';
+import { Connection } from 'mongoose';
 
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
@@ -12,7 +13,6 @@ import type {
   IMongoDbClient,
   IApiResponse,
 } from '../../../interfaces/index.js';
-
 @injectable()
 export class HealthCheckController implements IHealthCheckController {
   constructor(
@@ -24,10 +24,14 @@ export class HealthCheckController implements IHealthCheckController {
   public async getHealth(req: Request, res: Response): Promise<void> {
     try {
       // Check if we can get the database object
-      const db = this.mongoClient.getDb();
+      const connection = this.mongoClient.getDb() as Connection;
+
+      if (!connection.db) {
+        throw new Error('Database not initialized');
+      }
 
       // Perform a simple database operation to ensure connectivity
-      await db.command({ ping: 1 });
+      await connection.db.admin().ping();
 
       const status = 'OK';
       this.logger.info('Health check performed', { status });

@@ -24,15 +24,12 @@ export class ErrorHandler {
 
     let statusCode = 500;
     let errorMessage = 'An unexpected error occurred';
-    let errorDetails = {};
+    let errorCode = 'ERR_INTERNAL_SERVER_ERROR';
 
     if (err instanceof AppError) {
       statusCode = err.statusCode;
       errorMessage = err.message;
-      errorDetails = {
-        errorCode: err.errorCode,
-        details: err.details,
-      };
+      errorCode = err.errorCode || errorCode;
     }
 
     res
@@ -40,7 +37,7 @@ export class ErrorHandler {
       .json(
         this.apiResponse.createErrorResponse(
           errorMessage,
-          errorDetails,
+          { errorCode },
           statusCode,
         ),
       );

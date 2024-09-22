@@ -1,8 +1,7 @@
 // src/interfaces/IMongoAdapter.ts
-
-import { Collection, Db } from 'mongodb';
+import mongoose from 'mongoose';
 
 export interface IMongoAdapter {
-  getCollection(name: string): Collection;
-  getDb(): Db;
+  getCollection(name: string): mongoose.Model<any>;
+  getDb(): mongoose.Connection;
 }

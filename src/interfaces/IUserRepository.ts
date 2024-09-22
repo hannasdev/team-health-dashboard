@@ -1,10 +1,9 @@
 // src/interfaces/IUserRepository.ts
-
-import { User } from '../data/models/User.js';
+import type { IUser } from '../interfaces/IUserModel';
 
 export interface IUserRepository {
-  findByEmail(email: string): Promise<User | undefined>;
-  findById(id: string): Promise<User | undefined>;
-  create(email: string, password: string): Promise<User>;
+  findByEmail(email: string): Promise<IUser | undefined>;
+  findById(id: string): Promise<IUser | undefined>;
+  create(email: string, password: string): Promise<IUser>;
   updatePassword(id: string, newPassword: string): Promise<void>;
 }
