@@ -84,6 +84,8 @@ jobs:
       LOG_FORMAT: json
       LOG_FILE_PATH: ./logs
       API_URL: http://127.0.0.1:${{ secrets.PORT }}
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
 
   version-and-release:
     needs: [build, test-unit, e2e-test]
