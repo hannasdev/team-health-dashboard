@@ -35,8 +35,8 @@ describe('E2E Auth', () => {
     if (result.userAccessToken && result.userRefreshToken) {
       accessToken = result.userAccessToken;
       refreshToken = result.userRefreshToken;
-      console.log('New access token:', accessToken); // Add this line
-      console.log('New refresh token:', refreshToken); // Add this line
+      console.log('New access token:', accessToken);
+      console.log('New refresh token:', refreshToken);
     } else {
       throw new Error('Failed to obtain access or refresh token');
     }
@@ -57,13 +57,18 @@ describe('E2E Auth', () => {
     });
 
     it('should handle existing user registration', async () => {
-      const response = await retryRequest('post', AUTH_ENDPOINTS.REGISTER, {
-        email: 'testuser@example.com',
-        password: 'testpassword',
-      });
-      // console.log('existing user response', response.data);
-      expect(response.data.statusCode).toBe(409);
-      expect(response.data).toHaveProperty('error', 'User already exists');
+      try {
+        const response = await retryRequest('post', AUTH_ENDPOINTS.REGISTER, {
+          email: testUser.email,
+          password: testUser.password,
+        });
+        console.log('existing user response', response.data);
+        expect(response.status).toBe(409);
+        expect(response.data.error).toBe('User already exists');
+      } catch (error) {
+        console.error('Error in existing user registration test:', error);
+        throw error;
+      }
     });
   });
 

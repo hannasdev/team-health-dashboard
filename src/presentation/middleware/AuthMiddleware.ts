@@ -111,15 +111,4 @@ export class AuthMiddleware implements IAuthMiddleware {
     }
     next(error);
   }
-
-  private async refreshToken(
-    refreshToken: string,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    try {
-      return await this.authService.refreshToken(refreshToken);
-    } catch (error) {
-      this.logger.error('Failed to refresh token', error as Error);
-      throw new UnauthorizedError('Failed to refresh token');
-    }
-  }
 }
