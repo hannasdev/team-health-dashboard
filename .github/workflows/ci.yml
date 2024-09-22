@@ -59,6 +59,16 @@ jobs:
           sudo chmod +x /usr/local/bin/docker-compose
           docker-compose --version
 
+      - name: Debug environment variables
+        run: |
+          echo "DATABASE_URL is set: ${{ secrets.DATABASE_URL != '' }}"
+          echo "GOOGLE_SHEETS_ID is set: ${{ secrets.GOOGLE_SHEETS_ID != '' }}"
+          echo "GOOGLE_SHEETS_CLIENT_EMAIL is set: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL != '' }}"
+          echo "GOOGLE_SHEETS_PRIVATE_KEY is set: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY != '' }}"
+          echo "REPO_TOKEN is set: ${{ secrets.REPO_TOKEN != '' }}"
+          echo "REPO_OWNER is set: ${{ secrets.REPO_OWNER != '' }}"
+          echo "REPO_REPO is set: ${{ secrets.REPO_REPO != '' }}"
+
       - name: Build and run E2E tests with Docker Compose
         env:
           API_URL: http://app-test:${{ secrets.PORT }}
@@ -91,7 +101,7 @@ jobs:
     env:
       API_URL: http://127.0.0.1:${{ secrets.PORT }}
       CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
-      DATABASE_URL: mongodb://root:example@127.0.0.1:27017/myapp?authSource=admin
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
       GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
       GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
