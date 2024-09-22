@@ -2,9 +2,11 @@ name: CI
 
 on:
   push:
-    branches: '*'
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
   build:
@@ -119,45 +121,54 @@ jobs:
 
   version-and-release:
     needs: [build, test-unit, e2e-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'chore(release):')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Check for version bump commit
+        id: check_version_bump
+        run: |
+          if git log -1 --pretty=%B | grep -q "chore(release):"; then
+            echo "::set-output name=is_version_bump::true"
+          else
+            echo "::set-output name=is_version_bump::false"
+          fi
+
       - name: Use Node.js
+        if: steps.check_version_bump.outputs.is_version_bump == 'false'
         uses: actions/setup-node@v4
         with:
           node-version: '20.16.0'
           cache: 'npm'
+
       - name: Install dependencies
+        if: steps.check_version_bump.outputs.is_version_bump == 'false'
         run: npm ci
+
       - name: Configure Git
+        if: steps.check_version_bump.outputs.is_version_bump == 'false'
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-      - name: Check for changes since last release
-        id: check_changes
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -z "$LAST_TAG" ]; then
-            echo "::set-output name=has_changes::true"
-          else
-            git diff --quiet $LAST_TAG HEAD -- . ':!CHANGELOG.md' ':!package.json' ':!package-lock.json' || echo "::set-output name=has_changes::true"
-          fi
+
       - name: Bump version
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.check_version_bump.outputs.is_version_bump == 'false'
         run: |
           npm run release
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
       - name: Push changes
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.check_version_bump.outputs.is_version_bump == 'false'
         run: |
           git push --follow-tags origin main
+
       - name: Create GitHub Release
-        if: steps.check_changes.outputs.has_changes == 'true'
+        if: steps.check_version_bump.outputs.is_version_bump == 'false'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
