@@ -6,7 +6,23 @@ on:
       - main
 
 jobs:
+  check_pr:
+    runs-on: ubuntu-latest
+    outputs:
+      has_pr: ${{ steps.check_pr.outputs.has_pr }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check if PR exists
+        id: check_pr
+        run: |
+          PR_EXISTS=$(gh pr list --head ${{ github.ref_name }} --json number --jq 'length')
+          echo "has_pr=$PR_EXISTS" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build-and-test:
+    needs: check_pr
+    if: needs.check_pr.outputs.has_pr == '0'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
