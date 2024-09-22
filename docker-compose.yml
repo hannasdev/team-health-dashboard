@@ -72,7 +72,9 @@ services:
       db-test:
         condition: service_healthy
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV}
+      - DATABASE_URL=${DATABASE_URL}
+      - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
     env_file:
       - .env.e2e
     deploy:
@@ -106,8 +108,8 @@ services:
       timeout: 5s
       retries: 5
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=example
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     deploy:
       resources:
         limits:
