@@ -96,7 +96,7 @@ jobs:
 
       - name: Display logs
         if: always()
-        run: docker-compose --profile e2e-test logs
+        run: docker-compose --profile e2e-test logs app-test
 
     env:
       API_URL: http://127.0.0.1:${{ secrets.PORT }}
