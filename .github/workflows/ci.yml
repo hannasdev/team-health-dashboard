@@ -60,6 +60,24 @@ jobs:
           docker-compose --version
 
       - name: Build and run E2E tests with Docker Compose
+        env:
+          NODE_ENV: test
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+          GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
+          GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+          REPO_OWNER: ${{ secrets.REPO_OWNER }}
+          REPO_REPO: ${{ secrets.REPO_REPO }}
+          PORT: ${{ secrets.PORT }}
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          LOG_LEVEL: debug
+          LOG_FORMAT: json
+          LOG_FILE_PATH: ./logs
+          API_URL: http://app-test:${{ secrets.PORT }}
+          MONGO_INITDB_ROOT_USERNAME: root
+          MONGO_INITDB_ROOT_PASSWORD: example
         run: |
           docker-compose --profile e2e-test build
           docker-compose --profile e2e-test up --abort-on-container-exit --exit-code-from e2e-test-runner

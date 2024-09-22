@@ -66,17 +66,27 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - DATABASE_URL=${DATABASE_URL}
+      - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
+      - GOOGLE_SHEETS_CLIENT_EMAIL=${GOOGLE_SHEETS_CLIENT_EMAIL}
+      - GOOGLE_SHEETS_PRIVATE_KEY=${GOOGLE_SHEETS_PRIVATE_KEY}
+      - REPO_TOKEN=${REPO_TOKEN}
+      - REPO_OWNER=${REPO_OWNER}
+      - REPO_REPO=${REPO_REPO}
+      - PORT=${PORT}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - JWT_SECRET=${JWT_SECRET}
+      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - LOG_FORMAT=${LOG_FORMAT}
+      - LOG_FILE_PATH=${LOG_FILE_PATH}
     ports:
       - '3001:3000'
     depends_on:
       db-test:
         condition: service_healthy
-    environment:
-      - NODE_ENV=${NODE_ENV}
-      - DATABASE_URL=${DATABASE_URL}
-      - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
-    env_file:
-      - .env.e2e
     deploy:
       resources:
         limits:
@@ -143,10 +153,22 @@ services:
       target: e2e-test
     networks:
       - test-network
-    env_file:
-      - .env.e2e
     environment:
-      - NODE_ENV=e2e
+      - NODE_ENV=${NODE_ENV}
+      - DATABASE_URL=${DATABASE_URL}
+      - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
+      - GOOGLE_SHEETS_CLIENT_EMAIL=${GOOGLE_SHEETS_CLIENT_EMAIL}
+      - GOOGLE_SHEETS_PRIVATE_KEY=${GOOGLE_SHEETS_PRIVATE_KEY}
+      - REPO_TOKEN=${REPO_TOKEN}
+      - REPO_OWNER=${REPO_OWNER}
+      - REPO_REPO=${REPO_REPO}
+      - PORT=${PORT}
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - LOG_FORMAT=${LOG_FORMAT}
+      - LOG_FILE_PATH=${LOG_FILE_PATH}
+      - API_URL=${API_URL}
     depends_on:
       db-test:
         condition: service_healthy
