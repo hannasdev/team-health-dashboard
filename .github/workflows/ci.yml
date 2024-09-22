@@ -47,89 +47,77 @@ jobs:
   e2e-test:
     needs: [build, test-unit]
     runs-on: ubuntu-latest
-    services:
-      mongodb:
-        image: mongo:7.0
-        env:
-          MONGO_INITDB_ROOT_USERNAME: root
-          MONGO_INITDB_ROOT_PASSWORD: example
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd="mongosh --quiet --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-          --health-start-period=20s
     steps:
       - uses: actions/checkout@v3
 
-      - name: Use Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20.16.0'
-          cache: 'npm'
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v3
-        with:
-          name: dist
-          path: dist
-
-      - name: Install MongoDB Shell
+      - name: Install Docker Compose
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget gnupg
-          wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
-          echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-          sudo apt-get update
-          sudo apt-get install -y mongodb-mongosh
+          sudo curl -L "https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          docker-compose --version
 
-      - name: Verify MongoDB connection
+      - name: Debug environment variables
         run: |
-          mongosh --host localhost --port 27017 -u root -p example --eval "db.runCommand({ ping: 1 })"
+          echo "DATABASE_URL is set: ${{ secrets.DATABASE_URL != '' }}"
+          echo "GOOGLE_SHEETS_ID is set: ${{ secrets.GOOGLE_SHEETS_ID != '' }}"
+          echo "GOOGLE_SHEETS_CLIENT_EMAIL is set: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL != '' }}"
+          echo "GOOGLE_SHEETS_PRIVATE_KEY is set: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY != '' }}"
+          echo "REPO_TOKEN is set: ${{ secrets.REPO_TOKEN != '' }}"
+          echo "REPO_OWNER is set: ${{ secrets.REPO_OWNER != '' }}"
+          echo "REPO_REPO is set: ${{ secrets.REPO_REPO != '' }}"
 
-      - name: Create log directory
-        run: mkdir -p logs
-
-      - name: Start application and wait for it to be ready
+      - name: Build and run E2E tests with Docker Compose
+        env:
+          API_URL: http://app-test:${{ secrets.PORT }}
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+          GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          LOG_FILE_PATH: ./logs
+          LOG_FORMAT: json
+          LOG_LEVEL: debug
+          MONGO_CONNECT_TIMEOUT_MS: 10000
+          MONGO_INITDB_ROOT_PASSWORD: example
+          MONGO_INITDB_ROOT_USERNAME: root
+          NODE_ENV: test
+          PORT: ${{ secrets.PORT }}
+          REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+          REPO_OWNER: ${{ secrets.REPO_OWNER }}
+          REPO_REPO: ${{ secrets.REPO_REPO }}
+          REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
-          node dist/index.js > logs/app.log 2>&1 &
-          echo $! > app.pid
-          npx wait-on http://localhost:${{ secrets.PORT }}/health --timeout 60000
-
-      - name: Wait for API to be ready
-        run: |
-          timeout 60s bash -c 'until curl -s http://localhost:${{ secrets.PORT }}/health; do sleep 5; done'
-
-      - name: Run e2e tests
-        run: |
-          npm run build
-          node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/__tests__/e2e/**/*.e2e.spec.js" --forceExit --detectOpenHandles || (cat logs/app.log && kill $(cat app.pid) && exit 1)
+          docker-compose --profile e2e-test build
+          docker-compose --profile e2e-test up --abort-on-container-exit --exit-code-from e2e-test-runner
 
       - name: Display logs
         if: always()
-        run: cat logs/app.log
+        run: docker-compose --profile e2e-test logs app-test
 
     env:
-      NODE_ENV: test
-      DATABASE_URL: mongodb://root:example@127.0.0.1:27017/myapp?authSource=admin
-      GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+      API_URL: http://127.0.0.1:${{ secrets.PORT }}
+      CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
+      GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
       GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
-      REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      LOG_FILE_PATH: ./logs
+      LOG_FORMAT: json
+      LOG_LEVEL: debug
+      MONGO_CONNECT_TIMEOUT_MS: 10000
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_ROOT_USERNAME: root
+      NODE_ENV: test
+      PORT: ${{ secrets.PORT }}
+      REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
       REPO_OWNER: ${{ secrets.REPO_OWNER }}
       REPO_REPO: ${{ secrets.REPO_REPO }}
-      PORT: ${{ secrets.PORT }}
-      CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      LOG_LEVEL: debug
-      LOG_FORMAT: json
-      LOG_FILE_PATH: ./logs
-      API_URL: http://127.0.0.1:${{ secrets.PORT }}
+      REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
 
   version-and-release:
     needs: [build, test-unit, e2e-test]

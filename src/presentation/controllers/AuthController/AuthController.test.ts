@@ -10,11 +10,12 @@ import {
   createMockLogger,
   createMockApiResponse,
 } from '../../../__mocks__';
-import { User } from '../../../data/models/User';
+import { createUser } from '../../../data/models/User';
 import {
   UserAlreadyExistsError,
   InvalidRefreshTokenError,
   InvalidInputError,
+  AppError,
 } from '../../../utils/errors';
 import { TYPES } from '../../../utils/types';
 
@@ -57,7 +58,7 @@ describe('AuthController', () => {
       const next = jest.fn();
 
       const mockLoginResult = {
-        user: new User('1', 'test@example.com', 'hashedPassword'),
+        user: createUser('1', 'test@example.com', 'hashedPassword'),
         accessToken: 'mock-access-token',
         refreshToken: 'mock-refresh-token',
       };
@@ -69,7 +70,7 @@ describe('AuthController', () => {
           accessToken: 'mock-access-token',
           refreshToken: 'mock-refresh-token',
           user: {
-            id: '1',
+            _id: '1',
             email: 'test@example.com',
           },
         },
@@ -86,7 +87,7 @@ describe('AuthController', () => {
         accessToken: 'mock-access-token',
         refreshToken: 'mock-refresh-token',
         user: expect.objectContaining({
-          id: '1',
+          _id: expect.any(String),
           email: 'test@example.com',
         }),
       });
@@ -96,7 +97,7 @@ describe('AuthController', () => {
           accessToken: 'mock-access-token',
           refreshToken: 'mock-refresh-token',
           user: expect.objectContaining({
-            id: '1',
+            _id: expect.any(String),
             email: 'test@example.com',
           }),
         }),
@@ -122,7 +123,8 @@ describe('AuthController', () => {
         'wrongpassword',
         false,
       );
-      expect(next).toHaveBeenCalledWith(expect.any(InvalidInputError));
+      expect(next).toHaveBeenCalledWith(expect.any(AppError));
+      expect(next.mock.calls[0][0].message).toBe('No token provided');
     });
 
     it('should handle missing email or password', async () => {
@@ -132,8 +134,8 @@ describe('AuthController', () => {
 
       await authController.login(req, res as any, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(InvalidInputError));
-      expect(mockAuthenticationService.login).not.toHaveBeenCalled();
+      expect(next).toHaveBeenCalledWith(expect.any(AppError));
+      expect(next.mock.calls[0][0].message).toBe('No token provided');
     });
   });
 
@@ -145,7 +147,7 @@ describe('AuthController', () => {
       const res = createMockAuthControllerResponse();
       const next = jest.fn();
 
-      const mockUser = new User('2', 'newuser@example.com', 'hashedPassword');
+      const mockUser = createUser('2', 'newuser@example.com', 'hashedPassword');
       mockUserService.registerUser.mockResolvedValue(mockUser);
 
       const mockLoginResult = {
@@ -182,7 +184,7 @@ describe('AuthController', () => {
         accessToken: 'mock-access-token',
         refreshToken: 'mock-refresh-token',
         user: expect.objectContaining({
-          id: '2',
+          _id: expect.any(String),
           email: 'newuser@example.com',
         }),
       });

@@ -6,4 +6,5 @@ export interface IJobQueueService {
     handler: (job: any, done: () => void) => void,
   ): Promise<void>;
   gracefulShutdown(): Promise<void>;
+  waitForAllJobs(timeout?: number): Promise<void>;
 }

@@ -1,30 +1,28 @@
-import { Model, Document } from 'mongoose';
+import mongoose, { Model, Document } from 'mongoose';
 
-export type MockModel<T extends Document> = {
-  [K in keyof Model<T>]: jest.Mock;
+export type MockModel<T extends mongoose.Document> = {
+  [K in keyof mongoose.Model<T>]: jest.Mock;
 } & {
   find: jest.Mock;
-  sort: jest.Mock;
-  skip: jest.Mock;
-  limit: jest.Mock;
-  lean: jest.Mock;
-  exec: jest.Mock;
+  findOne: jest.Mock;
+  findOneAndUpdate: jest.Mock;
+  updateOne: jest.Mock;
+  deleteOne: jest.Mock;
+  create: jest.Mock;
+  insertMany: jest.Mock;
 };
 
-export const createMockMongooseModel = <T extends Document>(): MockModel<T> => {
+export const createMockMongooseModel = <
+  T extends mongoose.Document,
+>(): MockModel<T> => {
   const mockModel: Partial<MockModel<T>> = {
     find: jest.fn().mockReturnThis(),
     findOne: jest.fn().mockReturnThis(),
     findOneAndUpdate: jest.fn().mockReturnThis(),
-    sort: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
-    limit: jest.fn().mockReturnThis(),
-    lean: jest.fn().mockReturnThis(),
-    exec: jest.fn(),
+    updateOne: jest.fn().mockReturnThis(),
+    deleteOne: jest.fn().mockReturnThis(),
     create: jest.fn(),
     insertMany: jest.fn(),
-    updateOne: jest.fn(),
-    deleteOne: jest.fn(),
     countDocuments: jest.fn(),
   };
 

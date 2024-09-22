@@ -1,7 +1,6 @@
 // src/adapters/MongoAdapter.ts
-
 import { injectable, inject } from 'inversify';
-import { Collection, Db } from 'mongodb';
+import mongoose from 'mongoose';
 
 import { TYPES } from '../../../utils/types.js';
 
@@ -16,11 +15,11 @@ export class MongoAdapter implements IMongoAdapter {
     @inject(TYPES.MongoDbClient) private mongoDbClient: IMongoDbClient,
   ) {}
 
-  getCollection(name: string): Collection {
-    return this.getDb().collection(name);
+  getCollection(name: string): mongoose.Model<any> {
+    return mongoose.model(name);
   }
 
-  getDb(): Db {
+  getDb(): mongoose.Connection {
     return this.mongoDbClient.getDb();
   }
 }

@@ -12,7 +12,7 @@ import {
   createMockLogger,
 } from '../../__mocks__/index.js';
 import { Config } from '../../cross-cutting/Config/config.js';
-import { User } from '../../data/models/User.js';
+import { createUser } from '../../data/models/User.js';
 import {
   InvalidCredentialsError,
   InvalidRefreshTokenError,
@@ -62,7 +62,7 @@ describe('AuthenticationService', () => {
     it('should successfully log in a user with valid credentials', async () => {
       const email = 'test@example.com';
       const password = 'password123';
-      const user = new User('123', email, 'hashedPassword');
+      const user = createUser('123', email, 'hashedPassword');
       const accessToken = 'access_token';
       const refreshToken = 'refresh_token';
 
@@ -80,11 +80,11 @@ describe('AuthenticationService', () => {
         user.password,
       );
       expect(mockTokenService.generateAccessToken).toHaveBeenCalledWith({
-        id: user.id,
+        id: user._id,
         email: user.email,
       });
       expect(mockTokenService.generateRefreshToken).toHaveBeenCalledWith({
-        id: user.id,
+        id: user._id,
       });
     });
 
@@ -97,7 +97,7 @@ describe('AuthenticationService', () => {
     });
 
     it('should throw InvalidCredentialsError for incorrect password', async () => {
-      const user = new User('123', 'test@example.com', 'hashedPassword');
+      const user = createUser('123', 'test@example.com', 'hashedPassword');
       mockUserRepository.findByEmail.mockResolvedValue(user);
       mockBcryptService.compare.mockResolvedValue(false);
 
@@ -111,7 +111,7 @@ describe('AuthenticationService', () => {
     it('should successfully refresh tokens', async () => {
       const refreshToken = 'valid_refresh_token';
       const userId = '123';
-      const user = new User(userId, 'test@example.com', 'hashedPassword');
+      const user = createUser(userId, 'test@example.com', 'hashedPassword');
       const newAccessToken = 'new_access_token';
       const newRefreshToken = 'new_refresh_token';
 
@@ -142,11 +142,11 @@ describe('AuthenticationService', () => {
       expect(mockUserRepository.findById).toHaveBeenCalledWith(userId);
       expect(mockTokenBlacklistService.blacklistToken).toHaveBeenCalled();
       expect(mockTokenService.generateAccessToken).toHaveBeenCalledWith({
-        id: user.id,
+        id: user._id,
         email: user.email,
       });
       expect(mockTokenService.generateRefreshToken).toHaveBeenCalledWith({
-        id: user.id,
+        id: user._id,
       });
     });
 

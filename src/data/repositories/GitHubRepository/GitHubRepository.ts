@@ -10,6 +10,7 @@ import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
 import type {
+  IGitHubMetricDocument,
   IGitHubPullRequest,
   IGitHubClient,
   IPullRequest,
@@ -20,7 +21,6 @@ import type {
   IMetric,
   IConfig,
   ICacheService,
-  IMetricDocument,
 } from '../../../interfaces';
 
 @injectable()
@@ -39,7 +39,7 @@ export class GitHubRepository
     @inject(TYPES.GitHubPullRequestModel)
     private GitHubPullRequest: Model<IGitHubPullRequest>,
     @inject(TYPES.GitHubMetricModel)
-    private GitHubMetric: Model<IMetricDocument>,
+    private GitHubMetric: Model<IGitHubMetricDocument>,
     @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
     super(cacheService);
@@ -172,11 +172,7 @@ export class GitHubRepository
         .lean()
         .exec();
 
-      const mappedPullRequests = pullRequests.map(
-        this.mapMongoDocumentToPullRequest,
-      );
-
-      return mappedPullRequests;
+      return pullRequests.map(this.mapMongoDocumentToPullRequest);
     } catch (error) {
       this.logger.error(
         'Error fetching pull requests from database:',

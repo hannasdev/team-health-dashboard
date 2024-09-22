@@ -62,7 +62,7 @@ export class JobQueueService implements IJobQueueService {
     }
   }
 
-  async gracefulShutdown(): Promise<void> {
+  public async gracefulShutdown(): Promise<void> {
     try {
       await this.agenda.stop();
       this.logger.info('Job queue gracefully shut down');
@@ -70,5 +70,23 @@ export class JobQueueService implements IJobQueueService {
       this.logger.error('Failed to shut down job queue:', error as Error);
       throw error;
     }
+  }
+
+  public async waitForAllJobs(timeout: number = 30000): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+      const checkInterval = setInterval(async () => {
+        const runningJobs = await this.agenda.jobs({
+          nextRunAt: { $ne: null },
+        });
+        if (runningJobs.length === 0) {
+          clearInterval(checkInterval);
+          resolve();
+        } else if (Date.now() - startTime > timeout) {
+          clearInterval(checkInterval);
+          reject(new Error('Timeout waiting for jobs to complete'));
+        }
+      }, 1000); // Check every second
+    });
   }
 }

@@ -1,7 +1,9 @@
-import type { Db } from 'mongodb';
+// src/interfaces/IMongoDbClient.ts
+
+import { Connection } from 'mongoose';
 
 export interface IMongoDbClient {
   connect(): Promise<void>;
-  getDb(): Db;
+  getDb(): Connection;
   close(): Promise<void>;
 }

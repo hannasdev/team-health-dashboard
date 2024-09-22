@@ -1,12 +1,12 @@
 // src/interfaces/IAuthenticationService.ts
-import { User } from '../data/models/User.js';
+import type { IUser } from './IUserModel';
 
 export interface IAuthenticationService {
   login(
     email: string,
     password: string,
     shortLived?: boolean,
-  ): Promise<{ user: User; accessToken: string; refreshToken: string }>;
+  ): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
   refreshToken(
     refreshToken: string,
   ): Promise<{ accessToken: string; refreshToken: string }>;

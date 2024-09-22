@@ -9,6 +9,7 @@
  */
 
 import { Container } from 'inversify';
+import mongoose from 'mongoose';
 
 import { container as appContainer } from './appContainer.js';
 import { ApiResponse } from './cross-cutting/ApiResponse/ApiResponse.js';
@@ -18,8 +19,10 @@ import { Logger } from './cross-cutting/Logger/index.js';
 import { GitHubAdapter } from './data/adapters/GitHubAdapter/GitHubAdapter.js';
 import { GoogleSheetsAdapter } from './data/adapters/GoogleSheetAdapter/GoogleSheetAdapter.js';
 import { MongoAdapter } from './data/adapters/MongoAdapter/MongoAdapter.js';
+import { GitHubMetricModel } from './data/models/GitHubMetric.js';
 import { GitHubPullRequest } from './data/models/GitHubPullRequest.js';
 import { GoogleSheetsMetric } from './data/models/GoogleSheetsMetric.js';
+import { User } from './data/models/User.js';
 import { GitHubRepository } from './data/repositories/GitHubRepository/GitHubRepository.js';
 import { GoogleSheetsRepository } from './data/repositories/GoogleSheetsRepository/GoogleSheetsRepository.js';
 import { UserRepository } from './data/repositories/UserRepository/UserRepository.js';
@@ -30,6 +33,8 @@ import { AuthMiddleware } from './presentation/middleware/AuthMiddleware.js';
 import { ErrorHandler } from './presentation/middleware/ErrorHandler.js';
 import { AuthenticationService } from './services/AuthenticationService/AuthenticationService.js';
 import { BcryptService } from './services/BcryptService/index.js';
+import { GitHubService } from './services/GitHubService/GitHubService.js';
+import { GoogleSheetsService } from './services/GoogleSheetsService/GoogleSheetsService.js';
 import { JobQueueService } from './services/JobQueueService/JobQueueService.js';
 import { JwtService } from './services/JwtService/index.js';
 import { MetricCalculator } from './services/MetricsCalculator/MetricsCalculator.js';
@@ -54,11 +59,14 @@ import type {
   IConfig,
   IErrorHandler,
   IGitHubClient,
+  IGitHubMetricDocument,
   IGitHubPullRequest,
   IGitHubRepository,
+  IGitHubService,
   IGoogleSheetsClient,
   IGoogleSheetsRepository,
   IHealthCheckController,
+  IJobQueueService,
   IJwtService,
   ILogger,
   IMetricCalculator,
@@ -71,12 +79,12 @@ import type {
   ITeamHealthDashboardApp,
   ITokenBlacklistService,
   ITokenService,
+  IUser,
   IUserRepository,
   IUserService,
-  IJobQueueService,
+  IGoogleSheetsService,
+  IGoogleSheetsMetric,
 } from './interfaces/index.js';
-import type { GoogleSheetsMetricModel } from './types/index.js';
-import type { Model } from 'mongoose';
 
 const config = Config.getInstance();
 
@@ -86,7 +94,9 @@ export function setupContainer(
 ): Container {
   const container = appContainer.createChild();
 
-  // 1. Configuration and Logging (Fundamental Dependencies)
+  /**
+   *  !1. Configuration and Logging (Fundamental Dependencies)
+   */
   container.bind<IConfig>(TYPES.Config).toConstantValue(config);
   container.bind<ILogger>(TYPES.Logger).to(Logger).inSingletonScope();
   container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
@@ -97,7 +107,9 @@ export function setupContainer(
     .bind<ITokenBlacklistService>(TYPES.TokenBlacklistService)
     .to(TokenBlacklistService);
 
-  // 2. Core Services and Utilities
+  /**
+   * !2. Core Services and Utilities
+   */
   container
     .bind<ITeamHealthDashboardApp>(TYPES.TeamHealthDashboardApp)
     .to(TeamHealthDashboardApp);
@@ -114,38 +126,56 @@ export function setupContainer(
     .to(ProcessingService);
   container.bind<IJobQueueService>(TYPES.JobQueueService).to(JobQueueService);
 
-  // 3. Adapters (Clients for external services)
+  /**
+   * !3. Adapters (Clients for external services)
+   */
   container.bind<IMongoAdapter>(TYPES.MongoAdapter).to(MongoAdapter);
   container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
   container
     .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
     .to(GoogleSheetsAdapter);
 
-  // 3. Repositories (Depend on config, logger, and potentially cache)
+  /**
+   * !4. Repositories (Depend on config, logger, and potentially cache)
+   **/
   container
-    .bind<Model<IGitHubPullRequest>>(TYPES.GitHubPullRequestModel)
+    .bind<mongoose.Model<IGitHubPullRequest>>(TYPES.GitHubPullRequestModel)
     .toConstantValue(GitHubPullRequest);
-  container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
+  container.bind<mongoose.Model<IUser>>(TYPES.UserModel).toConstantValue(User);
   container
-    .bind<IGitHubRepository>(TYPES.GitHubRepository)
-    .to(GitHubRepository);
+    .bind<mongoose.Model<IGitHubMetricDocument>>(TYPES.GitHubMetricModel)
+    .toConstantValue(GitHubMetricModel);
   container
-    .bind<GoogleSheetsMetricModel>(TYPES.GoogleSheetsMetricModel)
+    .bind<mongoose.Model<IGoogleSheetsMetric>>(TYPES.GoogleSheetsMetricModel)
     .toConstantValue(GoogleSheetsMetric);
   container
     .bind<IGoogleSheetsRepository>(TYPES.GoogleSheetsRepository)
     .to(GoogleSheetsRepository);
+  container.bind<IUserRepository>(TYPES.UserRepository).to(UserRepository);
+  container
+    .bind<IGitHubRepository>(TYPES.GitHubRepository)
+    .to(GitHubRepository);
 
-  // 4. Metric Calculation (Can depend on repositories and other services)
+  /**
+   * !5. Metric Calculation (Can depend on repositories and other services)
+   */
   container
     .bind<IMetricCalculator>(TYPES.MetricCalculator)
     .to(MetricCalculator);
 
-  // 6.  Services (Depend on repositories, metric calculators, and other services)
+  /**
+   * !6.  Services (Depend on repositories, metric calculators, and other services)
+   */
   container.bind<IMetricsService>(TYPES.MetricsService).to(MetricsService);
   container.bind<IUserService>(TYPES.UserService).to(UserService);
+  container
+    .bind<IGoogleSheetsService>(TYPES.GoogleSheetsService)
+    .to(GoogleSheetsService);
+  container.bind<IGitHubService>(TYPES.GitHubService).to(GitHubService);
 
-  // 7.  Controllers (Depend on services)
+  /**
+   * !7.  Controllers (Depend on services)
+   */
   container
     .bind<IHealthCheckController>(TYPES.HealthCheckController)
     .to(HealthCheckController);
@@ -154,18 +184,31 @@ export function setupContainer(
     .bind<IMetricsController>(TYPES.MetricsController)
     .to(MetricsController);
 
-  // 8.  Middleware (Can depend on services)
+  /**
+   * !8.  Middleware (Can depend on services)
+   */
   container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
   container
     .bind<IAuthenticationService>(TYPES.AuthenticationService)
     .to(AuthenticationService);
   container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
 
-  // 9. Application (Depends on middleware, routers, and potentially other services)
+  /**
+   * !9. Application (Depends on middleware, routers, and potentially other services)
+   */
   container
     .bind<IApplication>(TYPES.Application)
     .to(TeamHealthDashboardApp)
     .inSingletonScope();
+
+  for (const key in TYPES) {
+    if (Object.prototype.hasOwnProperty.call(TYPES, key)) {
+      const typeKey = TYPES[key as keyof typeof TYPES];
+      console.log(
+        `${key}: ${container.isBound(typeKey) ? 'Bound' : 'Not bound'}`,
+      );
+    }
+  }
 
   if (isTestMode) {
     // Add any test-specific bindings or overrides here
@@ -186,7 +229,6 @@ export function setupContainer(
 
   return container;
 }
-
 // Create and export the default container
 const container = setupContainer();
 

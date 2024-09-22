@@ -19,7 +19,7 @@ import type {
   ILogger,
   IGitHubRepository,
   IGitHubPullRequest,
-  IMetricDocument,
+  IGitHubMetricDocument,
 } from '../../../interfaces/index.js';
 
 describe('GitHubRepository', () => {
@@ -33,7 +33,7 @@ describe('GitHubRepository', () => {
     typeof createMockMongooseModel<IGitHubPullRequest>
   >;
   let mockGitHubMetricModel: ReturnType<
-    typeof createMockMongooseModel<IMetricDocument>
+    typeof createMockMongooseModel<IGitHubMetricDocument>
   >;
 
   const testConfig = {
@@ -58,7 +58,7 @@ describe('GitHubRepository', () => {
     mockClient = createMockGitHubClient();
     mockGitHubPullRequestModel = createMockMongooseModel<IGitHubPullRequest>();
     mockGitHubPullRequestModel.updateMany = jest.fn();
-    mockGitHubMetricModel = createMockMongooseModel<IMetricDocument>();
+    mockGitHubMetricModel = createMockMongooseModel<IGitHubMetricDocument>();
 
     container = new Container();
     container

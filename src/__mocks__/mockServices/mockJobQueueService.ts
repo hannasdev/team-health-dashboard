@@ -1,3 +1,5 @@
+// src/__mocks__/mockServices/mockJobQueueService.ts
+
 import type { IJobQueueService } from '../../interfaces/IJobQueueService';
 
 export function createMockJobQueueService(): jest.Mocked<IJobQueueService> {
@@ -13,6 +15,7 @@ export function createMockJobQueueService(): jest.Mocked<IJobQueueService> {
       return Promise.resolve();
     }),
     gracefulShutdown: jest.fn().mockResolvedValue(undefined),
+    waitForAllJobs: jest.fn().mockResolvedValue(undefined), // Add this line
   };
 }
 

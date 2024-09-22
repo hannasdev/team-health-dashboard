@@ -1,4 +1,4 @@
-import { User } from '../../data/models/User.js';
+import { createUser } from '../../data/models/User.js';
 import {
   UserAlreadyExistsError,
   UserNotFoundError,
@@ -12,12 +12,12 @@ export function createMockUserService(): jest.Mocked<IUserService> {
       if (email === 'existing@example.com') {
         return Promise.reject(new UserAlreadyExistsError());
       }
-      return Promise.resolve(new User('2', email, 'hashedPassword'));
+      return Promise.resolve(createUser('2', email, 'hashedPassword'));
     }),
     getUserById: jest.fn().mockImplementation(id => {
       if (id === '1') {
         return Promise.resolve(
-          new User('1', 'test@example.com', 'hashedPassword'),
+          createUser('1', 'test@example.com', 'hashedPassword'),
         );
       }
       return Promise.reject(
@@ -26,7 +26,7 @@ export function createMockUserService(): jest.Mocked<IUserService> {
     }),
     updateUserProfile: jest.fn().mockImplementation((id, data) => {
       return Promise.resolve(
-        new User(id, data.email || 'updated@example.com', 'hashedPassword'),
+        createUser(id, data.email || 'updated@example.com', 'hashedPassword'),
       );
     }),
   };

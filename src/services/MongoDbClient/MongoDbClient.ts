@@ -1,6 +1,6 @@
 // src/services/database/MongoDbClient.ts
 import { injectable, inject } from 'inversify';
-import { MongoClient, Db, MongoServerError } from 'mongodb';
+import mongoose from 'mongoose';
 
 import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
@@ -13,8 +13,7 @@ import type {
 
 @injectable()
 export class MongoDbClient implements IMongoDbClient {
-  private client: MongoClient | null = null;
-  private db: Db | null = null;
+  private connection: mongoose.Connection | null = null;
 
   constructor(
     @inject(TYPES.Config) private config: IConfig,
@@ -22,7 +21,7 @@ export class MongoDbClient implements IMongoDbClient {
   ) {}
 
   async connect(): Promise<void> {
-    if (this.client) {
+    if (this.connection) {
       return; // Already connected
     }
 
@@ -39,25 +38,29 @@ export class MongoDbClient implements IMongoDbClient {
           throw new Error('DATABASE_URL is not defined in the configuration');
         }
 
-        this.client = await MongoClient.connect(this.config.DATABASE_URL, {
+        await mongoose.connect(this.config.DATABASE_URL, {
           connectTimeoutMS: this.config.MONGO_CONNECT_TIMEOUT_MS,
           serverSelectionTimeoutMS:
             this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS,
         });
-        this.db = this.client.db();
+
+        this.connection = mongoose.connection;
+
+        this.connection.on('error', err => {
+          this.logger.error('MongoDB connection error:', err);
+        });
+
+        this.connection.on('disconnected', () => {
+          this.logger.warn('MongoDB disconnected. Attempting to reconnect...');
+          this.connect();
+        });
+
         this.logger.info('Successfully connected to the database');
 
         return;
       } catch (error) {
-        let errorMessage =
+        const errorMessage =
           error instanceof Error ? error.message : String(error);
-
-        if (error instanceof MongoServerError) {
-          errorMessage += ` (Code: ${error.code}, CodeName: ${error.codeName})`;
-          if (error.errmsg) {
-            errorMessage += ` Details: ${error.errmsg}`;
-          }
-        }
 
         this.logger.warn(
           `Failed to connect to the database (attempt ${attempt}/${maxRetries}): ${errorMessage}`,
@@ -79,18 +82,17 @@ export class MongoDbClient implements IMongoDbClient {
     }
   }
 
-  getDb(): Db {
-    if (!this.db) {
+  getDb(): mongoose.Connection {
+    if (!this.connection) {
       throw new AppError(500, 'Database not connected. Call connect() first.');
     }
-    return this.db;
+    return this.connection;
   }
 
   async close(): Promise<void> {
-    if (this.client) {
-      await this.client.close();
-      this.client = null;
-      this.db = null;
+    if (this.connection) {
+      await mongoose.disconnect();
+      this.connection = null;
       this.logger.info('Database connection closed');
     }
   }

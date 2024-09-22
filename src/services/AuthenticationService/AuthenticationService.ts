@@ -1,7 +1,6 @@
 // src/services/auth/AuthenticationService.ts
 import { injectable, inject } from 'inversify';
 
-import { User } from '../../data/models/User.js';
 import {
   InvalidCredentialsError,
   InvalidRefreshTokenError,
@@ -15,6 +14,7 @@ import type {
   ITokenBlacklistService,
   IBcryptService,
   ILogger,
+  IUser,
 } from '../../interfaces/index.js';
 
 @injectable()
@@ -32,7 +32,7 @@ export class AuthenticationService implements IAuthenticationService {
     email: string,
     password: string,
     shortLived: boolean = false,
-  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
+  ): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
     const user = await this.userRepository.findByEmail(email);
     if (!user || !(await this.bcryptService.compare(password, user.password))) {
       this.logger.warn(`Failed login attempt for email: ${email}`);
@@ -41,15 +41,15 @@ export class AuthenticationService implements IAuthenticationService {
     this.logger.info(`Successful login for user: ${email}`);
     const accessToken = shortLived
       ? this.tokenService.generateShortLivedAccessToken({
-          id: user.id,
+          id: user._id,
           email: user.email,
         })
       : this.tokenService.generateAccessToken({
-          id: user.id,
+          id: user._id,
           email: user.email,
         });
     const refreshToken = this.tokenService.generateRefreshToken({
-      id: user.id,
+      id: user._id,
     });
     return { user, accessToken, refreshToken };
   }
@@ -74,11 +74,11 @@ export class AuthenticationService implements IAuthenticationService {
       );
 
       const newAccessToken = this.tokenService.generateAccessToken({
-        id: user.id,
+        id: user._id,
         email: user.email,
       });
       const newRefreshToken = this.tokenService.generateRefreshToken({
-        id: user.id,
+        id: user._id,
       });
 
       this.logger.info(`Token refreshed for user: ${user.email}`);

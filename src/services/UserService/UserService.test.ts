@@ -8,7 +8,7 @@ import {
   createMockBcryptService,
   createMockLogger,
 } from '../../__mocks__';
-import { User } from '../../data/models/User';
+import { createUser } from '../../data/models/User';
 import { UserAlreadyExistsError, UserNotFoundError } from '../../utils/errors';
 import { TYPES } from '../../utils/types';
 
@@ -44,7 +44,7 @@ describe('UserService', () => {
       mockUserRepository.findByEmail.mockResolvedValue(undefined);
       mockBcryptService.hash.mockResolvedValue(hashedPassword);
       mockUserRepository.create.mockResolvedValue(
-        new User('1', email, hashedPassword),
+        createUser('1', email, hashedPassword),
       );
 
       const result = await userService.registerUser(email, password);
@@ -55,7 +55,7 @@ describe('UserService', () => {
         email,
         hashedPassword,
       );
-      expect(result).toBeInstanceOf(User);
+
       expect(result.email).toBe(email);
       expect(result.password).toBe(hashedPassword);
       expect(mockLogger.info).toHaveBeenCalledWith(
@@ -68,7 +68,7 @@ describe('UserService', () => {
       const password = 'password123';
 
       mockUserRepository.findByEmail.mockResolvedValue(
-        new User('1', email, 'existingHashedPassword'),
+        createUser('1', email, 'existingHashedPassword'),
       );
 
       await expect(userService.registerUser(email, password)).rejects.toThrow(
@@ -83,7 +83,7 @@ describe('UserService', () => {
   describe('getUserById', () => {
     it('should return a user when found', async () => {
       const userId = '1';
-      const user = new User(userId, 'test@example.com', 'hashedPassword');
+      const user = createUser(userId, 'test@example.com', 'hashedPassword');
 
       mockUserRepository.findById.mockResolvedValue(user);
 
