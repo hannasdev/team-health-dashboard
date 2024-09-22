@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.7](https://github.com/your-username/your-repo/compare/v2.0.6...v2.0.7) (2024-09-22)
+
+
+### Bug Fixes
+
+* prevent push version bump loop ([82d39d8](https://github.com/your-username/your-repo/commit/82d39d8d23eaa951148a84851db730770435287f))
+
 ### [2.0.6](https://github.com/your-username/your-repo/compare/v2.0.5...v2.0.6) (2024-09-22)
 
 ### [2.0.5](https://github.com/your-username/your-repo/compare/v2.0.4...v2.0.5) (2024-09-22)
