@@ -80,8 +80,8 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureMiddleware(): void {
-    this.expressApp.use(bodyParser.json());
-    this.expressApp.use(bodyParser.urlencoded({ extended: true }));
+    this.expressApp.use(express.json());
+    this.expressApp.use(express.urlencoded({ extended: true }));
   }
 
   private configureRoutes(): void {
@@ -95,6 +95,10 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureErrorHandling(): void {
-    this.expressApp.use(this.errorHandler.handle);
+    this.expressApp.use(
+      (err: Error, req: Request, res: Response, next: NextFunction) => {
+        this.errorHandler.handle(err, req, res, next);
+      },
+    );
   }
 }
