@@ -11,7 +11,7 @@ export_env() {
       # Export the variable
       export "$key=$value"
     fi
-  done < .env
+  done < .env.e2e
 }
 
 # Check if Docker Compose is installed
