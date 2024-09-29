@@ -1,5 +1,4 @@
 // src/TeamHealthDashboardApp.ts
-import bodyParser from 'body-parser';
 import cors from 'cors';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
