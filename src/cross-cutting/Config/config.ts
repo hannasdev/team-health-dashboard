@@ -116,7 +116,6 @@ export class Config implements IConfig {
 
   private validate(): void {
     const requiredEnvVars: (keyof IConfig)[] = [
-      'CORS_ORIGIN',
       'DATABASE_URL',
       'GOOGLE_SHEETS_CLIENT_EMAIL',
       'GOOGLE_SHEETS_ID',
