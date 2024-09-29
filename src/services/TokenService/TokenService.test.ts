@@ -9,6 +9,11 @@ import {
 } from '../../__mocks__/index.js';
 import { Config } from '../../cross-cutting/Config/config';
 import { TYPES } from '../../utils/types';
+import {
+  InvalidResetTokenError,
+  InvalidRefreshTokenError,
+  UnauthorizedError,
+} from '../../utils/errors.js';
 
 describe('TokenService', () => {
   let tokenService: TokenService;
@@ -48,6 +53,29 @@ describe('TokenService', () => {
         { expiresIn: mockConfig.ACCESS_TOKEN_EXPIRY },
       );
     });
+
+    it('should use custom expiresIn value when provided', () => {
+      const payload = { id: '123', email: 'test@example.com' };
+      const customExpiresIn = '30m';
+      mockJwtService.sign.mockReturnValue('custom_token');
+
+      tokenService.generateAccessToken(payload, customExpiresIn);
+
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        payload,
+        mockConfig.JWT_SECRET,
+        { expiresIn: customExpiresIn },
+      );
+    });
+
+    it('should throw an error for invalid expiresIn value', () => {
+      const payload = { id: '123', email: 'test@example.com' };
+      const invalidExpiresIn = 'invalid';
+
+      expect(() =>
+        tokenService.generateAccessToken(payload, invalidExpiresIn),
+      ).toThrow('Invalid expiresIn value');
+    });
   });
 
   describe('generateRefreshToken', () => {
@@ -67,10 +95,48 @@ describe('TokenService', () => {
     });
   });
 
+  describe('generatePasswordResetToken', () => {
+    it('should generate a password reset token with correct payload and options', () => {
+      const payload = { id: '123' };
+      const expectedToken = 'mocked_reset_token';
+      mockJwtService.sign.mockReturnValue(expectedToken);
+
+      const result = tokenService.generatePasswordResetToken(payload);
+
+      expect(result).toBe(expectedToken);
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        payload,
+        mockConfig.JWT_SECRET,
+        { expiresIn: '1h' },
+      );
+    });
+  });
+
+  describe('generateShortLivedAccessToken', () => {
+    it('should generate a short-lived access token with correct payload and options', () => {
+      const payload = { id: '123', email: 'test@example.com' };
+      const expectedToken = 'mocked_short_lived_token';
+      mockJwtService.sign.mockReturnValue(expectedToken);
+
+      const result = tokenService.generateShortLivedAccessToken(payload);
+
+      expect(result).toBe(expectedToken);
+      expect(mockJwtService.sign).toHaveBeenCalledWith(
+        payload,
+        mockConfig.JWT_SECRET,
+        { expiresIn: '1m' },
+      );
+    });
+  });
+
   describe('validateAccessToken', () => {
     it('should validate an access token and return the payload', () => {
       const token = 'valid_access_token';
-      const expectedPayload = { id: '123', email: 'test@example.com' };
+      const expectedPayload = {
+        id: '123',
+        email: 'test@example.com',
+        exp: 1234567890,
+      };
       mockJwtService.verify.mockReturnValue(expectedPayload);
 
       const result = tokenService.validateAccessToken(token);
@@ -81,12 +147,23 @@ describe('TokenService', () => {
         mockConfig.JWT_SECRET,
       );
     });
+
+    it('should throw UnauthorizedError for invalid access token', () => {
+      const token = 'invalid_access_token';
+      mockJwtService.verify.mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
+
+      expect(() => tokenService.validateAccessToken(token)).toThrow(
+        UnauthorizedError,
+      );
+    });
   });
 
   describe('validateRefreshToken', () => {
     it('should validate a refresh token and return the payload', () => {
       const token = 'valid_refresh_token';
-      const expectedPayload = { id: '123' };
+      const expectedPayload = { id: '123', exp: 1234567890 };
       mockJwtService.verify.mockReturnValue(expectedPayload);
 
       const result = tokenService.validateRefreshToken(token);
@@ -95,6 +172,44 @@ describe('TokenService', () => {
       expect(mockJwtService.verify).toHaveBeenCalledWith(
         token,
         mockConfig.REFRESH_TOKEN_SECRET,
+      );
+    });
+
+    it('should throw InvalidRefreshTokenError for invalid refresh token', () => {
+      const token = 'invalid_refresh_token';
+      mockJwtService.verify.mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
+
+      expect(() => tokenService.validateRefreshToken(token)).toThrow(
+        InvalidRefreshTokenError,
+      );
+    });
+  });
+
+  describe('validatePasswordResetToken', () => {
+    it('should validate a password reset token and return the payload', () => {
+      const token = 'valid_reset_token';
+      const expectedPayload = { id: '123' };
+      mockJwtService.verify.mockReturnValue(expectedPayload);
+
+      const result = tokenService.validatePasswordResetToken(token);
+
+      expect(result).toEqual(expectedPayload);
+      expect(mockJwtService.verify).toHaveBeenCalledWith(
+        token,
+        mockConfig.JWT_SECRET,
+      );
+    });
+
+    it('should throw InvalidResetTokenError for invalid reset token', () => {
+      const token = 'invalid_reset_token';
+      mockJwtService.verify.mockImplementation(() => {
+        throw new Error('Invalid token');
+      });
+
+      expect(() => tokenService.validatePasswordResetToken(token)).toThrow(
+        InvalidResetTokenError,
       );
     });
   });
@@ -109,6 +224,43 @@ describe('TokenService', () => {
 
       expect(result).toEqual(expectedDecodedToken);
       expect(mockJwtService.decode).toHaveBeenCalledWith(token);
+    });
+  });
+
+  describe('validateExpiresIn', () => {
+    it('should accept valid number of seconds', () => {
+      const validExpiresIn = 3600;
+      expect(() =>
+        (tokenService as any).validateExpiresIn(validExpiresIn),
+      ).not.toThrow();
+    });
+
+    it('should accept valid string of seconds', () => {
+      const validExpiresIn = '3600';
+      expect(() =>
+        (tokenService as any).validateExpiresIn(validExpiresIn),
+      ).not.toThrow();
+    });
+
+    it('should accept valid timespan string', () => {
+      const validExpiresIn = '1h';
+      expect(() =>
+        (tokenService as any).validateExpiresIn(validExpiresIn),
+      ).not.toThrow();
+    });
+
+    it('should throw error for invalid timespan string', () => {
+      const invalidExpiresIn = '1y'; // 'y' is not a valid timespan unit
+      expect(() =>
+        (tokenService as any).validateExpiresIn(invalidExpiresIn),
+      ).toThrow('Invalid expiresIn value');
+    });
+
+    it('should throw error for non-numeric string', () => {
+      const invalidExpiresIn = 'abc';
+      expect(() =>
+        (tokenService as any).validateExpiresIn(invalidExpiresIn),
+      ).toThrow('Invalid expiresIn value');
     });
   });
 });

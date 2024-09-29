@@ -25,14 +25,20 @@ export class TokenService implements ITokenService {
     payload: { id: string; email: string },
     expiresIn?: string | number,
   ): string {
+    const validExpiresIn = this.validateExpiresIn(
+      expiresIn || this.config.ACCESS_TOKEN_EXPIRY,
+    );
     return this.jwtService.sign(payload, this.config.JWT_SECRET, {
-      expiresIn: expiresIn || this.config.ACCESS_TOKEN_EXPIRY,
+      expiresIn: validExpiresIn,
     });
   }
 
   public generateRefreshToken(payload: { id: string }): string {
+    const validExpiresIn = this.validateExpiresIn(
+      this.config.REFRESH_TOKEN_EXPIRY,
+    );
     return this.jwtService.sign(payload, this.config.REFRESH_TOKEN_SECRET, {
-      expiresIn: this.config.REFRESH_TOKEN_EXPIRY,
+      expiresIn: validExpiresIn,
     });
   }
 
@@ -96,6 +102,23 @@ export class TokenService implements ITokenService {
 
   public decodeToken(token: string): any {
     return this.jwtService.decode(token);
+  }
+
+  private validateExpiresIn(
+    value: string | number | undefined,
+  ): string | number {
+    if (
+      typeof value === 'number' ||
+      (typeof value === 'string' && /^\d+$/.test(value))
+    ) {
+      return parseInt(value as string, 10);
+    }
+    if (typeof value === 'string' && /^(\d+)([smhdw])$/.test(value)) {
+      return value;
+    }
+    throw new Error(
+      'Invalid expiresIn value. Must be a number of seconds or a string representing a timespan (e.g., "1d", "2h", "30m").',
+    );
   }
 }
 
