@@ -6,6 +6,7 @@ import { TokenService } from './TokenService';
 import {
   createMockJwtService,
   createMockConfig,
+  createMockLogger,
 } from '../../__mocks__/index.js';
 import { Config } from '../../cross-cutting/Config/config';
 import { TYPES } from '../../utils/types';
@@ -19,6 +20,7 @@ describe('TokenService', () => {
   let tokenService: TokenService;
   let mockJwtService: ReturnType<typeof createMockJwtService>;
   let mockConfig: ReturnType<typeof createMockConfig>;
+  let mockLogger: ReturnType<typeof createMockLogger>;
   let container: Container;
 
   beforeEach(() => {
@@ -28,11 +30,13 @@ describe('TokenService', () => {
     // Create mock instances
     mockJwtService = createMockJwtService();
     mockConfig = createMockConfig();
+    mockLogger = createMockLogger();
 
     // Set up the DI container
     container = new Container();
     container.bind(TYPES.JwtService).toConstantValue(mockJwtService);
     container.bind(TYPES.Config).toConstantValue(mockConfig);
+    container.bind(TYPES.Logger).toConstantValue(mockLogger);
 
     // Create an instance of TokenService
     tokenService = container.resolve(TokenService);
@@ -43,6 +47,7 @@ describe('TokenService', () => {
       const payload = { id: '123', email: 'test@example.com' };
       const expectedToken = 'mocked_access_token';
       mockJwtService.sign.mockReturnValue(expectedToken);
+      mockConfig.ACCESS_TOKEN_EXPIRY = '15m';
 
       const result = tokenService.generateAccessToken(payload);
 
@@ -50,7 +55,10 @@ describe('TokenService', () => {
       expect(mockJwtService.sign).toHaveBeenCalledWith(
         payload,
         mockConfig.JWT_SECRET,
-        { expiresIn: mockConfig.ACCESS_TOKEN_EXPIRY },
+        { expiresIn: '15m' },
+      );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('Generating access token'),
       );
     });
 
@@ -66,6 +74,9 @@ describe('TokenService', () => {
         mockConfig.JWT_SECRET,
         { expiresIn: customExpiresIn },
       );
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('30m'),
+      );
     });
 
     it('should throw an error for invalid expiresIn value', () => {
@@ -75,6 +86,9 @@ describe('TokenService', () => {
       expect(() =>
         tokenService.generateAccessToken(payload, invalidExpiresIn),
       ).toThrow('Invalid expiresIn value');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid expiresIn value'),
+      );
     });
   });
 
@@ -233,6 +247,9 @@ describe('TokenService', () => {
       expect(() =>
         (tokenService as any).validateExpiresIn(validExpiresIn),
       ).not.toThrow();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('3600'),
+      );
     });
 
     it('should accept valid string of seconds', () => {
@@ -240,6 +257,9 @@ describe('TokenService', () => {
       expect(() =>
         (tokenService as any).validateExpiresIn(validExpiresIn),
       ).not.toThrow();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('3600'),
+      );
     });
 
     it('should accept valid timespan string', () => {
@@ -247,6 +267,9 @@ describe('TokenService', () => {
       expect(() =>
         (tokenService as any).validateExpiresIn(validExpiresIn),
       ).not.toThrow();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('1h'),
+      );
     });
 
     it('should throw error for invalid timespan string', () => {
@@ -254,6 +277,9 @@ describe('TokenService', () => {
       expect(() =>
         (tokenService as any).validateExpiresIn(invalidExpiresIn),
       ).toThrow('Invalid expiresIn value');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('1y'),
+      );
     });
 
     it('should throw error for non-numeric string', () => {
@@ -261,6 +287,18 @@ describe('TokenService', () => {
       expect(() =>
         (tokenService as any).validateExpiresIn(invalidExpiresIn),
       ).toThrow('Invalid expiresIn value');
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('abc'),
+      );
+    });
+
+    it('should use the provided value when it is valid', () => {
+      const validExpiresIn = '2h';
+      const result = (tokenService as any).validateExpiresIn(validExpiresIn);
+      expect(result).toBe('2h');
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        expect.stringContaining('2h'),
+      );
     });
   });
 });

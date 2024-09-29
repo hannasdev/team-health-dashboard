@@ -12,6 +12,7 @@ import type {
   ITokenService,
   IJwtService,
   IConfig,
+  ILogger,
 } from '../../interfaces/index.js';
 
 @injectable()
@@ -19,6 +20,7 @@ export class TokenService implements ITokenService {
   constructor(
     @inject(TYPES.JwtService) private jwtService: IJwtService,
     @inject(TYPES.Config) private config: IConfig,
+    @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
   public generateAccessToken(
@@ -28,6 +30,9 @@ export class TokenService implements ITokenService {
     const validExpiresIn = this.validateExpiresIn(
       expiresIn || this.config.ACCESS_TOKEN_EXPIRY,
     );
+    this.logger.debug(
+      `Generating access token with expiresIn: ${validExpiresIn}`,
+    );
     return this.jwtService.sign(payload, this.config.JWT_SECRET, {
       expiresIn: validExpiresIn,
     });
@@ -36,6 +41,9 @@ export class TokenService implements ITokenService {
   public generateRefreshToken(payload: { id: string }): string {
     const validExpiresIn = this.validateExpiresIn(
       this.config.REFRESH_TOKEN_EXPIRY,
+    );
+    this.logger.debug(
+      `Generating refresh token with expiresIn: ${validExpiresIn}`,
     );
     return this.jwtService.sign(payload, this.config.REFRESH_TOKEN_SECRET, {
       expiresIn: validExpiresIn,
@@ -104,9 +112,9 @@ export class TokenService implements ITokenService {
     return this.jwtService.decode(token);
   }
 
-  private validateExpiresIn(
-    value: string | number | undefined,
-  ): string | number {
+  private validateExpiresIn(value: string | number): string | number {
+    this.logger.debug(`Validating expiresIn value: ${value}`);
+
     if (
       typeof value === 'number' ||
       (typeof value === 'string' && /^\d+$/.test(value))
@@ -116,8 +124,10 @@ export class TokenService implements ITokenService {
     if (typeof value === 'string' && /^(\d+)([smhdw])$/.test(value)) {
       return value;
     }
+
+    this.logger.error(`Invalid expiresIn value: ${value}`);
     throw new Error(
-      'Invalid expiresIn value. Must be a number of seconds or a string representing a timespan (e.g., "1d", "2h", "30m").',
+      `Invalid expiresIn value: ${value}. Must be a number of seconds or a string representing a timespan (e.g., "1d", "2h", "30m").`,
     );
   }
 }
