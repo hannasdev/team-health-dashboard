@@ -13,6 +13,7 @@ export function createMockConfig(): jest.Mocked<IConfig> {
     JWT_SECRET: 'jwt_secret_test',
     REFRESH_TOKEN_SECRET: 'refresh_token_test',
     DATABASE_URL: 'mongodb://localhost:27017/test_db',
+    DATABASE_RETRY_DELAY: 10,
     MONGO_CONNECT_TIMEOUT_MS: 1000,
     MONGO_SERVER_SELECTION_TIMEOUT_MS: 1000,
     LOG_LEVEL: 'info',

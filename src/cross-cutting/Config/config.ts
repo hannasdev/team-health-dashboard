@@ -16,8 +16,10 @@ export class Config implements IConfig {
     env?: Partial<IConfig>,
     customEnvLoader?: () => NodeJS.ProcessEnv,
   ) {
-    if (process.env.NODE_ENV !== 'test' && !customEnvLoader) {
-      this.loadEnvFile();
+    if (process.env.NODE_ENV === 'e2e' && !customEnvLoader) {
+      this.loadEnvFile('.env.e2e');
+    } else if (process.env.NODE_ENV !== 'test' && !customEnvLoader) {
+      this.loadEnvFile('.env');
     }
     this.config = {
       ...this.loadDefaults(),
@@ -42,11 +44,12 @@ export class Config implements IConfig {
       ACCESS_TOKEN_EXPIRY: '15m',
       BCRYPT_ROUNDS: 10,
       CORS_ORIGIN: '*',
-      DATABASE_URL: 'default-database-url',
-      GOOGLE_SHEETS_CLIENT_EMAIL: 'default-client-email',
-      GOOGLE_SHEETS_ID: 'default-sheet-id',
-      GOOGLE_SHEETS_PRIVATE_KEY: '',
-      JWT_SECRET: 'default-jwt-secret',
+      DATABASE_URL: 'insert-database-url-here',
+      DATABASE_RETRY_DELAY: 5000,
+      GOOGLE_SHEETS_CLIENT_EMAIL: 'insert-client-email-here',
+      GOOGLE_SHEETS_ID: 'insert-google-sheets-id-here',
+      GOOGLE_SHEETS_PRIVATE_KEY: 'insert-private-key-here',
+      JWT_SECRET: 'insert-jwt-secret-here',
       LOG_FILE_PATH: './logs',
       LOG_FORMAT: 'json',
       LOG_LEVEL: 'info',
@@ -54,10 +57,10 @@ export class Config implements IConfig {
       MONGO_SERVER_SELECTION_TIMEOUT_MS: 30000,
       PORT: 3000,
       REFRESH_TOKEN_EXPIRY: '7d',
-      REFRESH_TOKEN_SECRET: 'default-refresh-token-secret',
-      REPO_OWNER: 'default-repo-owner',
-      REPO_REPO: 'default-repo-repo',
-      REPO_TOKEN: 'default-repo-token',
+      REFRESH_TOKEN_SECRET: 'insert-refresh-token-secret-here',
+      REPO_OWNER: 'insert-repo-owner-here',
+      REPO_REPO: 'insert-repo-repo-here',
+      REPO_TOKEN: 'insert-repo-token-here',
     };
   }
 
@@ -73,6 +76,9 @@ export class Config implements IConfig {
         : undefined,
       CORS_ORIGIN: envVars.CORS_ORIGIN || undefined,
       DATABASE_URL: envVars.DATABASE_URL || undefined,
+      DATABASE_RETRY_DELAY: envVars.DATABASE_RETRY_DELAY
+        ? parseInt(envVars.DATABASE_RETRY_DELAY, 10)
+        : undefined,
       GOOGLE_SHEETS_CLIENT_EMAIL:
         envVars.GOOGLE_SHEETS_CLIENT_EMAIL || undefined,
       GOOGLE_SHEETS_ID: envVars.GOOGLE_SHEETS_ID || undefined,
@@ -97,25 +103,29 @@ export class Config implements IConfig {
     };
   }
 
-  private loadEnvFile(): void {
-    const envPath = '.env';
-    const envFilePath = path.resolve(process.cwd(), envPath);
+  private loadEnvFile(envFile: string = '.env'): void {
+    // console.log(`Attempting to load ${envFile} file`);
+    const envFilePath = path.resolve(process.cwd(), envFile);
     if (fs.existsSync(envFilePath)) {
+      // console.log(`${envFile} file exists, calling dotenv.config`);
       dotenv.config({ path: envFilePath });
+    } else {
+      // console.log(`${envFile} file does not exist`);
     }
   }
 
   private validate(): void {
     const requiredEnvVars: (keyof IConfig)[] = [
+      'CORS_ORIGIN',
+      'DATABASE_URL',
       'GOOGLE_SHEETS_CLIENT_EMAIL',
-      'GOOGLE_SHEETS_PRIVATE_KEY',
       'GOOGLE_SHEETS_ID',
-      'REPO_TOKEN',
-      'REPO_OWNER',
-      'REPO_REPO',
+      'GOOGLE_SHEETS_PRIVATE_KEY',
       'JWT_SECRET',
       'REFRESH_TOKEN_SECRET',
-      'DATABASE_URL',
+      'REPO_OWNER',
+      'REPO_REPO',
+      'REPO_TOKEN',
     ];
 
     const missingVars = requiredEnvVars.filter(
@@ -148,28 +158,92 @@ export class Config implements IConfig {
         switch (key) {
           case 'ACCESS_TOKEN_EXPIRY':
             comment =
-              '# Duration for access token validity (e.g., 15m, 1h, 1d)';
+              '# [optional, default: "15m"] Duration for access token validity (e.g., 15m, 1h, 1d).';
             break;
           case 'BCRYPT_ROUNDS':
-            comment = '# Number of bcrypt hashing rounds';
+            comment =
+              '# [optional, default: 10] Number of bcrypt hashing rounds';
             break;
           case 'CORS_ORIGIN':
-            comment = comment =
-              '# Allowed CORS origins (comma-separated list or "*" for all)';
+            comment =
+              '# [optional, default: "*"] Allowed CORS origins (comma-separated list or "*" for all)';
             break;
           case 'DATABASE_URL':
-            comment = '# MongoDB connection string';
+            comment =
+              '# [required, default: "insert-database-url-here"] MongoDB connection string';
+            value = 'insert-database-url-here';
+            break;
+          case 'DATABASE_RETRY_DELAY':
+            comment =
+              '# [optional, default: 5000] Delay between MongoDB connection retries (in milliseconds)';
+            break;
+          case 'GOOGLE_SHEETS_CLIENT_EMAIL':
+            comment =
+              '# [required, default: "insert-client-email-here"] Google Sheets client email';
+            value = 'insert-client-email-here';
+            break;
+          case 'GOOGLE_SHEETS_ID':
+            comment =
+              '# [required, default: "insert-google-sheets-id-here"] Google Sheets ID';
+            value = 'insert-google-sheets-id-here';
+            break;
+          case 'GOOGLE_SHEETS_PRIVATE_KEY':
+            comment =
+              '# [required, default: "insert-private-key-here"] Google Sheets private key';
+            value = 'insert-private-key-here';
             break;
           case 'JWT_SECRET':
-          case 'REFRESH_TOKEN_SECRET':
             comment =
-              '# Secret key for JWT signing (change this to a secure random string)';
-            value = 'your-secret-key-here';
+              '# [required, default: "insert-jwt-secret-here"]Secret key for JWT signing (change this to a secure random string)';
+            value = 'insert-jwt-secret-here';
+            break;
+          case 'LOG_FILE_PATH':
+            comment = '# [optional, default: "./logs"] Path to the log file';
+            break;
+          case 'LOG_FORMAT':
+            comment =
+              '# [optional, default: "combined"] Log format (e.g., "combined", "common", "dev", "short", "tiny")';
+            break;
+          case 'LOG_LEVEL':
+            comment =
+              '# [optional, default: "info"] Log level (e.g., "debug", "info", "warn", "error")';
+            break;
+          case 'MONGO_CONNECT_TIMEOUT_MS':
+            comment =
+              '# [optional, default: 30000] Timeout for MongoDB connection (in milliseconds)';
+            break;
+          case 'MONGO_SERVER_SELECTION_TIMEOUT_MS':
+            comment =
+              '# [optional, default: 30000] Timeout for MongoDB server selection (in milliseconds)';
             break;
           case 'PORT':
-            comment = '# Port on which the server will listen';
+            comment =
+              '# [optional, default: 3000] Port on which the server will listen';
             break;
-          // Add comments for other variables as needed
+          case 'REFRESH_TOKEN_EXPIRY':
+            comment =
+              '# [optional, default: "7d"] Duration for refresh token validity (e.g., 7d, 14d, 30d)';
+            break;
+          case 'REFRESH_TOKEN_SECRET':
+            comment =
+              '# [required, default: "insert-refresh-token-secret-here"] Secret key for JWT signing (change this to a secure random string)';
+            value = 'insert-refresh-token-secret-here';
+            break;
+          case 'REPO_OWNER':
+            comment =
+              '# [required, default: "insert-repo-owner-here"] GitHub repository owner';
+            value = 'insert-repo-owner-here';
+            break;
+          case 'REPO_REPO':
+            comment =
+              '# [required, default: "insert-repo-repo-here"] GitHub repository name';
+            value = 'insert-repo-repo-here';
+            break;
+          case 'REPO_TOKEN':
+            comment =
+              '# [required, default: "insert-repo-token-here"] GitHub repository token';
+            value = 'insert-repo-token-here';
+            break;
         }
         return `${comment}\n${key}=${value}`;
       })
@@ -224,12 +298,16 @@ export class Config implements IConfig {
     return this.config.DATABASE_URL;
   }
 
+  public get DATABASE_RETRY_DELAY(): number {
+    return this.config.DATABASE_RETRY_DELAY;
+  }
+
   public get MONGO_CONNECT_TIMEOUT_MS(): number {
-    return this.config.MONGO_CONNECT_TIMEOUT_MS || 30000;
+    return this.config.MONGO_CONNECT_TIMEOUT_MS;
   }
 
   public get MONGO_SERVER_SELECTION_TIMEOUT_MS(): number {
-    return this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS || 30000;
+    return this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS;
   }
 
   public get LOG_LEVEL(): string {

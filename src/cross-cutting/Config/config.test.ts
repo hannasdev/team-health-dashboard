@@ -185,7 +185,7 @@ describe('Config', () => {
     );
     expect(mockWriteFileSync).toHaveBeenCalledWith(
       '/fake/path/.env',
-      expect.stringContaining('JWT_SECRET=your-secret-key-here'),
+      expect.stringContaining('PORT=3000'),
     );
 
     mockWriteFileSync.mockRestore();
