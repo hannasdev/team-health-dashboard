@@ -21,7 +21,5 @@ export function createMockConfig(): jest.Mocked<IConfig> {
     BCRYPT_ROUNDS: 1,
     ACCESS_TOKEN_EXPIRY: '15m',
     REFRESH_TOKEN_EXPIRY: '1d',
-    SSE_TIMEOUT: 120000,
-    HEARTBEAT_INTERVAL: 15000,
   };
 }
