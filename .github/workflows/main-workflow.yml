@@ -59,6 +59,9 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/docker-setup
+        with:
+          docker-username: ${{ secrets.DOCKER_USERNAME }}
+          docker-password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Get version
         id: package-version
         uses: martinbeentjes/npm-get-version-action@main
@@ -69,8 +72,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_USERNAME }}/your-image-name:latest
-            ${{ secrets.DOCKER_USERNAME }}/your-image-name:${{ steps.package-version.outputs.current-version }}
+            ${{ secrets.DOCKER_USERNAME }}/team-health-dashboard:latest
+            ${{ secrets.DOCKER_USERNAME }}/team-health-dashboard:${{ steps.package-version.outputs.current-version }}
           build-args: |
             NODE_ENV=production
           cache-from: type=gha,scope=docker-${{ github.sha }}

@@ -40,6 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/docker-setup
+        with:
+          docker-username: ${{ secrets.DOCKER_USERNAME }}
+          docker-password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Debug environment variables
         run: |
           echo "DATABASE_URL is set: ${{ secrets.DATABASE_URL != '' }}"
