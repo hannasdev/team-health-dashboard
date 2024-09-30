@@ -74,11 +74,11 @@ jobs:
           REPO_REPO: ${{ secrets.REPO_REPO }}
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
-          docker-compose --profile e2e-test build
-          docker-compose --profile e2e-test up --abort-on-container-exit --exit-code-from e2e-test-runner
+          docker compose --profile e2e-test build
+          docker compose --profile e2e-test up --abort-on-container-exit --exit-code-from e2e-test-runner
       - name: Display logs
         if: always()
-        run: docker-compose --profile e2e-test logs app-test
+        run: docker compose --profile e2e-test logs app-test
 
   check-breaking-changes:
     runs-on: ubuntu-latest
