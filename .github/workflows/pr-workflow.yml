@@ -84,8 +84,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for all branches and tags
+
+      - name: Get base and head SHAs
+        id: get_shas
+        run: |
+          echo "base_sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+
       - name: Check for breaking changes
         run: |
-          if git log --format=%B -n 1 ${{ github.event.pull_request.head.sha }} | grep -q "BREAKING CHANGE"; then
+          if git log --format=%B ${{ steps.get_shas.outputs.base_sha }}..${{ steps.get_shas.outputs.head_sha }} | grep -q "BREAKING CHANGE"; then
             echo "::warning ::This PR contains breaking changes. Please review carefully."
+          else
+            echo "No breaking changes detected."
           fi
