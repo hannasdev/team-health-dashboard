@@ -1,0 +1,31 @@
+name: 'Build and Cache'
+description: 'Builds the project and caches the results'
+inputs:
+  cache-key-prefix:
+    description: 'Prefix for the cache key'
+    required: true
+    default: 'build'
+runs:
+  using: 'composite'
+  steps:
+    - uses: ./.github/actions/setup-node
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ inputs.cache-key-prefix }}-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-${{ inputs.cache-key-prefix }}-
+    - name: Install dependencies
+      run: npm ci
+      shell: bash
+    - name: Build
+      run: npm run build
+      shell: bash
+    - name: Cache build
+      uses: actions/cache@v3
+      with:
+        path: |
+          dist
+          node_modules
+        key: ${{ runner.os }}-${{ inputs.cache-key-prefix }}-${{ github.sha }}-${{ hashFiles('**/package-lock.json') }}
