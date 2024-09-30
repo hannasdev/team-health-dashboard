@@ -1,3 +1,4 @@
+# .github/actions/setup-node/action.yml
 name: 'Setup Node.js'
 description: 'Sets up Node.js and installs dependencies'
 runs:
@@ -5,7 +6,7 @@ runs:
   steps:
     - uses: actions/setup-node@v4
       with:
-        node-version: ${{ env.NODE_VERSION }}
+        node-version: '20.16.0'
         cache: 'npm'
     - run: npm ci
       shell: bash
