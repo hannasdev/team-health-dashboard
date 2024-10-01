@@ -21,9 +21,13 @@ export class Config implements IConfig {
     } else if (process.env.NODE_ENV !== 'test' && !customEnvLoader) {
       this.loadEnvFile('.env');
     }
+    const defaults = this.loadDefaults();
+    const envConfig = this.loadFromEnv(customEnvLoader);
     this.config = {
-      ...this.loadDefaults(),
-      ...this.loadFromEnv(customEnvLoader),
+      ...defaults,
+      ...Object.fromEntries(
+        Object.entries(envConfig).filter(([_, v]) => v !== undefined),
+      ),
       ...env,
     };
     this.validate();
@@ -44,7 +48,7 @@ export class Config implements IConfig {
       ACCESS_TOKEN_EXPIRY: '15m',
       BCRYPT_ROUNDS: 10,
       CORS_ORIGIN: '*',
-      DATABASE_URL: 'insert-database-url-here',
+      DATABASE_URL: 'mongodb://localhost:27017/myapp',
       DATABASE_RETRY_DELAY: 5000,
       GOOGLE_SHEETS_CLIENT_EMAIL: 'insert-client-email-here',
       GOOGLE_SHEETS_ID: 'insert-google-sheets-id-here',
@@ -70,23 +74,22 @@ export class Config implements IConfig {
     const envVars = customEnvLoader ? customEnvLoader() : process.env;
 
     return {
-      ACCESS_TOKEN_EXPIRY: envVars.ACCESS_TOKEN_EXPIRY || undefined,
+      ACCESS_TOKEN_EXPIRY: envVars.ACCESS_TOKEN_EXPIRY,
       BCRYPT_ROUNDS: envVars.BCRYPT_ROUNDS
         ? parseInt(envVars.BCRYPT_ROUNDS, 10)
         : undefined,
-      CORS_ORIGIN: envVars.CORS_ORIGIN || undefined,
-      DATABASE_URL: envVars.DATABASE_URL || undefined,
+      CORS_ORIGIN: envVars.CORS_ORIGIN,
+      DATABASE_URL: envVars.DATABASE_URL,
       DATABASE_RETRY_DELAY: envVars.DATABASE_RETRY_DELAY
         ? parseInt(envVars.DATABASE_RETRY_DELAY, 10)
         : undefined,
-      GOOGLE_SHEETS_CLIENT_EMAIL:
-        envVars.GOOGLE_SHEETS_CLIENT_EMAIL || undefined,
-      GOOGLE_SHEETS_ID: envVars.GOOGLE_SHEETS_ID || undefined,
-      GOOGLE_SHEETS_PRIVATE_KEY: envVars.GOOGLE_SHEETS_PRIVATE_KEY || undefined,
-      JWT_SECRET: envVars.JWT_SECRET || undefined,
-      LOG_FILE_PATH: envVars.LOG_FILE_PATH || undefined,
-      LOG_FORMAT: envVars.LOG_FORMAT || undefined,
-      LOG_LEVEL: envVars.LOG_LEVEL || undefined,
+      GOOGLE_SHEETS_CLIENT_EMAIL: envVars.GOOGLE_SHEETS_CLIENT_EMAIL,
+      GOOGLE_SHEETS_ID: envVars.GOOGLE_SHEETS_ID,
+      GOOGLE_SHEETS_PRIVATE_KEY: envVars.GOOGLE_SHEETS_PRIVATE_KEY,
+      JWT_SECRET: envVars.JWT_SECRET,
+      LOG_FILE_PATH: envVars.LOG_FILE_PATH,
+      LOG_FORMAT: envVars.LOG_FORMAT,
+      LOG_LEVEL: envVars.LOG_LEVEL,
       MONGO_CONNECT_TIMEOUT_MS: envVars.MONGO_CONNECT_TIMEOUT_MS
         ? parseInt(envVars.MONGO_CONNECT_TIMEOUT_MS, 10)
         : undefined,
@@ -95,11 +98,11 @@ export class Config implements IConfig {
           ? parseInt(envVars.MONGO_SERVER_SELECTION_TIMEOUT_MS, 10)
           : undefined,
       PORT: envVars.PORT ? parseInt(envVars.PORT, 10) : undefined,
-      REFRESH_TOKEN_EXPIRY: envVars.REFRESH_TOKEN_EXPIRY || undefined,
-      REFRESH_TOKEN_SECRET: envVars.REFRESH_TOKEN_SECRET || undefined,
-      REPO_OWNER: envVars.REPO_OWNER || undefined,
-      REPO_REPO: envVars.REPO_REPO || undefined,
-      REPO_TOKEN: envVars.REPO_TOKEN || undefined,
+      REFRESH_TOKEN_EXPIRY: envVars.REFRESH_TOKEN_EXPIRY,
+      REFRESH_TOKEN_SECRET: envVars.REFRESH_TOKEN_SECRET,
+      REPO_OWNER: envVars.REPO_OWNER,
+      REPO_REPO: envVars.REPO_REPO,
+      REPO_TOKEN: envVars.REPO_TOKEN,
     };
   }
 
