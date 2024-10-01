@@ -13,6 +13,7 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
+
       - name: Check for version bump commit
         id: check_version_bump
         run: |
@@ -21,23 +22,43 @@ jobs:
           else
             echo "is_version_bump=false" >> $GITHUB_OUTPUT
           fi
+
       - uses: ./.github/actions/setup-node
         if: steps.check_version_bump.outputs.is_version_bump == 'false'
+
       - uses: ./.github/actions/build-and-cache
         if: steps.check_version_bump.outputs.is_version_bump == 'false'
         with:
           cache-key-prefix: main
-      - name: Bump version
+
+      - name: Bump version and update CHANGELOG
         if: steps.check_version_bump.outputs.is_version_bump == 'false'
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
-          npm run release
+
+          # Fetch all tags
+          git fetch --tags
+
+          # Run standard-version to bump version, update CHANGELOG, and create tag
+          npx standard-version
+
+          # Get the new version
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+          # Force update the tag to point to the new commit (in case it already existed)
+          git tag -fa v$NEW_VERSION -m "chore(release): $NEW_VERSION"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Push changes
         if: steps.check_version_bump.outputs.is_version_bump == 'false'
-        run: git push --follow-tags origin main
+        run: |
+          git push origin main --follow-tags --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+
       - name: Create GitHub Release
         if: steps.check_version_bump.outputs.is_version_bump == 'false'
         uses: actions/create-release@v1
