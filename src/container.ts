@@ -30,6 +30,7 @@ import { AuthController } from './presentation/controllers/AuthController/AuthCo
 import { HealthCheckController } from './presentation/controllers/HealthCheckController/HealthCheckController.js';
 import { MetricsController } from './presentation/controllers/MetricsController/MetricsController.js';
 import { AuthMiddleware } from './presentation/middleware/AuthMiddleware.js';
+import { CorsMiddleware } from './presentation/middleware/CorsMiddleware.js';
 import { ErrorHandler } from './presentation/middleware/ErrorHandler.js';
 import { AuthenticationService } from './services/AuthenticationService/AuthenticationService.js';
 import { BcryptService } from './services/BcryptService/index.js';
@@ -57,6 +58,7 @@ import type {
   IBcryptService,
   ICacheService,
   IConfig,
+  ICorsMiddleware,
   IErrorHandler,
   IGitHubClient,
   IGitHubMetricDocument,
@@ -64,7 +66,9 @@ import type {
   IGitHubRepository,
   IGitHubService,
   IGoogleSheetsClient,
+  IGoogleSheetsMetric,
   IGoogleSheetsRepository,
+  IGoogleSheetsService,
   IHealthCheckController,
   IJobQueueService,
   IJwtService,
@@ -82,8 +86,6 @@ import type {
   IUser,
   IUserRepository,
   IUserService,
-  IGoogleSheetsService,
-  IGoogleSheetsMetric,
 } from './interfaces/index.js';
 
 const config = Config.getInstance();
@@ -187,6 +189,7 @@ export function setupContainer(
   /**
    * !8.  Middleware (Can depend on services)
    */
+  container.bind<ICorsMiddleware>(TYPES.CorsMiddleware).to(CorsMiddleware);
   container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
   container
     .bind<IAuthenticationService>(TYPES.AuthenticationService)
