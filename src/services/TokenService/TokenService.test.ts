@@ -9,12 +9,12 @@ import {
   createMockLogger,
 } from '../../__mocks__/index.js';
 import { Config } from '../../cross-cutting/Config/config';
-import { TYPES } from '../../utils/types';
 import {
   InvalidResetTokenError,
   InvalidRefreshTokenError,
   UnauthorizedError,
 } from '../../utils/errors.js';
+import { TYPES } from '../../utils/types';
 
 describe('TokenService', () => {
   let tokenService: TokenService;
