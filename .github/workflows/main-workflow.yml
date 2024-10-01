@@ -37,17 +37,29 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
 
-          # Fetch all tags
+          # Fetch all tags and update local repository
           git fetch --tags
+          git pull origin main
+
+          # Get the current version
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
 
           # Run standard-version to bump version, update CHANGELOG, and create tag
-          npx standard-version
+          # Use --skip.tag to prevent tagging, we'll do it manually
+          npx standard-version --skip.tag
 
           # Get the new version
           NEW_VERSION=$(node -p "require('./package.json').version")
+
+          # If the version hasn't changed, manually bump it
+          if [ "$CURRENT_VERSION" == "$NEW_VERSION" ]; then
+            npm version patch
+            NEW_VERSION=$(node -p "require('./package.json').version")
+          fi
+
           echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
 
-          # Force update the tag to point to the new commit (in case it already existed)
+          # Manually create or update the tag
           git tag -fa v$NEW_VERSION -m "chore(release): $NEW_VERSION"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,7 +67,8 @@ jobs:
       - name: Push changes
         if: steps.check_version_bump.outputs.is_version_bump == 'false'
         run: |
-          git push origin main --follow-tags --force
+          git push origin main
+          git push origin v${{ env.NEW_VERSION }} --force
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
