@@ -33,7 +33,6 @@
     "release:patch": "standard-version --release-as patch"
   },
   "dependencies": {
-    "@jest/globals": "^29.7.0",
     "@octokit/graphql": "^8.1.1",
     "agenda": "^5.0.0",
     "bcrypt": "^5.1.1",
@@ -49,6 +48,7 @@
     "winston": "^3.14.2"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@commitlint/cli": "^19.5.0",
     "@commitlint/config-conventional": "^19.5.0",
     "@eslint/eslintrc": "^3.1.0",
