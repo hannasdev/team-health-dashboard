@@ -65,12 +65,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Push changes
-      if: steps.check_version_bump.outputs.is_version_bump == 'false'
-      run: |
-        git push origin main
-        git push origin v${{ env.NEW_VERSION }} --force
-      env:
-        GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        if: steps.check_version_bump.outputs.is_version_bump == 'false'
+        run: |
+          git push origin main
+          git push origin v${{ env.NEW_VERSION }} --force
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Create GitHub Release
         if: steps.check_version_bump.outputs.is_version_bump == 'false'
