@@ -10,7 +10,8 @@ import type { IConfig } from '../../interfaces/index.js';
 
 export class Config implements IConfig {
   private static instance: Config | null = null;
-  private config: IConfig;
+
+  private config: Omit<IConfig, 'getAllConfig'>;
 
   private constructor(
     env?: Partial<IConfig>,
@@ -21,15 +22,17 @@ export class Config implements IConfig {
     } else if (process.env.NODE_ENV !== 'test' && !customEnvLoader) {
       this.loadEnvFile('.env');
     }
-    const defaults = this.loadDefaults();
-    const envConfig = this.loadFromEnv(customEnvLoader);
+
     this.config = {
-      ...defaults,
+      ...this.loadDefaults(),
       ...Object.fromEntries(
-        Object.entries(envConfig).filter(([_, v]) => v !== undefined),
+        Object.entries(this.loadFromEnv(customEnvLoader)).filter(
+          ([_, v]) => v !== undefined,
+        ),
       ),
       ...env,
-    };
+    } as Omit<IConfig, 'getAllConfig'>;
+
     this.validate();
   }
 
@@ -43,7 +46,7 @@ export class Config implements IConfig {
     return Config.instance;
   }
 
-  private loadDefaults(): IConfig {
+  private loadDefaults(): Omit<IConfig, 'getAllConfig'> {
     return {
       ACCESS_TOKEN_EXPIRY: '15m',
       BCRYPT_ROUNDS: 10,
@@ -118,7 +121,7 @@ export class Config implements IConfig {
   }
 
   private validate(): void {
-    const requiredEnvVars: (keyof IConfig)[] = [
+    const requiredEnvVars: (keyof Omit<IConfig, 'getAllConfig'>)[] = [
       'DATABASE_URL',
       'GOOGLE_SHEETS_CLIENT_EMAIL',
       'GOOGLE_SHEETS_ID',
@@ -131,7 +134,7 @@ export class Config implements IConfig {
     ];
 
     const missingVars = requiredEnvVars.filter(
-      varName => !this.config[varName],
+      varName => !this.config[varName as keyof typeof this.config],
     );
 
     if (missingVars.length > 0) {
@@ -146,7 +149,7 @@ export class Config implements IConfig {
     Config.instance = null;
   }
 
-  public getAllConfig(): IConfig {
+  public getAllConfig(): Omit<IConfig, 'getAllConfig'> {
     return { ...this.config };
   }
 
