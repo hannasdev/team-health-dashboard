@@ -1,0 +1,9 @@
+# .github/actions/run-tests/action.yml
+name: 'Run Tests'
+description: 'Sets up environment and runs tests'
+runs:
+  using: 'composite'
+  steps:
+    - uses: ./.github/actions/setup-node
+    - run: NODE_OPTIONS=--max_old_space_size=4096 npm run test:unit
+      shell: bash
