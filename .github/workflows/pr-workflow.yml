@@ -1,61 +1,48 @@
-name: CI
+name: PR Workflow
 
 on:
   pull_request:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - uses: ./.github/actions/build-and-cache
         with:
-          node-version: '20.16.0'
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
-      - name: Build
-        run: npm run build
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist
+          cache-key-prefix: pr-${{ github.event.pull_request.number }}
 
   test-unit:
     needs: build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup-node
+      - name: Restore cache
+        uses: actions/cache@v3
         with:
-          node-version: '20.16.0'
-          cache: 'npm'
-      - name: Install dependencies
-        run: npm ci
+          path: |
+            dist
+            node_modules
+          key: ${{ runner.os }}-pr-${{ github.event.pull_request.number }}-${{ github.sha }}-${{ hashFiles('**/package-lock.json') }}
       - name: Run unit tests
-        run: |
-          NODE_OPTIONS=--max_old_space_size=4096 npm run test:unit
+        run: NODE_OPTIONS=--max_old_space_size=4096 npm run test:unit
 
   e2e-test:
     needs: [build, test-unit]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Install Docker Compose
-        run: |
-          sudo curl -L "https://github.com/docker/compose/releases/download/v2.17.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
-          docker-compose --version
-
+      - uses: ./.github/actions/docker-setup
+        with:
+          docker-username: ${{ secrets.DOCKER_USERNAME }}
+          docker-password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Debug environment variables
         run: |
           echo "DATABASE_URL is set: ${{ secrets.DATABASE_URL != '' }}"
@@ -65,7 +52,6 @@ jobs:
           echo "REPO_TOKEN is set: ${{ secrets.REPO_TOKEN != '' }}"
           echo "REPO_OWNER is set: ${{ secrets.REPO_OWNER != '' }}"
           echo "REPO_REPO is set: ${{ secrets.REPO_REPO != '' }}"
-
       - name: Build and run E2E tests with Docker Compose
         env:
           API_URL: http://app-test:${{ secrets.PORT }}
@@ -88,30 +74,29 @@ jobs:
           REPO_REPO: ${{ secrets.REPO_REPO }}
           REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
         run: |
-          docker-compose --profile e2e-test build
-          docker-compose --profile e2e-test up --abort-on-container-exit --exit-code-from e2e-test-runner
-
+          docker compose --profile e2e-test build
+          docker compose --profile e2e-test up --abort-on-container-exit --exit-code-from e2e-test-runner
       - name: Display logs
         if: always()
-        run: docker-compose --profile e2e-test logs app-test
+        run: docker compose --profile e2e-test logs app-test
 
-    env:
-      API_URL: http://127.0.0.1:${{ secrets.PORT }}
-      CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      GOOGLE_SHEETS_CLIENT_EMAIL: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL }}
-      GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
-      GOOGLE_SHEETS_PRIVATE_KEY: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      LOG_FILE_PATH: ./logs
-      LOG_FORMAT: json
-      LOG_LEVEL: debug
-      MONGO_CONNECT_TIMEOUT_MS: 10000
-      MONGO_INITDB_ROOT_PASSWORD: example
-      MONGO_INITDB_ROOT_USERNAME: root
-      NODE_ENV: test
-      PORT: ${{ secrets.PORT }}
-      REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
-      REPO_OWNER: ${{ secrets.REPO_OWNER }}
-      REPO_REPO: ${{ secrets.REPO_REPO }}
-      REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+  check-breaking-changes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for all branches and tags
+
+      - name: Get base and head SHAs
+        id: get_shas
+        run: |
+          echo "base_sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
+          echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Check for breaking changes
+        run: |
+          if git log --format=%B ${{ steps.get_shas.outputs.base_sha }}..${{ steps.get_shas.outputs.head_sha }} | grep -q "BREAKING CHANGE"; then
+            echo "::warning ::This PR contains breaking changes. Please review carefully."
+          else
+            echo "No breaking changes detected."
+          fi

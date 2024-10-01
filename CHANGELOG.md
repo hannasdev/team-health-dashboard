@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.8](https://github.com/your-username/your-repo/compare/v2.0.7...v2.0.8) (2024-10-01)
+
+
+### Bug Fixes
+
+* indentation ([cc9c200](https://github.com/your-username/your-repo/commit/cc9c20032d122060115cb5ae76376fc1eab96209))
+* second attempt to fix CI on merge to main ([0845b7d](https://github.com/your-username/your-repo/commit/0845b7d0ce34e9c55af4b995652114e14e02400d))
+* versioning on merge ([2fbc496](https://github.com/your-username/your-repo/commit/2fbc496b34a4546934d6c9ce3d8ded521be42f35))
+
 ### [2.0.7](https://github.com/your-username/your-repo/compare/v2.0.6...v2.0.7) (2024-09-22)
 
 
