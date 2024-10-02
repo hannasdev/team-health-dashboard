@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.0.9](https://github.com/your-username/your-repo/compare/v2.0.8...v2.0.9) (2024-10-02)
+
+
+### Bug Fixes
+
+* abstract config object ([c44fdc2](https://github.com/your-username/your-repo/commit/c44fdc2cd96a6466956c5292ce191075e85bef8d))
+* add logs to help debug expiry ([e72b6d7](https://github.com/your-username/your-repo/commit/e72b6d7d6c9a355b46d287ddabe8ac5a5b5c465c))
+* add validation for expiry ([f68a0af](https://github.com/your-username/your-repo/commit/f68a0afa8f39a7f2ff78b052592781faefcc5740))
+* default to defaults and not undefined ([4ea127d](https://github.com/your-username/your-repo/commit/4ea127d0c93cd22cbf7d066ba5b3a362b5df38ca))
+* use express json parser ([fee3170](https://github.com/your-username/your-repo/commit/fee317024cde040c2265996d895d3f991bef54f2))
+
 ### [2.0.8](https://github.com/your-username/your-repo/compare/v2.0.7...v2.0.8) (2024-10-01)
 
 
