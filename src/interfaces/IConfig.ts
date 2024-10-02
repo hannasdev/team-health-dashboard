@@ -12,6 +12,7 @@ export interface IConfig {
   JWT_SECRET: string;
   REFRESH_TOKEN_SECRET: string;
   DATABASE_URL: string;
+  DATABASE_RETRY_DELAY: number;
   MONGO_CONNECT_TIMEOUT_MS: number;
   MONGO_SERVER_SELECTION_TIMEOUT_MS: number;
   LOG_LEVEL: string;
@@ -20,6 +21,4 @@ export interface IConfig {
   ACCESS_TOKEN_EXPIRY: string;
   REFRESH_TOKEN_EXPIRY: string;
   BCRYPT_ROUNDS: number;
-  SSE_TIMEOUT: number;
-  HEARTBEAT_INTERVAL: number;
 }

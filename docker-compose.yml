@@ -67,21 +67,23 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV="e2e"
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:3000,http://localhost:8080,http://127.0.0.1:8080
       - DATABASE_URL=${DATABASE_URL}
-      - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
       - GOOGLE_SHEETS_CLIENT_EMAIL=${GOOGLE_SHEETS_CLIENT_EMAIL}
+      - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
       - GOOGLE_SHEETS_PRIVATE_KEY=${GOOGLE_SHEETS_PRIVATE_KEY}
-      - REPO_TOKEN=${REPO_TOKEN}
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_FILE_PATH=${LOG_FILE_PATH}
+      - LOG_FORMAT=${LOG_FORMAT}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - MONGO_CONNECT_TIMEOUT_MS=${MONGO_CONNECT_TIMEOUT_MS}
+      - MONGO_SERVER_SELECTION_TIMEOUT_MS=${MONGO_SERVER_SELECTION_TIMEOUT_MS}
+      - PORT=${PORT}
+      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
       - REPO_OWNER=${REPO_OWNER}
       - REPO_REPO=${REPO_REPO}
-      - PORT=${PORT}
-      - CORS_ORIGIN=${CORS_ORIGIN}
-      - JWT_SECRET=${JWT_SECRET}
-      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
-      - LOG_LEVEL=${LOG_LEVEL}
-      - LOG_FORMAT=${LOG_FORMAT}
-      - LOG_FILE_PATH=${LOG_FILE_PATH}
+      - REPO_TOKEN=${REPO_TOKEN}
     ports:
       - '3001:3000'
     depends_on:
@@ -118,8 +120,8 @@ services:
       timeout: 5s
       retries: 5
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
     deploy:
       resources:
         limits:
@@ -154,21 +156,24 @@ services:
     networks:
       - test-network
     environment:
-      - NODE_ENV=${NODE_ENV}
+      - NODE_ENV=e2e
+      - API_URL=${API_URL}
+      - CORS_ORIGIN=${CORS_ORIGIN}
       - DATABASE_URL=${DATABASE_URL}
-      - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
       - GOOGLE_SHEETS_CLIENT_EMAIL=${GOOGLE_SHEETS_CLIENT_EMAIL}
+      - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
       - GOOGLE_SHEETS_PRIVATE_KEY=${GOOGLE_SHEETS_PRIVATE_KEY}
-      - REPO_TOKEN=${REPO_TOKEN}
+      - JWT_SECRET=${JWT_SECRET}
+      - LOG_FILE_PATH=${LOG_FILE_PATH}
+      - LOG_FORMAT=${LOG_FORMAT}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - MONGO_CONNECT_TIMEOUT_MS=${MONGO_CONNECT_TIMEOUT_MS}
+      - MONGO_SERVER_SELECTION_TIMEOUT_MS=${MONGO_SERVER_SELECTION_TIMEOUT_MS}
+      - PORT=${PORT}
+      - REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
       - REPO_OWNER=${REPO_OWNER}
       - REPO_REPO=${REPO_REPO}
-      - PORT=${PORT}
-      - CORS_ORIGIN=${CORS_ORIGIN}
-      - JWT_SECRET=${JWT_SECRET}
-      - LOG_LEVEL=${LOG_LEVEL}
-      - LOG_FORMAT=${LOG_FORMAT}
-      - LOG_FILE_PATH=${LOG_FILE_PATH}
-      - API_URL=${API_URL}
+      - REPO_TOKEN=${REPO_TOKEN}
     depends_on:
       db-test:
         condition: service_healthy
@@ -183,7 +188,10 @@ services:
       echo "Starting E2E test runner..." &&
       echo "Waiting for app-test to be ready..." &&
       /home/nodejs/wait-for-it.sh app-test:3000 -t 120 &&
-      echo "App-test is ready. Running E2E tests..." &&
+      echo "App-test is ready." &&
+      echo "Waiting for database to be ready..." &&
+      /home/nodejs/wait-for-it.sh db-test:27017 -t 60 &&
+      echo "Database is ready. Running E2E tests..." &&
       node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/__tests__/e2e/**/*.e2e.spec.js" --forceExit --detectOpenHandles --runInBand --verbose
       '
     profiles: ['e2e-test']

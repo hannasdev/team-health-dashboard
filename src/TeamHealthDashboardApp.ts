@@ -1,6 +1,4 @@
 // src/TeamHealthDashboardApp.ts
-import bodyParser from 'body-parser';
-import cors from 'cors';
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
@@ -15,6 +13,7 @@ import type {
   ITeamHealthDashboardApp,
   IMongoDbClient,
   IErrorHandler,
+  ICorsMiddleware,
 } from './interfaces/index.js';
 
 @injectable()
@@ -26,6 +25,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     @inject(TYPES.MongoDbClient) private mongoDbClient: IMongoDbClient,
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.ErrorHandler) private errorHandler: IErrorHandler,
+    @inject(TYPES.CorsMiddleware) private corsMiddleware: ICorsMiddleware,
   ) {
     this.expressApp = express();
     this.configureCors();
@@ -53,35 +53,12 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureCors(): void {
-    const allowedOrigins = this.config.CORS_ORIGIN.split(',').map(origin =>
-      origin.trim(),
-    );
-
-    this.expressApp.use(
-      cors({
-        origin: (origin, callback) => {
-          if (
-            !origin ||
-            allowedOrigins.includes(origin) ||
-            allowedOrigins.includes('*')
-          ) {
-            callback(null, true);
-          } else {
-            callback(new Error('Not allowed by CORS'));
-          }
-        },
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
-        credentials: true,
-      }),
-    );
-
-    this.expressApp.options('*', cors());
+    this.expressApp.use(this.corsMiddleware.handle);
   }
 
   private configureMiddleware(): void {
-    this.expressApp.use(bodyParser.json());
-    this.expressApp.use(bodyParser.urlencoded({ extended: true }));
+    this.expressApp.use(express.json());
+    this.expressApp.use(express.urlencoded({ extended: true }));
   }
 
   private configureRoutes(): void {
@@ -95,6 +72,10 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureErrorHandling(): void {
-    this.expressApp.use(this.errorHandler.handle);
+    this.expressApp.use(
+      (err: Error, req: Request, res: Response, next: NextFunction) => {
+        this.errorHandler.handle(err, req, res, next);
+      },
+    );
   }
 }

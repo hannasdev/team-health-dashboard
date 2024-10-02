@@ -8,8 +8,8 @@ import {
   createMockMongooseModel,
   createMockPullRequest,
   createMockMetric,
+  createMockConfig,
 } from '../../../__mocks__/index.js';
-import { Config } from '../../../cross-cutting/Config/config.js';
 import { TYPES } from '../../../utils/types.js';
 
 import type {
@@ -26,7 +26,7 @@ describe('GitHubRepository', () => {
   let container: Container;
   let gitHubRepository: IGitHubRepository;
   let mockClient: jest.Mocked<IGitHubClient>;
-  let mockConfig: IConfig;
+  let mockConfig: jest.Mocked<IConfig>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockCacheService: jest.Mocked<ICacheService>;
   let mockGitHubPullRequestModel: ReturnType<
@@ -36,23 +36,8 @@ describe('GitHubRepository', () => {
     typeof createMockMongooseModel<IGitHubMetricDocument>
   >;
 
-  const testConfig = {
-    REPO_OWNER: 'github_owner_test',
-    REPO_REPO: 'github_repo_test',
-    JWT_SECRET: 'test-secret',
-    REPO_TOKEN: 'test-github-token',
-    GOOGLE_SHEETS_PRIVATE_KEY: 'test-google-sheets-private-key',
-    GOOGLE_SHEETS_CLIENT_EMAIL: 'test-client-email@example.com',
-    GOOGLE_SHEETS_SHEET_ID: 'test-sheet-id',
-    REFRESH_TOKEN_SECRET: 'test-token-secret',
-    MONGODB_URI: 'mongodb://localhost:27017/test-db',
-    PORT: 3000,
-    CORS_ORIGIN: 'http://localhost:3000',
-    NODE_ENV: 'test',
-  };
-
   beforeEach(() => {
-    mockConfig = Config.getInstance(testConfig);
+    mockConfig = createMockConfig();
     mockLogger = createMockLogger();
     mockCacheService = createMockCacheService();
     mockClient = createMockGitHubClient();

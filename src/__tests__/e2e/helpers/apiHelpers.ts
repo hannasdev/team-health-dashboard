@@ -70,7 +70,7 @@ export const loginUser = async (
     password,
     shortLived,
   });
-  // console.log('loginUser:', loginResponse.data);
+  console.log('loginUser:', loginResponse.data);
   const userAccessToken = loginResponse.data.data.accessToken;
   const userRefreshToken = loginResponse.data.data.refreshToken;
 

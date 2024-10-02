@@ -10,14 +10,6 @@ export type ProgressCallback = (
   message: string,
 ) => void;
 
-export enum EventType {
-  PROGRESS = 'progress',
-  RESULT = 'result',
-  ERROR = 'error',
-  HEARTBEAT = 'heartbeat',
-  TOKEN_REFRESHED = 'tokenRefreshed',
-}
-
 export enum HeaderKeys {
   AUTHORIZATION = 'Authorization',
   CONTENT_TYPE = 'Content-Type',

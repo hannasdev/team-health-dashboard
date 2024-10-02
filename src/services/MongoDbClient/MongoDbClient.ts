@@ -26,7 +26,6 @@ export class MongoDbClient implements IMongoDbClient {
     }
 
     const maxRetries = 5;
-    const retryDelay = 5000; // 5 seconds
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -77,7 +76,9 @@ export class MongoDbClient implements IMongoDbClient {
         }
 
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        await new Promise(resolve =>
+          setTimeout(resolve, this.config.DATABASE_RETRY_DELAY),
+        );
       }
     }
   }

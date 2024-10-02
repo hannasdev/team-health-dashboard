@@ -12,6 +12,7 @@ export const TYPES = {
   BcryptService: Symbol.for('IBcryptService'),
   CacheService: Symbol.for('ICacheService'),
   Config: Symbol.for('IConfig'),
+  CorsMiddleware: Symbol.for('CorsMiddleware'),
   ErrorHandler: Symbol.for('IErrorHandler'),
   GitHubClient: Symbol.for('IGitHubClient'),
   GitHubMetricModel: Symbol.for('GitHubMetricModel'),
@@ -39,7 +40,7 @@ export const TYPES = {
   TeamHealthDashboardApp: Symbol.for('ITeamHealthDashboardApp'),
   TokenBlacklistService: Symbol.for('ITokenBlacklistService'),
   TokenService: Symbol.for('ITokenService'),
+  UserModel: Symbol.for('IUserModel'),
   UserRepository: Symbol.for('IUserRepository'),
   UserService: Symbol.for('IUserService'),
-  UserModel: Symbol.for('IUserModel'),
 };
