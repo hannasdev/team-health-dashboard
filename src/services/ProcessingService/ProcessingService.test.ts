@@ -90,7 +90,7 @@ describe('ProcessingService', () => {
       expect(mockGitHubRepository.storeProcessedMetrics).not.toHaveBeenCalled();
 
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Finished processing all GitHub data',
+        'Finished processing all GitHub data. Total processed: 0',
       );
     });
 
@@ -163,7 +163,13 @@ describe('ProcessingService', () => {
       ).toHaveBeenNthCalledWith(2, mockMetrics);
 
       expect(mockLogger.info).toHaveBeenCalledWith(
-        'Finished processing all GitHub data',
+        'Processed 100 pull requests on page 1. Total processed: 100',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Processed 50 pull requests on page 2. Total processed: 150',
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Finished processing all GitHub data. Total processed: 150',
       );
     });
   });

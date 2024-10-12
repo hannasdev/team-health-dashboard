@@ -4,21 +4,23 @@ import { Container } from 'inversify';
 
 import { GitHubService } from './GitHubService';
 import {
+  createMockCacheService,
   createMockGitHubRepository,
   createMockLogger,
-  createMockCacheService,
-  createMockPullRequest,
   createMockMetric,
+  createMockProcessingService,
+  createMockPullRequest,
 } from '../../__mocks__/index';
 import { AppError } from '../../utils/errors';
 import { TYPES } from '../../utils/types';
 
 import type {
+  ICacheService,
   IGitHubRepository,
   ILogger,
-  ICacheService,
-  IPullRequest,
   IMetric,
+  IProcessingService,
+  IPullRequest,
 } from '../../interfaces/index';
 
 describe('GitHubService', () => {
@@ -27,12 +29,14 @@ describe('GitHubService', () => {
   let mockRepository: jest.Mocked<IGitHubRepository>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockCacheService: jest.Mocked<ICacheService>;
+  let mockProcessingService: jest.Mocked<IProcessingService>;
 
   beforeEach(() => {
     container = new Container();
     mockRepository = createMockGitHubRepository();
     mockLogger = createMockLogger();
     mockCacheService = createMockCacheService();
+    mockProcessingService = createMockProcessingService();
 
     container
       .bind<IGitHubRepository>(TYPES.GitHubRepository)
@@ -41,6 +45,9 @@ describe('GitHubService', () => {
     container
       .bind<ICacheService>(TYPES.CacheService)
       .toConstantValue(mockCacheService);
+    container
+      .bind<IProcessingService>(TYPES.ProcessingService)
+      .toConstantValue(mockProcessingService);
     container.bind<GitHubService>(GitHubService).toSelf();
 
     gitHubService = container.get<GitHubService>(GitHubService);

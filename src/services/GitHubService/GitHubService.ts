@@ -9,17 +9,20 @@ import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
 import type {
+  ICacheService,
   IGitHubRepository,
   IGitHubService,
-  IMetric,
   ILogger,
-  ICacheService,
+  IMetric,
+  IProcessingService,
 } from '../../interfaces/index.js';
 
 @injectable()
 export class GitHubService extends CacheableClass implements IGitHubService {
   constructor(
     @inject(TYPES.GitHubRepository) private repository: IGitHubRepository,
+    @inject(TYPES.ProcessingService)
+    private processingService: IProcessingService,
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
@@ -60,6 +63,9 @@ export class GitHubService extends CacheableClass implements IGitHubService {
     try {
       await this.repository.syncPullRequests(timePeriod);
       this.logger.info(`Synced GitHub data for the last ${timePeriod} days`);
+
+      await this.processingService.processGitHubData();
+      this.logger.info('Processed synced GitHub data');
     } catch (error) {
       this.logger.error('Error syncing GitHub data:', error as Error);
       throw new AppError(500, 'Failed to sync GitHub data');

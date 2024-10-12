@@ -197,12 +197,18 @@ export class GitHubRepository
     pageSize: number,
   ): Promise<IMetric[]> {
     try {
+      const count = await this.GitHubMetric.countDocuments();
+      this.logger.info(`Total GitHub metrics in database: ${count}`);
+
       const metrics = await this.GitHubMetric.find()
         .sort({ timestamp: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean()
         .exec();
+
+      this.logger.info(`Retrieved ${metrics.length} GitHub metrics`);
+
       return metrics.map(this.mapToIMetric);
     } catch (error) {
       this.logger.error('Error fetching processed metrics:', error as Error);
