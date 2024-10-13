@@ -29,6 +29,25 @@ Gathers information from your github repository and from your google sheet, to r
 }
 ```
 
+- `GET /api/metrics/reset-database`
+
+- Method: GET
+- URL: `/api/metrics/reset-database`
+- Headers: `Authorization: Bearer <access_token>`
+
+`Response`
+
+- Success (200 OK):
+
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Database reset successfully"
+  }
+}
+```
+
 - `GET /api/metrics`: Retrieves metrics from github and google sheet
 
 `Request`
