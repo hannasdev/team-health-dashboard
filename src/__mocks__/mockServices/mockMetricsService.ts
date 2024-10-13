@@ -4,18 +4,27 @@ export function createMockMetricsService(): jest.Mocked<IMetricsService> {
   return {
     getAllMetrics: jest
       .fn()
-      .mockImplementation(async (page?: number, pageSize?: number) => {
-        return {
-          metrics: [
-            createMockMetric({ _id: 'github-pr-count', source: 'GitHub' }),
-            createMockMetric({ _id: 'github-pr-cycle-time', source: 'GitHub' }),
-            createMockMetric({ _id: 'github-pr-size', source: 'GitHub' }),
-            createMockMetric({ source: 'Google Sheets' }),
-            createMockMetric({ source: 'Google Sheets' }),
-          ],
-          githubStats: { totalPRs: 10, fetchedPRs: 3, timePeriod: 90 },
-        };
-      }),
+      .mockImplementation(
+        async (page: number, pageSize: number, timePeriod?: number) => {
+          return {
+            metrics: [
+              createMockMetric({ _id: 'github-pr-count', source: 'GitHub' }),
+              createMockMetric({
+                _id: 'github-pr-cycle-time',
+                source: 'GitHub',
+              }),
+              createMockMetric({ _id: 'github-pr-size', source: 'GitHub' }),
+              createMockMetric({ source: 'Google Sheets' }),
+              createMockMetric({ source: 'Google Sheets' }),
+            ],
+            githubStats: {
+              totalPRs: 10,
+              fetchedPRs: 3,
+              timePeriod: timePeriod || 90,
+            },
+          };
+        },
+      ),
     syncAllData: jest.fn().mockResolvedValue(undefined),
     fetchAndStoreAllData: jest.fn().mockResolvedValue(undefined),
     resetAllData: jest.fn().mockResolvedValue(undefined),

@@ -28,6 +28,7 @@ export class MetricsController implements IMetricsController {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const timePeriod = parseInt(req.query.timePeriod as string) || 90;
 
       if (isNaN(page) || isNaN(pageSize) || page < 1 || pageSize < 1) {
         throw new AppError(400, 'Invalid pagination parameters');
@@ -37,7 +38,11 @@ export class MetricsController implements IMetricsController {
         `Fetching metrics for page ${page} with page size ${pageSize}`,
       );
 
-      const result = await this.metricsService.getAllMetrics(page, pageSize);
+      const result = await this.metricsService.getAllMetrics(
+        page,
+        pageSize,
+        timePeriod,
+      );
 
       if (!result) {
         throw new AppError(500, 'Metrics service returned null result');

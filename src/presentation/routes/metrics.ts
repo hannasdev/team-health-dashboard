@@ -35,8 +35,9 @@ router.get(
     try {
       const page = parseInt(req.query.page as string) || 1;
       const pageSize = parseInt(req.query.pageSize as string) || 20;
+      const timePeriod = parseInt(req.query.timePeriod as string) || 90;
       logger.debug(
-        `Metrics requested for page: ${page}, pageSize: ${pageSize}`,
+        `Metrics requested for page: ${page}, pageSize: ${pageSize}, timePeriod: ${timePeriod}`,
       );
 
       const metricsController = getMetricsController();

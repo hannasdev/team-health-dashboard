@@ -8,10 +8,11 @@ import type {
   IGoogleSheetsService,
   ILogger,
   IMetric,
+  IMetricsService,
 } from '../../interfaces';
 
 @injectable()
-export class MetricsService {
+export class MetricsService implements IMetricsService {
   constructor(
     @inject(TYPES.GitHubService) private githubService: IGitHubService,
     @inject(TYPES.GoogleSheetsService)
@@ -22,6 +23,7 @@ export class MetricsService {
   public async getAllMetrics(
     page: number,
     pageSize: number,
+    timePeriod?: number,
   ): Promise<{
     metrics: IMetric[];
     githubStats: {
@@ -58,7 +60,7 @@ export class MetricsService {
         githubStats: {
           totalPRs: githubStats,
           fetchedPRs: githubMetrics.length,
-          timePeriod: 90, // Assuming we're always fetching 90 days of data
+          timePeriod: timePeriod || 90,
         },
         totalMetrics: githubStats + totalGoogleSheetsMetrics,
       };

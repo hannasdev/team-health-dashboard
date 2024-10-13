@@ -49,7 +49,7 @@ describe('MetricsController', () => {
   describe('getAllMetrics', () => {
     it('should fetch metrics and return them as a response', async () => {
       const mockRequest = createMockMetricsRequest({
-        query: { page: '2', pageSize: '15' },
+        query: { page: '2', pageSize: '15', timePeriod: '30' },
       });
       const mockResponse = createMockResponse();
       const mockNext = jest.fn();
@@ -57,7 +57,8 @@ describe('MetricsController', () => {
       const mockMetrics: IMetric[] = [createMockMetric()];
       const mockResult = {
         metrics: mockMetrics,
-        githubStats: { totalPRs: 100, fetchedPRs: 50, timePeriod: 90 },
+        githubStats: { totalPRs: 100, fetchedPRs: 50, timePeriod: 30 },
+        totalMetrics: 100,
       };
 
       mockMetricsService.getAllMetrics.mockResolvedValue(mockResult);
@@ -72,7 +73,7 @@ describe('MetricsController', () => {
         mockNext,
       );
 
-      expect(mockMetricsService.getAllMetrics).toHaveBeenCalledWith(2, 15);
+      expect(mockMetricsService.getAllMetrics).toHaveBeenCalledWith(2, 15, 30);
       expect(mockApiResponse.createSuccessResponse).toHaveBeenCalledWith(
         mockResult,
       );
