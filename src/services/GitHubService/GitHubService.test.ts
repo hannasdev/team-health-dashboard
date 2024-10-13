@@ -164,4 +164,65 @@ describe('GitHubService', () => {
       );
     });
   });
+
+  describe('resetData', () => {
+    it('should reset GitHub data successfully', async () => {
+      mockRepository.deleteAllMetrics.mockResolvedValue(undefined);
+      mockRepository.resetProcessedFlags.mockResolvedValue(undefined);
+      mockRepository.getTotalPRCount
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(0);
+
+      await gitHubService.resetData();
+
+      expect(mockRepository.deleteAllMetrics).toHaveBeenCalled();
+      expect(mockRepository.resetProcessedFlags).toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith('Before reset: 10 metrics');
+      expect(mockLogger.info).toHaveBeenCalledWith('After reset: 0 metrics');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Reset GitHub data successfully',
+      );
+    });
+
+    it('should throw an AppError when reset fails due to remaining metrics', async () => {
+      mockRepository.deleteAllMetrics.mockResolvedValue(undefined);
+      mockRepository.resetProcessedFlags.mockResolvedValue(undefined);
+      mockRepository.getTotalPRCount.mockResolvedValue(10); // Simulating metrics remaining after reset
+
+      await expect(gitHubService.resetData()).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error resetting GitHub data:',
+        expect.any(Error),
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error details:',
+        expect.any(Error),
+      );
+    });
+
+    it('should throw an AppError when deleteAllMetrics fails', async () => {
+      mockRepository.deleteAllMetrics.mockRejectedValue(
+        new Error('Delete failed'),
+      );
+
+      await expect(gitHubService.resetData()).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error resetting GitHub data:',
+        expect.any(Error),
+      );
+    });
+
+    it('should throw an AppError when resetProcessedFlags fails', async () => {
+      mockRepository.deleteAllMetrics.mockResolvedValue(undefined);
+      mockRepository.resetProcessedFlags.mockRejectedValue(
+        new Error('Reset flags failed'),
+      );
+
+      await expect(gitHubService.resetData()).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error resetting GitHub data:',
+        expect.any(Error),
+      );
+    });
+  });
 });

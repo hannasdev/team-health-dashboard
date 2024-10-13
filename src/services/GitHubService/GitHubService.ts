@@ -80,18 +80,31 @@ export class GitHubService extends CacheableClass implements IGitHubService {
       this.logger.info(`Before reset: ${beforeCount} metrics`);
 
       await this.repository.deleteAllMetrics();
-      await this.repository.resetProcessedFlags();
+      this.logger.info('Deleted all GitHub metrics');
 
-      const remainingMetrics = await this.repository.getTotalPRCount();
-      if (remainingMetrics > 0) {
+      await this.repository.resetProcessedFlags();
+      this.logger.info('Reset processed flags for all pull requests');
+
+      const afterCount = await this.repository.getTotalPRCount();
+      this.logger.info(`After reset: ${afterCount} metrics`);
+
+      if (afterCount > 0) {
         throw new Error(
-          `GitHub reset failed. ${remainingMetrics} metrics remaining.`,
+          `GitHub reset failed. ${afterCount} metrics remaining.`,
         );
       }
 
       this.logger.info('Reset GitHub data successfully');
     } catch (error) {
       this.logger.error('Error resetting GitHub data:', error as Error);
+      if (error instanceof Error) {
+        this.logger.error('Error details:', new Error(error.message));
+      } else {
+        this.logger.error(
+          'Unknown error occurred during reset',
+          new Error('Unknown error'),
+        );
+      }
       throw new AppError(500, 'Failed to reset GitHub data');
     }
   }
