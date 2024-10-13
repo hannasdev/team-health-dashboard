@@ -14,4 +14,5 @@ export const createMockGoogleSheetsRepository =
       .mockResolvedValue([createMockMetric(), createMockMetric()]),
     getTotalMetricsCount: jest.fn().mockResolvedValue(2),
     updateMetrics: jest.fn().mockResolvedValue(undefined),
+    deleteAllMetrics: jest.fn().mockResolvedValue(undefined),
   });

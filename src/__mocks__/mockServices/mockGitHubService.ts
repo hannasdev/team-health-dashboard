@@ -18,5 +18,6 @@ export function createMockGitHubService(): jest.Mocked<IGitHubService> {
       ]),
     syncData: jest.fn().mockResolvedValue(undefined),
     getTotalPRCount: jest.fn().mockResolvedValue(100),
+    resetData: jest.fn().mockResolvedValue(undefined),
   };
 }
