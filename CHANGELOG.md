@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.1.0](https://github.com/your-username/your-repo/compare/v2.0.9...v2.1.0) (2024-10-13)
+
+
+### Features
+
+* add methods to reset metrics data ([3b90025](https://github.com/your-username/your-repo/commit/3b900252854db03f797c226b3b6b54f79dacc803))
+* process github metrics ([f694741](https://github.com/your-username/your-repo/commit/f694741976426ead0abc2bf49932b5981f9a05dd))
+* remove prs from database ([951419f](https://github.com/your-username/your-repo/commit/951419f1f3bade357740495a3f9989e585d0c52e))
+
 ### [2.0.9](https://github.com/your-username/your-repo/compare/v2.0.8...v2.0.9) (2024-10-02)
 
 
