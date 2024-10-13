@@ -218,7 +218,9 @@ export class GitHubRepository
 
   public async getTotalPRCount(): Promise<number> {
     try {
-      return await this.GitHubPullRequest.countDocuments();
+      const count = await this.GitHubPullRequest.countDocuments();
+      this.logger.info(`Total PR count: ${count}`);
+      return count;
     } catch (error) {
       this.logger.error('Error counting pull requests:', error as Error);
       throw new AppError(500, 'Failed to count pull requests');
@@ -260,8 +262,14 @@ export class GitHubRepository
 
   public async deleteAllMetrics(): Promise<void> {
     try {
-      await this.GitHubMetric.deleteMany({});
-      this.logger.info('Deleted all GitHub metrics');
+      const deleteResult = await this.GitHubMetric.deleteMany({});
+      this.logger.info(`Deleted ${deleteResult.deletedCount} GitHub metrics`);
+
+      if (deleteResult.deletedCount === 0) {
+        this.logger.warn(
+          'No GitHub metrics were deleted. The collection might already be empty.',
+        );
+      }
     } catch (error) {
       this.logger.error('Error deleting GitHub metrics:', error as Error);
       throw new AppError(500, 'Failed to delete GitHub metrics');
@@ -270,11 +278,19 @@ export class GitHubRepository
 
   public async resetProcessedFlags(): Promise<void> {
     try {
-      await this.GitHubPullRequest.updateMany(
+      const updateResult = await this.GitHubPullRequest.updateMany(
         {},
         { $set: { processed: false, processedAt: null } },
       );
-      this.logger.info('Reset processed flags for all pull requests');
+      this.logger.info(
+        `Reset processed flags for ${updateResult.modifiedCount} pull requests`,
+      );
+
+      if (updateResult.modifiedCount === 0) {
+        this.logger.warn(
+          'No pull requests were updated. The collection might be empty or all flags might already be reset.',
+        );
+      }
     } catch (error) {
       this.logger.error('Error resetting processed flags:', error as Error);
       throw new AppError(500, 'Failed to reset processed flags');

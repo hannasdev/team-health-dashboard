@@ -11,6 +11,7 @@ import {
   createMockConfig,
 } from '../../../__mocks__/index.js';
 import { TYPES } from '../../../utils/types.js';
+import { AppError } from '../../../utils/errors.js';
 
 import type {
   IGitHubClient,
@@ -41,9 +42,30 @@ describe('GitHubRepository', () => {
     mockLogger = createMockLogger();
     mockCacheService = createMockCacheService();
     mockClient = createMockGitHubClient();
+
     mockGitHubPullRequestModel = createMockMongooseModel<IGitHubPullRequest>();
+    mockGitHubPullRequestModel.insertMany = jest.fn();
+    mockGitHubPullRequestModel.find = jest.fn().mockReturnValue({
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn(),
+    });
     mockGitHubPullRequestModel.updateMany = jest.fn();
+    mockGitHubPullRequestModel.countDocuments = jest.fn();
+    mockGitHubPullRequestModel.findOneAndUpdate = jest.fn();
+
     mockGitHubMetricModel = createMockMongooseModel<IGitHubMetricDocument>();
+    mockGitHubMetricModel.deleteMany = jest.fn();
+    mockGitHubMetricModel.insertMany = jest.fn();
+    mockGitHubMetricModel.find = jest.fn().mockReturnValue({
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockReturnThis(),
+      exec: jest.fn(),
+    });
 
     container = new Container();
     container
@@ -285,13 +307,27 @@ describe('GitHubRepository', () => {
   });
 
   describe('getTotalPRCount', () => {
-    it('should return the total count of pull requests', async () => {
-      mockGitHubPullRequestModel.countDocuments.mockResolvedValue(100);
+    it('should return the correct PR count', async () => {
+      mockGitHubPullRequestModel.countDocuments.mockResolvedValue(15);
 
       const result = await gitHubRepository.getTotalPRCount();
 
-      expect(result).toBe(100);
-      expect(mockGitHubPullRequestModel.countDocuments).toHaveBeenCalled();
+      expect(result).toBe(15);
+      expect(mockLogger.info).toHaveBeenCalledWith('Total PR count: 15');
+    });
+
+    it('should throw an AppError if counting fails', async () => {
+      mockGitHubPullRequestModel.countDocuments.mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(gitHubRepository.getTotalPRCount()).rejects.toThrow(
+        AppError,
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error counting pull requests:',
+        expect.any(Error),
+      );
     });
   });
 
@@ -343,6 +379,87 @@ describe('GitHubRepository', () => {
       ).rejects.toThrow('Failed to mark pull requests as processed');
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error marking pull requests as processed:',
+        expect.any(Error),
+      );
+    });
+  });
+
+  describe('deleteAllMetrics', () => {
+    it('should delete all metrics successfully', async () => {
+      mockGitHubMetricModel.deleteMany.mockResolvedValue({
+        deletedCount: 10,
+      } as any);
+
+      await gitHubRepository.deleteAllMetrics();
+
+      expect(mockGitHubMetricModel.deleteMany).toHaveBeenCalledWith({});
+      expect(mockLogger.info).toHaveBeenCalledWith('Deleted 10 GitHub metrics');
+    });
+
+    it('should log a warning if no metrics were deleted', async () => {
+      mockGitHubMetricModel.deleteMany.mockResolvedValue({
+        deletedCount: 0,
+      } as any);
+
+      await gitHubRepository.deleteAllMetrics();
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'No GitHub metrics were deleted. The collection might already be empty.',
+      );
+    });
+
+    it('should throw an AppError if deletion fails', async () => {
+      mockGitHubMetricModel.deleteMany.mockRejectedValue(new Error('DB error'));
+
+      await expect(gitHubRepository.deleteAllMetrics()).rejects.toThrow(
+        AppError,
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error deleting GitHub metrics:',
+        expect.any(Error),
+      );
+    });
+  });
+
+  describe('resetProcessedFlags', () => {
+    it('should reset processed flags successfully', async () => {
+      mockGitHubPullRequestModel.updateMany.mockResolvedValue({
+        modifiedCount: 5,
+      } as any);
+
+      await gitHubRepository.resetProcessedFlags();
+
+      expect(mockGitHubPullRequestModel.updateMany).toHaveBeenCalledWith(
+        {},
+        { $set: { processed: false, processedAt: null } },
+      );
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Reset processed flags for 5 pull requests',
+      );
+    });
+
+    it('should log a warning if no pull requests were updated', async () => {
+      mockGitHubPullRequestModel.updateMany.mockResolvedValue({
+        modifiedCount: 0,
+      } as any);
+
+      await gitHubRepository.resetProcessedFlags();
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'No pull requests were updated. The collection might be empty or all flags might already be reset.',
+      );
+    });
+
+    it('should throw an AppError if reset fails', async () => {
+      mockGitHubPullRequestModel.updateMany.mockRejectedValue(
+        new Error('DB error'),
+      );
+
+      await expect(gitHubRepository.resetProcessedFlags()).rejects.toThrow(
+        AppError,
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error resetting processed flags:',
         expect.any(Error),
       );
     });
