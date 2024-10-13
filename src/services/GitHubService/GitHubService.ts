@@ -67,7 +67,7 @@ export class GitHubService extends CacheableClass implements IGitHubService {
       this.logger.info(`Synced GitHub data for the last ${timePeriod} days`);
 
       await this.processingService.processGitHubData();
-      this.logger.info('Processed synced GitHub data');
+      this.logger.info('Initiated processing of synced GitHub data');
     } catch (error) {
       this.logger.error('Error syncing GitHub data:', error as Error);
       throw new AppError(500, 'Failed to sync GitHub data');

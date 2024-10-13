@@ -59,6 +59,10 @@ export class ProcessingService implements IProcessingService {
 
         const metrics = this.metricCalculator.calculateMetrics(rawPullRequests);
 
+        this.logger.debug(
+          `Calculated ${metrics.length} metrics for processing`,
+        );
+
         await this.repository.storeProcessedMetrics(metrics);
         await this.markPullRequestsAsProcessed(rawPullRequests);
 

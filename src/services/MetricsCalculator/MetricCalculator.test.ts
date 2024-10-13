@@ -1,12 +1,24 @@
-import { MetricCalculator } from './MetricsCalculator.js';
+import 'reflect-metadata';
+import { Container } from 'inversify';
 
+import { createMockLogger, createMockConfig } from '../../__mocks__';
+import { MetricCalculator } from './MetricsCalculator.js';
+import { TYPES } from '../../utils/types.js';
 import type { IPullRequest } from '../../interfaces/index.js';
 
 describe('MetricCalculator', () => {
+  let mockLogger: ReturnType<typeof createMockLogger>;
   let calculator: MetricCalculator;
+  let container: Container;
 
   beforeEach(() => {
-    calculator = new MetricCalculator();
+    container = new Container();
+    mockLogger = createMockLogger();
+
+    container.bind(TYPES.Logger).toConstantValue(mockLogger);
+    container.bind(MetricCalculator).toSelf();
+
+    calculator = container.get(MetricCalculator);
   });
 
   const createMockPullRequest = (

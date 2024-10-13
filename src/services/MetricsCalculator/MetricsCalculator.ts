@@ -1,11 +1,13 @@
 // src/services/metrics/MetricCalculator.ts
-import { injectable } from 'inversify';
+import { injectable, inject } from 'inversify';
 
 import type {
   IMetric,
   IMetricCalculator,
   IPullRequest,
+  ILogger,
 } from '../../interfaces/index.js';
+import { TYPES } from '../../utils/types.js';
 
 /**
  * MetricCalculator
@@ -18,10 +20,14 @@ import type {
  */
 @injectable()
 export class MetricCalculator implements IMetricCalculator {
+  constructor(@inject(TYPES.Logger) private logger: ILogger) {}
+
   public calculateMetrics(data: IPullRequest[] | IMetric[]): IMetric[] {
     if (this.isPullRequestArray(data)) {
+      this.logger.info('Calculating GitHub metrics');
       return this.calculateGitHubMetrics(data);
     } else {
+      this.logger.info('Calculating Google Sheets metrics');
       return this.calculateGoogleSheetsMetrics(data);
     }
   }
