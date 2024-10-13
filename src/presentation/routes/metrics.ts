@@ -82,4 +82,31 @@ router.post(
   },
 );
 
+router.post(
+  '/metrics/reset-database',
+  (req: IAuthRequest, res: Response, next: NextFunction) => {
+    const logger = getLogger();
+    logger.debug('Accessing /metrics/reset-database endpoint');
+    return getAuthMiddleware().handle(req, res, next);
+  },
+  async (req: Request, res: Response, next: NextFunction) => {
+    const logger = getLogger();
+    try {
+      logger.debug('Initiating database reset');
+
+      const metricsController = getMetricsController();
+      if (!metricsController) {
+        logger.error('MetricsController not found in container');
+        return next(new AppError(500, 'Internal server error'));
+      }
+
+      logger.debug('Calling resetDatabase on MetricsController');
+      await metricsController.resetDatabase(req, res, next);
+    } catch (error) {
+      logger.error('Error in database reset route handler:', error as Error);
+      next(error);
+    }
+  },
+);
+
 export default router;

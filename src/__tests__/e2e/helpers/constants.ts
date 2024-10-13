@@ -4,6 +4,7 @@ export const DEFAULT_TIME_PERIOD = 90;
 export const METRICS_ENDPOINTS = {
   GET_METRICS: '/api/metrics',
   SYNC_METRICS: '/api/metrics/sync',
+  RESET_DATABASE: '/api/metrics/reset-database',
 };
 
 export const AUTH_ENDPOINTS = {
