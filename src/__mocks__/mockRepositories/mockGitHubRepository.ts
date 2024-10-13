@@ -19,6 +19,7 @@ export const createMockGitHubRepository =
     markPullRequestsAsProcessed: jest.fn().mockResolvedValue(undefined),
     deleteAllMetrics: jest.fn().mockResolvedValue(undefined),
     resetProcessedFlags: jest.fn().mockResolvedValue(undefined),
+    deleteAllPullRequests: jest.fn().mockResolvedValue(undefined),
   });
 
 export const createMockGitHubPullRequest = (

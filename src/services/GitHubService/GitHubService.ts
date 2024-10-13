@@ -85,6 +85,9 @@ export class GitHubService extends CacheableClass implements IGitHubService {
       await this.repository.resetProcessedFlags();
       this.logger.info('Reset processed flags for all pull requests');
 
+      await this.repository.deleteAllPullRequests();
+      this.logger.info('Deleted all GitHub pull requests');
+
       const afterCount = await this.repository.getTotalPRCount();
       this.logger.info(`After reset: ${afterCount} metrics`);
 

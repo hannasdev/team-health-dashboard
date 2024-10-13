@@ -10,6 +10,8 @@ export type MockModel<T extends mongoose.Document> = {
   deleteOne: jest.Mock;
   create: jest.Mock;
   insertMany: jest.Mock;
+  countDocuments: jest.Mock;
+  deleteMany: jest.Mock;
 };
 
 export const createMockMongooseModel = <
@@ -24,6 +26,7 @@ export const createMockMongooseModel = <
     create: jest.fn(),
     insertMany: jest.fn(),
     countDocuments: jest.fn(),
+    deleteMany: jest.fn(),
   };
 
   return mockModel as MockModel<T>;

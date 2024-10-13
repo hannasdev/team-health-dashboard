@@ -297,6 +297,24 @@ export class GitHubRepository
     }
   }
 
+  public async deleteAllPullRequests(): Promise<void> {
+    try {
+      const deleteResult = await this.GitHubPullRequest.deleteMany({});
+      this.logger.info(
+        `Deleted ${deleteResult.deletedCount} GitHub pull requests`,
+      );
+
+      if (deleteResult.deletedCount === 0) {
+        this.logger.warn(
+          'No GitHub pull requests were deleted. The collection might already be empty.',
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error deleting GitHub pull requests:', error as Error);
+      throw new AppError(500, 'Failed to delete GitHub pull requests');
+    }
+  }
+
   private mapToIMetric(doc: any): IMetric {
     return {
       _id: doc._id instanceof Types.ObjectId ? doc._id.toString() : doc._id,

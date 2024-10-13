@@ -18,4 +18,5 @@ export interface IGitHubRepository {
   markPullRequestsAsProcessed(ids: string[]): Promise<void>;
   deleteAllMetrics(): Promise<void>;
   resetProcessedFlags(): Promise<void>;
+  deleteAllPullRequests(): Promise<void>;
 }
