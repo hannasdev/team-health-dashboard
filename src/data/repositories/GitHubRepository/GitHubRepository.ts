@@ -258,6 +258,29 @@ export class GitHubRepository
     }
   }
 
+  public async deleteAllMetrics(): Promise<void> {
+    try {
+      await this.GitHubMetric.deleteMany({});
+      this.logger.info('Deleted all GitHub metrics');
+    } catch (error) {
+      this.logger.error('Error deleting GitHub metrics:', error as Error);
+      throw new AppError(500, 'Failed to delete GitHub metrics');
+    }
+  }
+
+  public async resetProcessedFlags(): Promise<void> {
+    try {
+      await this.GitHubPullRequest.updateMany(
+        {},
+        { $set: { processed: false, processedAt: null } },
+      );
+      this.logger.info('Reset processed flags for all pull requests');
+    } catch (error) {
+      this.logger.error('Error resetting processed flags:', error as Error);
+      throw new AppError(500, 'Failed to reset processed flags');
+    }
+  }
+
   private mapToIMetric(doc: any): IMetric {
     return {
       _id: doc._id instanceof Types.ObjectId ? doc._id.toString() : doc._id,

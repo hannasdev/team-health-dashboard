@@ -72,6 +72,17 @@ export class GitHubService extends CacheableClass implements IGitHubService {
     }
   }
 
+  public async resetData(): Promise<void> {
+    try {
+      await this.repository.deleteAllMetrics();
+      await this.repository.resetProcessedFlags();
+      this.logger.info('Reset GitHub data successfully');
+    } catch (error) {
+      this.logger.error('Error resetting GitHub data:', error as Error);
+      throw new AppError(500, 'Failed to reset GitHub data');
+    }
+  }
+
   public async getTotalPRCount(): Promise<number> {
     try {
       return await this.repository.getTotalPRCount();

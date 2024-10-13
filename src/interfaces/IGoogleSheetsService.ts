@@ -7,4 +7,5 @@ export interface IGoogleSheetsService {
   getMetrics(page: number, pageSize: number): Promise<IMetric[]>;
   syncMetrics(): Promise<void>;
   getTotalMetricsCount(): Promise<number>;
+  resetData(): Promise<void>;
 }

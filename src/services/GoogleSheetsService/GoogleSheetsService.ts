@@ -69,6 +69,16 @@ export class GoogleSheetsService
     return this.repository.getTotalMetricsCount();
   }
 
+  public async resetData(): Promise<void> {
+    try {
+      await this.repository.deleteAllMetrics();
+      this.logger.info('Reset Google Sheets data successfully');
+    } catch (error) {
+      this.logger.error('Error resetting Google Sheets data:', error as Error);
+      throw new AppError(500, 'Failed to reset Google Sheets data');
+    }
+  }
+
   private processRawData(rawData: any[][]): IMetric[] {
     const processedMetrics = rawData
       .slice(1)

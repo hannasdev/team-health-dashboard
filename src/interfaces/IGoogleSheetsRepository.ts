@@ -6,4 +6,5 @@ export interface IGoogleSheetsRepository {
   getMetrics(page: number, pageSize: number): Promise<IMetric[]>;
   getTotalMetricsCount(): Promise<number>;
   updateMetrics(metrics: IMetric[]): Promise<void>;
+  deleteAllMetrics(): Promise<void>;
 }

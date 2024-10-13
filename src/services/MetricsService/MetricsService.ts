@@ -90,6 +90,19 @@ export class MetricsService {
     }
   }
 
+  public async resetAllData(): Promise<void> {
+    try {
+      await Promise.all([
+        this.githubService.resetData(),
+        this.googleSheetsService.resetData(),
+      ]);
+      this.logger.info('All data reset successfully');
+    } catch (error) {
+      this.logger.error('Error resetting all data:', error as Error);
+      throw new AppError(500, 'Failed to reset all data');
+    }
+  }
+
   private combineAndSortMetrics(
     githubMetrics: IMetric[],
     googleSheetsMetrics: IMetric[],

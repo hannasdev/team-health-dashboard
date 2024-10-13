@@ -137,4 +137,17 @@ export class GoogleSheetsRepository implements IGoogleSheetsRepository {
       throw new AppError(500, 'Failed to update metrics');
     }
   }
+
+  public async deleteAllMetrics(): Promise<void> {
+    try {
+      await this.GoogleSheetsMetric.deleteMany({});
+      this.logger.info('Deleted all Google Sheets metrics');
+    } catch (error) {
+      this.logger.error(
+        'Error deleting Google Sheets metrics:',
+        error as Error,
+      );
+      throw new AppError(500, 'Failed to delete Google Sheets metrics');
+    }
+  }
 }
