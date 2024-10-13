@@ -71,7 +71,18 @@ export class GoogleSheetsService
 
   public async resetData(): Promise<void> {
     try {
+      const beforeCount = await this.repository.getTotalMetricsCount();
+      this.logger.info(`Before reset: ${beforeCount} metrics`);
+
       await this.repository.deleteAllMetrics();
+
+      const remainingMetrics = await this.repository.getTotalMetricsCount();
+      if (remainingMetrics > 0) {
+        throw new Error(
+          `Google Sheets reset failed. ${remainingMetrics} metrics remaining.`,
+        );
+      }
+
       this.logger.info('Reset Google Sheets data successfully');
     } catch (error) {
       this.logger.error('Error resetting Google Sheets data:', error as Error);

@@ -355,6 +355,7 @@ describe('E2E Metrics', () => {
         );
 
         const initialMetricsCount = initialResponse.data.data.totalMetrics;
+        console.log(`Initial metrics count: ${initialMetricsCount}`);
 
         // Trigger database reset
         const resetResponse = await retryRequest<ResetDatabaseResponse>(
@@ -390,6 +391,7 @@ describe('E2E Metrics', () => {
 
         const afterResetMetricsCount =
           afterResetResponse.data.data.totalMetrics;
+        console.log(`Metrics count after reset: ${afterResetMetricsCount}`);
 
         expect(afterResetMetricsCount).toBe(0);
         expect(afterResetMetricsCount).toBeLessThan(initialMetricsCount);

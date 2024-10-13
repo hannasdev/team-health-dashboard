@@ -52,7 +52,9 @@ export class GitHubService extends CacheableClass implements IGitHubService {
     pageSize: number,
   ): Promise<IMetric[]> {
     try {
-      return await this.repository.getProcessedMetrics(page, pageSize);
+      const metrics = await this.repository.getProcessedMetrics(page, pageSize);
+      this.logger.info(`Fetched ${metrics.length} metrics from GitHubService`);
+      return metrics;
     } catch (error) {
       this.logger.error('Error fetching processed metrics:', error as Error);
       throw new AppError(500, 'Failed to fetch processed metrics');
@@ -74,8 +76,19 @@ export class GitHubService extends CacheableClass implements IGitHubService {
 
   public async resetData(): Promise<void> {
     try {
+      const beforeCount = await this.repository.getTotalPRCount();
+      this.logger.info(`Before reset: ${beforeCount} metrics`);
+
       await this.repository.deleteAllMetrics();
       await this.repository.resetProcessedFlags();
+
+      const remainingMetrics = await this.repository.getTotalPRCount();
+      if (remainingMetrics > 0) {
+        throw new Error(
+          `GitHub reset failed. ${remainingMetrics} metrics remaining.`,
+        );
+      }
+
       this.logger.info('Reset GitHub data successfully');
     } catch (error) {
       this.logger.error('Error resetting GitHub data:', error as Error);
