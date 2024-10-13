@@ -11,4 +11,5 @@ export interface IMetricsService {
     githubStats: { totalPRs: number; fetchedPRs: number; timePeriod: number };
   }>;
   syncAllData(): Promise<void>;
+  resetAllData(): Promise<void>;
 }

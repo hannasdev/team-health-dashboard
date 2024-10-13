@@ -6,11 +6,49 @@ Gathers information from your github repository and from your google sheet, to r
 
 ### Public Endpoints
 
-- `GET /healthcheck`: Returns the current health status of the API.
+- `GET /health`: Returns the current health status of the API.
 
 ### Protected Endpoints (Require Authentication)
 
-- `GET /api/metrics`: Streams metrics data with real-time progress updates.
+- `GET /api/metrics/sync`: Initiates a sync of metrics from GitHub and Google Sheets.
+
+- Method: GET
+- URL: `/api/metrics/sync`
+- Headers: `Authorization: Bearer <access_token>`
+
+`Response`
+
+- Success (200 OK):
+
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Metrics synced successfully"
+  }
+}
+```
+
+- `GET /api/metrics/reset-database`
+
+- Method: GET
+- URL: `/api/metrics/reset-database`
+- Headers: `Authorization: Bearer <access_token>`
+
+`Response`
+
+- Success (200 OK):
+
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Database reset successfully"
+  }
+}
+```
+
+- `GET /api/metrics`: Retrieves metrics from github and google sheet
 
 `Request`
 
@@ -22,65 +60,121 @@ Gathers information from your github repository and from your google sheet, to r
 
 `Response`
 
-This endpoint uses Server-Sent Events (SSE) to provide real-time updates on the data fetching progress and the final result.
+- Success (200 OK):
 
-`Progress Events`
-
-```js
-event: progress
-data: {
-  "progress": number,
-  "message": string,
-  "current": number,
-  "total": number
-}
-```
-
-- `progress`: A number between 0 and 100 representing the percentage of completion.
-- `message`: A string describing the current status of the operation.
-
-`Result Event`
-
-```js
-event: result
-data: {
-  "success": boolean,
-  "data": [
-    {
-      "id": string,
-      "metric_category": string,
-      "metric_name": string,
-      "value": number,
-      "timestamp": string,
-      "unit": string,
-      "additional_info": string,
-      "source": string
+```json
+{
+  "success": true,
+  "data": {
+    "metrics": [
+      {
+        "_id": "670a76828d9d1330dac959e9",
+        "metric_category": "Code Quality",
+        "metric_name": "Build Success",
+        "value": 95,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "percent",
+        "additional_info": "",
+        "source": "Google Sheets"
+      },
+      {
+        "_id": "670a76828d9d1330dac959ea",
+        "metric_category": "Quality",
+        "metric_name": "Bug Resolution",
+        "value": 2.5,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "days",
+        "additional_info": "",
+        "source": "Google Sheets"
+      },
+      {
+        "_id": "670a76828d9d1330dac959e5",
+        "metric_category": "Sprint Metrics",
+        "metric_name": "Burndown",
+        "value": 30,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "percent",
+        "additional_info": "Sprint 23, Day 3",
+        "source": "Google Sheets"
+      },
+      {
+        "_id": "670a76828d9d1330dac959e8",
+        "metric_category": "Code Quality",
+        "metric_name": "PR Size (avg)",
+        "value": 250,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "lines",
+        "additional_info": "",
+        "source": "Google Sheets"
+      },
+      {
+        "_id": "670a76828d9d1330dac959e6",
+        "metric_category": "Efficiency",
+        "metric_name": "Cycle Time",
+        "value": 3.5,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "days",
+        "additional_info": "",
+        "source": "Google Sheets"
+      },
+      {
+        "_id": "670a76828d9d1330dac959e4",
+        "metric_category": "Sprint Metrics",
+        "metric_name": "Sprint Velocity",
+        "value": 45,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "points",
+        "additional_info": "Sprint 23",
+        "source": "Google Sheets"
+      },
+      {
+        "_id": "670a76828d9d1330dac959ec",
+        "metric_category": "Team Health",
+        "metric_name": "Happiness Index",
+        "value": 4.2,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "score",
+        "additional_info": "Scale: 1-5",
+        "source": "Google Sheets"
+      },
+      {
+        "_id": "670a76828d9d1330dac959eb",
+        "metric_category": "Sprint Metrics",
+        "metric_name": "Goal Achievement",
+        "value": 80,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "percent",
+        "additional_info": "Sprint 23",
+        "source": "Google Sheets"
+      },
+      {
+        "_id": "670a76828d9d1330dac959e2",
+        "metric_category": "Workflow",
+        "metric_name": "WIP Items",
+        "value": 5,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "items",
+        "additional_info": "",
+        "source": "Google Sheets"
+      },
+      {
+        "_id": "670a76828d9d1330dac959e7",
+        "metric_category": "Efficiency",
+        "metric_name": "Code Review Time",
+        "value": 1.2,
+        "timestamp": "2023-08-01T00:00:00.000Z",
+        "unit": "days",
+        "additional_info": "",
+        "source": "Google Sheets"
+      }
+    ],
+    "githubStats": {
+      "totalPRs": 168,
+      "fetchedPRs": 0,
+      "timePeriod": 90
     },
-    ...
-  ],
-  "errors": string[],
-  "status": number,
-  "githubStats": {
-    "totalPRs": number,
-    "fetchedPRs": number,
-    "timePeriod": number
+    "totalMetrics": 180
   }
-}
-```
-
-`Error Event`
-
-```js
-event: error
-data: {
-  "success": false,
-  "errors": [
-    {
-      "source": string,
-      "message": string
-    }
-  ],
-  "status": number
 }
 ```
 
@@ -96,12 +190,13 @@ data: {
 
 - **Endpoint**: `POST /api/auth/register`
 - **Body**:
-  ```json
-  {
-    "email": "user@example.com",
-    "password": "securepassword123"
-  }
-  ```
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword123"
+}
+```
 
 `Response`
 

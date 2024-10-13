@@ -44,6 +44,7 @@ export class ProcessingService implements IProcessingService {
       const batchSize = 100;
       let page = 1;
       let hasMore = true;
+      let totalProcessed = 0;
 
       while (hasMore) {
         const rawPullRequests = await this.repository.getRawPullRequests(
@@ -61,13 +62,16 @@ export class ProcessingService implements IProcessingService {
         await this.repository.storeProcessedMetrics(metrics);
         await this.markPullRequestsAsProcessed(rawPullRequests);
 
+        totalProcessed += rawPullRequests.length;
         this.logger.info(
-          `Processed ${rawPullRequests.length} pull requests on page ${page}`,
+          `Processed ${rawPullRequests.length} pull requests on page ${page}. Total processed: ${totalProcessed}`,
         );
         page++;
       }
 
-      this.logger.info('Finished processing all GitHub data');
+      this.logger.info(
+        `Finished processing all GitHub data. Total processed: ${totalProcessed}`,
+      );
     } catch (error) {
       this.logger.error('Error in GitHub data processing job:', error as Error);
       throw new AppError(500, 'Failed to process GitHub data');

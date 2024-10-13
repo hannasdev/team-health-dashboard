@@ -44,6 +44,10 @@ export class MetricsService {
         this.googleSheetsService.getTotalMetricsCount(),
       ]);
 
+      this.logger.info(
+        `Fetched ${githubMetrics.length} GitHub metrics and ${googleSheetsMetrics.length} Google Sheets metrics`,
+      );
+
       const combinedMetrics = this.combineAndSortMetrics(
         githubMetrics,
         googleSheetsMetrics,
@@ -87,6 +91,36 @@ export class MetricsService {
     } catch (error) {
       this.logger.error('Error syncing data:', error as Error);
       throw new AppError(500, 'Failed to sync data');
+    }
+  }
+
+  public async resetAllData(): Promise<void> {
+    try {
+      await Promise.all([
+        this.githubService.resetData(),
+        this.googleSheetsService.resetData(),
+      ]);
+
+      this.logger.info('Reset all data called in MetricsService');
+
+      const githubCount = await this.githubService.getTotalPRCount();
+      const googleSheetsCount =
+        await this.googleSheetsService.getTotalMetricsCount();
+
+      this.logger.info(
+        `After reset - GitHub count: ${githubCount}, Google Sheets count: ${googleSheetsCount}`,
+      );
+
+      if (githubCount > 0 || googleSheetsCount > 0) {
+        throw new Error(
+          `Reset failed. Remaining counts - GitHub: ${githubCount}, Google Sheets: ${googleSheetsCount}`,
+        );
+      }
+
+      this.logger.info('All data reset successfully');
+    } catch (error) {
+      this.logger.error('Error resetting all data:', error as Error);
+      throw new AppError(500, 'Failed to reset all data');
     }
   }
 

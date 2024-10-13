@@ -16,4 +16,7 @@ export interface IGitHubRepository {
   getTotalPRCount(): Promise<number>;
   syncPullRequests(timePeriod: number): Promise<void>;
   markPullRequestsAsProcessed(ids: string[]): Promise<void>;
+  deleteAllMetrics(): Promise<void>;
+  resetProcessedFlags(): Promise<void>;
+  deleteAllPullRequests(): Promise<void>;
 }

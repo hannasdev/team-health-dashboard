@@ -31,6 +31,12 @@ interface ErrorResponse {
   statusCode: number;
 }
 
+interface ResetDatabaseResponse {
+  data: {
+    message: string;
+  };
+}
+
 describe('E2E Metrics', () => {
   let accessToken: string;
   let refreshToken: string;
@@ -332,6 +338,108 @@ describe('E2E Metrics', () => {
         expect(response.status).toBe(200);
         expect(response.data.data.metrics.length).toBeGreaterThan(0);
         // Add more specific checks based on expected data after sync
+      }));
+  });
+
+  describe('POST /api/metrics/reset-database', () => {
+    it('should reset the database with valid authentication', () =>
+      runTest('Reset Database with Valid Authentication', async () => {
+        // First, get the initial metrics count
+        const initialResponse = await retryRequest<MetricsResponse>(
+          'get',
+          METRICS_ENDPOINTS.GET_METRICS,
+          null,
+          {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        );
+
+        const initialMetricsCount = initialResponse.data.data.totalMetrics;
+        console.log(`Initial metrics count: ${initialMetricsCount}`);
+
+        // Trigger database reset
+        const resetResponse = await retryRequest<ResetDatabaseResponse>(
+          'post',
+          METRICS_ENDPOINTS.RESET_DATABASE,
+          null,
+          {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        );
+
+        console.log(
+          'POST /api/metrics/reset-database response:',
+          JSON.stringify(resetResponse.data, null, 2),
+        );
+
+        expect(resetResponse.status).toBe(200);
+        expect(resetResponse.data).not.toBeNull();
+        expect(resetResponse.data.data).toHaveProperty(
+          'message',
+          'Database reset successfully',
+        );
+
+        // Verify that the metrics have been reset
+        const afterResetResponse = await retryRequest<MetricsResponse>(
+          'get',
+          METRICS_ENDPOINTS.GET_METRICS,
+          null,
+          {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        );
+
+        const afterResetMetricsCount =
+          afterResetResponse.data.data.totalMetrics;
+        console.log(`Metrics count after reset: ${afterResetMetricsCount}`);
+
+        expect(afterResetMetricsCount).toBe(0);
+        expect(afterResetMetricsCount).toBeLessThan(initialMetricsCount);
+      }));
+
+    it('should reject reset requests without authentication', () =>
+      runTest('Reject Reset Unauthenticated', async () => {
+        const response = await retryRequest<ErrorResponse>(
+          'post',
+          METRICS_ENDPOINTS.RESET_DATABASE,
+        );
+
+        console.log(
+          'POST /api/metrics/reset-database without auth response:',
+          JSON.stringify(response.data, null, 2),
+        );
+
+        expect(response.status).toBe(401);
+        expect(response.data).toHaveProperty('error', 'No token provided');
+        expect(response.data).toHaveProperty('statusCode', 401);
+        expect(response.data.details).toHaveProperty(
+          'errorCode',
+          'ERR_UNAUTHORIZED',
+        );
+      }));
+
+    it('should return empty data after reset', () =>
+      runTest('Empty Data After Reset', async () => {
+        // Trigger reset
+        await retryRequest('post', METRICS_ENDPOINTS.RESET_DATABASE, null, {
+          Authorization: `Bearer ${accessToken}`,
+        });
+
+        // Fetch metrics after reset
+        const response = await retryRequest<MetricsResponse>(
+          'get',
+          METRICS_ENDPOINTS.GET_METRICS,
+          null,
+          {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        );
+
+        expect(response.status).toBe(200);
+        expect(response.data.data.metrics.length).toBe(0);
+        expect(response.data.data.totalMetrics).toBe(0);
+        expect(response.data.data.githubStats.totalPRs).toBe(0);
+        expect(response.data.data.githubStats.fetchedPRs).toBe(0);
       }));
   });
 });

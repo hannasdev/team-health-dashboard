@@ -6,4 +6,5 @@ export interface IGitHubService {
   getProcessedMetrics(page: number, pageSize: number): Promise<IMetric[]>;
   syncData(timePeriod: number): Promise<void>;
   getTotalPRCount(): Promise<number>;
+  resetData(): Promise<void>;
 }

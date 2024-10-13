@@ -4,21 +4,23 @@ import { Container } from 'inversify';
 
 import { GitHubService } from './GitHubService';
 import {
+  createMockCacheService,
   createMockGitHubRepository,
   createMockLogger,
-  createMockCacheService,
-  createMockPullRequest,
   createMockMetric,
+  createMockProcessingService,
+  createMockPullRequest,
 } from '../../__mocks__/index';
 import { AppError } from '../../utils/errors';
 import { TYPES } from '../../utils/types';
 
 import type {
+  ICacheService,
   IGitHubRepository,
   ILogger,
-  ICacheService,
-  IPullRequest,
   IMetric,
+  IProcessingService,
+  IPullRequest,
 } from '../../interfaces/index';
 
 describe('GitHubService', () => {
@@ -27,12 +29,14 @@ describe('GitHubService', () => {
   let mockRepository: jest.Mocked<IGitHubRepository>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockCacheService: jest.Mocked<ICacheService>;
+  let mockProcessingService: jest.Mocked<IProcessingService>;
 
   beforeEach(() => {
     container = new Container();
     mockRepository = createMockGitHubRepository();
     mockLogger = createMockLogger();
     mockCacheService = createMockCacheService();
+    mockProcessingService = createMockProcessingService();
 
     container
       .bind<IGitHubRepository>(TYPES.GitHubRepository)
@@ -41,6 +45,9 @@ describe('GitHubService', () => {
     container
       .bind<ICacheService>(TYPES.CacheService)
       .toConstantValue(mockCacheService);
+    container
+      .bind<IProcessingService>(TYPES.ProcessingService)
+      .toConstantValue(mockProcessingService);
     container.bind<GitHubService>(GitHubService).toSelf();
 
     gitHubService = container.get<GitHubService>(GitHubService);
@@ -153,6 +160,67 @@ describe('GitHubService', () => {
       await expect(gitHubService.getTotalPRCount()).rejects.toThrow(AppError);
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error getting total PR count:',
+        expect.any(Error),
+      );
+    });
+  });
+
+  describe('resetData', () => {
+    it('should reset GitHub data successfully', async () => {
+      mockRepository.deleteAllMetrics.mockResolvedValue(undefined);
+      mockRepository.resetProcessedFlags.mockResolvedValue(undefined);
+      mockRepository.getTotalPRCount
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(0);
+
+      await gitHubService.resetData();
+
+      expect(mockRepository.deleteAllMetrics).toHaveBeenCalled();
+      expect(mockRepository.resetProcessedFlags).toHaveBeenCalled();
+      expect(mockLogger.info).toHaveBeenCalledWith('Before reset: 10 metrics');
+      expect(mockLogger.info).toHaveBeenCalledWith('After reset: 0 metrics');
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'Reset GitHub data successfully',
+      );
+    });
+
+    it('should throw an AppError when reset fails due to remaining metrics', async () => {
+      mockRepository.deleteAllMetrics.mockResolvedValue(undefined);
+      mockRepository.resetProcessedFlags.mockResolvedValue(undefined);
+      mockRepository.getTotalPRCount.mockResolvedValue(10); // Simulating metrics remaining after reset
+
+      await expect(gitHubService.resetData()).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error resetting GitHub data:',
+        expect.any(Error),
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error details:',
+        expect.any(Error),
+      );
+    });
+
+    it('should throw an AppError when deleteAllMetrics fails', async () => {
+      mockRepository.deleteAllMetrics.mockRejectedValue(
+        new Error('Delete failed'),
+      );
+
+      await expect(gitHubService.resetData()).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error resetting GitHub data:',
+        expect.any(Error),
+      );
+    });
+
+    it('should throw an AppError when resetProcessedFlags fails', async () => {
+      mockRepository.deleteAllMetrics.mockResolvedValue(undefined);
+      mockRepository.resetProcessedFlags.mockRejectedValue(
+        new Error('Reset flags failed'),
+      );
+
+      await expect(gitHubService.resetData()).rejects.toThrow(AppError);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Error resetting GitHub data:',
         expect.any(Error),
       );
     });

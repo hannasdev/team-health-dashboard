@@ -197,12 +197,18 @@ export class GitHubRepository
     pageSize: number,
   ): Promise<IMetric[]> {
     try {
+      const count = await this.GitHubMetric.countDocuments();
+      this.logger.info(`Total GitHub metrics in database: ${count}`);
+
       const metrics = await this.GitHubMetric.find()
         .sort({ timestamp: -1 })
         .skip((page - 1) * pageSize)
         .limit(pageSize)
         .lean()
         .exec();
+
+      this.logger.info(`Retrieved ${metrics.length} GitHub metrics`);
+
       return metrics.map(this.mapToIMetric);
     } catch (error) {
       this.logger.error('Error fetching processed metrics:', error as Error);
@@ -212,7 +218,9 @@ export class GitHubRepository
 
   public async getTotalPRCount(): Promise<number> {
     try {
-      return await this.GitHubPullRequest.countDocuments();
+      const count = await this.GitHubPullRequest.countDocuments();
+      this.logger.info(`Total PR count: ${count}`);
+      return count;
     } catch (error) {
       this.logger.error('Error counting pull requests:', error as Error);
       throw new AppError(500, 'Failed to count pull requests');
@@ -249,6 +257,61 @@ export class GitHubRepository
         error as Error,
       );
       throw new AppError(500, 'Failed to mark pull requests as processed');
+    }
+  }
+
+  public async deleteAllMetrics(): Promise<void> {
+    try {
+      const deleteResult = await this.GitHubMetric.deleteMany({});
+      this.logger.info(`Deleted ${deleteResult.deletedCount} GitHub metrics`);
+
+      if (deleteResult.deletedCount === 0) {
+        this.logger.warn(
+          'No GitHub metrics were deleted. The collection might already be empty.',
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error deleting GitHub metrics:', error as Error);
+      throw new AppError(500, 'Failed to delete GitHub metrics');
+    }
+  }
+
+  public async resetProcessedFlags(): Promise<void> {
+    try {
+      const updateResult = await this.GitHubPullRequest.updateMany(
+        {},
+        { $set: { processed: false, processedAt: null } },
+      );
+      this.logger.info(
+        `Reset processed flags for ${updateResult.modifiedCount} pull requests`,
+      );
+
+      if (updateResult.modifiedCount === 0) {
+        this.logger.warn(
+          'No pull requests were updated. The collection might be empty or all flags might already be reset.',
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error resetting processed flags:', error as Error);
+      throw new AppError(500, 'Failed to reset processed flags');
+    }
+  }
+
+  public async deleteAllPullRequests(): Promise<void> {
+    try {
+      const deleteResult = await this.GitHubPullRequest.deleteMany({});
+      this.logger.info(
+        `Deleted ${deleteResult.deletedCount} GitHub pull requests`,
+      );
+
+      if (deleteResult.deletedCount === 0) {
+        this.logger.warn(
+          'No GitHub pull requests were deleted. The collection might already be empty.',
+        );
+      }
+    } catch (error) {
+      this.logger.error('Error deleting GitHub pull requests:', error as Error);
+      throw new AppError(500, 'Failed to delete GitHub pull requests');
     }
   }
 

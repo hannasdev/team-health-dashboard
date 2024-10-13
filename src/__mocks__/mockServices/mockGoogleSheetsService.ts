@@ -9,5 +9,6 @@ export function createMockGoogleSheetsService(): jest.Mocked<IGoogleSheetsServic
     getMetrics: jest.fn().mockResolvedValue([createMockMetric()]),
     syncMetrics: jest.fn().mockResolvedValue(undefined),
     getTotalMetricsCount: jest.fn().mockResolvedValue(100),
+    resetData: jest.fn().mockResolvedValue(undefined),
   };
 }

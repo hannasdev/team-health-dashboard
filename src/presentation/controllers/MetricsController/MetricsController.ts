@@ -78,4 +78,24 @@ export class MetricsController implements IMetricsController {
       next(new AppError(500, 'Failed to sync metrics'));
     }
   }
+
+  public async resetDatabase(
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ): Promise<void> {
+    try {
+      this.logger.info('Initiating database reset');
+      await this.metricsService.resetAllData();
+      res.json(
+        this.apiResponse.createSuccessResponse({
+          message: 'Database reset successfully',
+        }),
+      );
+      this.logger.info('Database reset completed successfully');
+    } catch (error) {
+      this.logger.error('Error resetting database:', error as Error);
+      next(new AppError(500, 'Failed to reset database'));
+    }
+  }
 }

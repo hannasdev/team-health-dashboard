@@ -17,7 +17,8 @@ export function createMockMetricsService(): jest.Mocked<IMetricsService> {
         };
       }),
     syncAllData: jest.fn().mockResolvedValue(undefined),
-    fetchAndStoreAllData: jest.fn().mockResolvedValue(undefined), // ADDED
+    fetchAndStoreAllData: jest.fn().mockResolvedValue(undefined),
+    resetAllData: jest.fn().mockResolvedValue(undefined),
   };
 }
 

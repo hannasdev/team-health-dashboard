@@ -17,6 +17,9 @@ export const createMockGitHubRepository =
     getTotalPRCount: jest.fn().mockResolvedValue(1),
     syncPullRequests: jest.fn().mockResolvedValue(undefined),
     markPullRequestsAsProcessed: jest.fn().mockResolvedValue(undefined),
+    deleteAllMetrics: jest.fn().mockResolvedValue(undefined),
+    resetProcessedFlags: jest.fn().mockResolvedValue(undefined),
+    deleteAllPullRequests: jest.fn().mockResolvedValue(undefined),
   });
 
 export const createMockGitHubPullRequest = (
