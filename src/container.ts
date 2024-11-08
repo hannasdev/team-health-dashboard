@@ -29,9 +29,11 @@ import { UserRepository } from './data/repositories/UserRepository/UserRepositor
 import { AuthController } from './presentation/controllers/AuthController/AuthController.js';
 import { HealthCheckController } from './presentation/controllers/HealthCheckController/HealthCheckController.js';
 import { MetricsController } from './presentation/controllers/MetricsController/MetricsController.js';
-import { AuthMiddleware } from './presentation/middleware/AuthMiddleware.js';
-import { CorsMiddleware } from './presentation/middleware/CorsMiddleware.js';
-import { ErrorHandler } from './presentation/middleware/ErrorHandler.js';
+import { AuthMiddleware } from './presentation/middleware/AuthMiddleware/AuthMiddleware.js';
+import { CorsMiddleware } from './presentation/middleware/CorsMiddleware/CorsMiddleware.js';
+import { ErrorHandler } from './presentation/middleware/ErrorHandler/ErrorHandler.js';
+import { RateLimitMiddleware } from './presentation/middleware/RateLimitMiddleware/RateLimitMiddleware.js';
+import { SecurityHeadersMiddleware } from './presentation/middleware/SecurityHeadersMiddleware/SecurityHeadersMiddleware.js';
 import { AuthenticationService } from './services/AuthenticationService/AuthenticationService.js';
 import { BcryptService } from './services/BcryptService/index.js';
 import { GitHubService } from './services/GitHubService/GitHubService.js';
@@ -47,6 +49,7 @@ import TokenBlacklistService from './services/TokenBlacklistService/index.js';
 import { TokenService } from './services/TokenService/index.js';
 import { UserService } from './services/UserService/UserService.js';
 import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
+
 import { TYPES } from './utils/types.js';
 
 import type {
@@ -86,7 +89,17 @@ import type {
   IUser,
   IUserRepository,
   IUserService,
+  IRateLimitMiddleware,
+  ISecurityHeadersMiddleware,
+  IRateLimitConfig,
+  ISecurityHeadersConfig,
+  ISecurityLogger,
 } from './interfaces/index.js';
+import {
+  rateLimitConfig,
+  securityHeadersConfig,
+} from './cross-cutting/Config/middlewareConfig.js';
+import { SecurityLogger } from './services/SecurityLogger/SecurityLogger.js';
 
 const config = Config.getInstance();
 
@@ -101,6 +114,10 @@ export function setupContainer(
    */
   container.bind<IConfig>(TYPES.Config).toConstantValue(config);
   container.bind<ILogger>(TYPES.Logger).to(Logger).inSingletonScope();
+  container
+    .bind<ISecurityLogger>(TYPES.SecurityLogger)
+    .to(SecurityLogger)
+    .inSingletonScope();
   container.bind<string>(TYPES.LogLevel).toConstantValue(config.LOG_LEVEL);
   container.bind<string>(TYPES.LogFormat).toConstantValue(config.LOG_FORMAT);
   container.bind<IApiResponse>(TYPES.ApiResponse).to(ApiResponse);
@@ -127,7 +144,9 @@ export function setupContainer(
     .bind<IProcessingService>(TYPES.ProcessingService)
     .to(ProcessingService);
   container.bind<IJobQueueService>(TYPES.JobQueueService).to(JobQueueService);
-
+  container
+    .bind<IAuthenticationService>(TYPES.AuthenticationService)
+    .to(AuthenticationService);
   /**
    * !3. Adapters (Clients for external services)
    */
@@ -187,17 +206,40 @@ export function setupContainer(
     .to(MetricsController);
 
   /**
-   * !8.  Middleware (Can depend on services)
+   * !8.  Middleware Configuration Bindings
    */
-  container.bind<ICorsMiddleware>(TYPES.CorsMiddleware).to(CorsMiddleware);
-  container.bind<IErrorHandler>(TYPES.ErrorHandler).to(ErrorHandler);
   container
-    .bind<IAuthenticationService>(TYPES.AuthenticationService)
-    .to(AuthenticationService);
-  container.bind<IAuthMiddleware>(TYPES.AuthMiddleware).to(AuthMiddleware);
+    .bind<IRateLimitConfig>(TYPES.RateLimitConfig)
+    .toConstantValue(rateLimitConfig);
+  container
+    .bind<ISecurityHeadersConfig>(TYPES.SecurityHeadersConfig)
+    .toConstantValue(securityHeadersConfig);
+  /**
+   * !9. Middleware Bindings
+   */
+  container
+    .bind<ICorsMiddleware>(TYPES.CorsMiddleware)
+    .to(CorsMiddleware)
+    .inSingletonScope();
+  container
+    .bind<IErrorHandler>(TYPES.ErrorHandler)
+    .to(ErrorHandler)
+    .inSingletonScope();
+  container
+    .bind<IAuthMiddleware>(TYPES.AuthMiddleware)
+    .to(AuthMiddleware)
+    .inSingletonScope();
+  container
+    .bind<IRateLimitMiddleware>(TYPES.RateLimitMiddleware)
+    .to(RateLimitMiddleware)
+    .inSingletonScope();
+  container
+    .bind<ISecurityHeadersMiddleware>(TYPES.SecurityHeadersMiddleware)
+    .to(SecurityHeadersMiddleware)
+    .inSingletonScope();
 
   /**
-   * !9. Application (Depends on middleware, routers, and potentially other services)
+   * !10. Application (Depends on middleware, routers, and potentially other services)
    */
   container
     .bind<IApplication>(TYPES.Application)

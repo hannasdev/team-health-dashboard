@@ -2,9 +2,9 @@
 import { Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { HeaderKeys, HeaderValues } from '../../types/index.js';
-import { UnauthorizedError } from '../../utils/errors.js';
-import { TYPES } from '../../utils/types.js';
+import { HeaderKeys, HeaderValues } from '../../../types/index.js';
+import { UnauthorizedError } from '../../../utils/errors.js';
+import { TYPES } from '../../../utils/types.js';
 
 import type {
   IAuthRequest,
@@ -13,7 +13,7 @@ import type {
   ITokenBlacklistService,
   ILogger,
   IAuthenticationService,
-} from '../../interfaces';
+} from '../../../interfaces';
 
 @injectable()
 export class AuthMiddleware implements IAuthMiddleware {

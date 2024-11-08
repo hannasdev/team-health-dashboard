@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
 
-import { TYPES } from '../../utils/types.js';
+import { TYPES } from '../../../utils/types.js';
 
 import type {
   ICorsMiddleware,
   IConfig,
   ILogger,
-} from '../../interfaces/index.js';
+} from '../../../interfaces/index.js';
 
 @injectable()
 export class CorsMiddleware implements ICorsMiddleware {
