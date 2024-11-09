@@ -2,6 +2,7 @@ import { Response } from 'express';
 import type { Request } from 'express';
 import type { ParamsDictionary } from 'express-serve-static-core';
 import type { ParsedQs } from 'qs';
+
 import {
   createMockLogger,
   createMockResponse,
@@ -19,13 +20,44 @@ describe('SecurityHeadersMiddleware', () => {
   const mockRequest = createMockExpressRequest();
 
   let middleware: SecurityHeadersMiddleware;
+  let defaultConfig: ISecurityHeadersConfig;
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Create default config matching the production configuration
+    defaultConfig = {
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            'https://cdnjs.cloudflare.com',
+          ],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'https:'],
+          fontSrc: ["'self'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          frameAncestors: ["'none'"],
+          objectSrc: ["'none'"],
+        },
+      },
+      xssProtection: true,
+      noSniff: true,
+      frameOptions: 'DENY',
+      hsts: {
+        maxAge: 15552000,
+        includeSubDomains: true,
+        preload: true,
+      },
+    };
+
     middleware = new SecurityHeadersMiddleware(
       mockLogger,
       mockSecurityLogger,
-      undefined,
+      defaultConfig,
     );
   });
 
@@ -33,6 +65,7 @@ describe('SecurityHeadersMiddleware', () => {
     it('should allow custom CSP configuration', () => {
       const customCsp = "default-src 'self' https://example.com";
       const config: ISecurityHeadersConfig = {
+        ...defaultConfig,
         contentSecurityPolicy: customCsp,
       };
       const customMiddleware = new SecurityHeadersMiddleware(
@@ -58,6 +91,7 @@ describe('SecurityHeadersMiddleware', () => {
 
     it('should allow custom HSTS configuration', () => {
       const config: ISecurityHeadersConfig = {
+        ...defaultConfig,
         hsts: {
           maxAge: 31536000,
           includeSubDomains: false,
@@ -88,7 +122,6 @@ describe('SecurityHeadersMiddleware', () => {
       const res = createMockResponse();
       const error = new Error('Test error');
 
-      // Mock a function to throw an error
       jest.spyOn(res, 'setHeader').mockImplementationOnce(() => {
         throw error;
       });
@@ -110,6 +143,7 @@ describe('SecurityHeadersMiddleware', () => {
 
     it('should disable specific headers when configured', () => {
       const config: ISecurityHeadersConfig = {
+        ...defaultConfig,
         contentSecurityPolicy: false,
         xssProtection: false,
         noSniff: false,
@@ -148,6 +182,7 @@ describe('SecurityHeadersMiddleware', () => {
 
     it('should set custom frame options', () => {
       const config: ISecurityHeadersConfig = {
+        ...defaultConfig,
         frameOptions: 'SAMEORIGIN',
       };
       const customMiddleware = new SecurityHeadersMiddleware(
@@ -193,6 +228,7 @@ describe('SecurityHeadersMiddleware', () => {
 
     it('should handle full HSTS configuration', () => {
       const config: ISecurityHeadersConfig = {
+        ...defaultConfig,
         hsts: {
           maxAge: 31536000,
           includeSubDomains: true,
