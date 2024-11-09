@@ -24,28 +24,33 @@ export class CorsMiddleware implements ICorsMiddleware {
     );
     this.allowedMethods = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
     this.allowedHeaders = ['Content-Type', 'Authorization'];
+
+    this.logger.info('CORS middleware initialized', {
+      corsOrigin: this.config.CORS_ORIGIN,
+    });
   }
 
   public handle = (req: Request, res: Response, next: NextFunction): void => {
     const origin = req.headers.origin;
 
-    if (
+    const isAllowedOrigin =
       origin &&
-      (this.allowedOrigins.includes(origin) ||
-        this.allowedOrigins.includes('*'))
-    ) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    }
+      (this.allowedOrigins.includes('*') ||
+        this.allowedOrigins.includes(origin));
 
-    res.setHeader(
-      'Access-Control-Allow-Methods',
-      this.allowedMethods.join(', '),
-    );
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      this.allowedHeaders.join(', '),
-    );
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Only set CORS headers if the origin is allowed
+    if (isAllowedOrigin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader(
+        'Access-Control-Allow-Methods',
+        this.allowedMethods.join(', '),
+      );
+      res.setHeader(
+        'Access-Control-Allow-Headers',
+        this.allowedHeaders.join(', '),
+      );
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
 
     if (req.method === 'OPTIONS') {
       res.sendStatus(204);
