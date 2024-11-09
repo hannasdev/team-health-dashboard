@@ -208,9 +208,11 @@ export function setupContainer(
   /**
    * !8.  Middleware Configuration Bindings
    */
-  container
-    .bind<IRateLimitConfig>(TYPES.RateLimitConfig)
-    .toConstantValue(rateLimitConfig);
+  container.bind<IRateLimitConfig>(TYPES.RateLimitConfig).toConstantValue({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    maxRequests: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later',
+  });
   container
     .bind<ISecurityHeadersConfig>(TYPES.SecurityHeadersConfig)
     .toConstantValue(securityHeadersConfig);

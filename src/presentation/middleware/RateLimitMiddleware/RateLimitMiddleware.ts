@@ -27,7 +27,7 @@ export class RateLimitMiddleware implements IRateLimitMiddleware {
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.CacheService) private cacheService: ICacheService,
     @inject(TYPES.SecurityLogger) private securityLogger: ISecurityLogger,
-    config?: Partial<IRateLimitConfig>,
+    @inject(TYPES.RateLimitConfig) config: IRateLimitConfig,
   ) {
     this.config = {
       windowMs: config?.windowMs ?? 15 * 60 * 1000,
