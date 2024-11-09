@@ -23,7 +23,7 @@ export class SecurityHeadersMiddleware implements ISecurityHeadersMiddleware {
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.SecurityLogger) private securityLogger: ISecurityLogger,
-    config?: ISecurityHeadersConfig,
+    @inject(TYPES.SecurityHeadersConfig) config: ISecurityHeadersConfig,
   ) {
     this.config = {
       contentSecurityPolicy: config?.contentSecurityPolicy ?? true,
