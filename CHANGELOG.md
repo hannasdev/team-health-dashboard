@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.2.3](https://github.com/hannasdev/team-health-dashboard/compare/v2.2.2...v2.2.3) (2024-11-16)
+
+
+### Bug Fixes
+
+* replace placeholder urls ([2d91218](https://github.com/hannasdev/team-health-dashboard/commit/2d91218d93dacd8714789c366a965a70e7dcadd8))
+
 ### [2.2.2](https://github.com/your-username/your-repo/compare/v2.2.1...v2.2.2) (2024-11-16)
 
 ### [2.2.1](https://github.com/your-username/your-repo/compare/v2.2.0...v2.2.1) (2024-11-16)
