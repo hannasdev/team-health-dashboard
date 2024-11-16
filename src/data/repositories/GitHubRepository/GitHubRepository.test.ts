@@ -170,6 +170,48 @@ describe('GitHubRepository', () => {
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error fetching pull requests:',
         error,
+        expect.objectContaining({
+          owner: 'github_owner_test',
+          repo: 'github_repo_test',
+          timePeriod: 7,
+          errorMessage: 'API Error',
+        }),
+      );
+    });
+
+    it('should handle invalid response structure', async () => {
+      mockClient.graphql.mockResolvedValueOnce({});
+
+      await expect(gitHubRepository.fetchPullRequests(7)).rejects.toThrow(
+        'Failed to fetch pull requests: Invalid GitHub API response structure',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Invalid GitHub API response:',
+        expect.any(Error),
+        expect.objectContaining({
+          response: {},
+          owner: 'github_owner_test',
+          repo: 'github_repo_test',
+        }),
+      );
+    });
+
+    it('should handle invalid pull requests data', async () => {
+      mockClient.graphql.mockResolvedValueOnce({
+        repository: {
+          pullRequests: { invalid: 'data' },
+        },
+      });
+
+      await expect(gitHubRepository.fetchPullRequests(7)).rejects.toThrow(
+        'Failed to fetch pull requests: Invalid pull requests data structure',
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Invalid pull requests data in response:',
+        expect.any(Error),
+        expect.objectContaining({
+          pullRequests: { invalid: 'data' },
+        }),
       );
     });
 
@@ -256,12 +298,13 @@ describe('GitHubRepository', () => {
     });
 
     it('should handle errors when fetching raw pull requests', async () => {
+      const error = new Error('Database error');
       mockGitHubPullRequestModel.find.mockReturnValue({
         sort: jest.fn().mockReturnThis(),
         skip: jest.fn().mockReturnThis(),
         limit: jest.fn().mockReturnThis(),
         lean: jest.fn().mockReturnThis(),
-        exec: jest.fn().mockRejectedValue(new Error('Database error')),
+        exec: jest.fn().mockRejectedValue(error),
       });
 
       await expect(gitHubRepository.getRawPullRequests(1, 20)).rejects.toThrow(
@@ -269,7 +312,7 @@ describe('GitHubRepository', () => {
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error fetching pull requests from database:',
-        expect.any(Error),
+        error,
       );
     });
   });
@@ -317,16 +360,15 @@ describe('GitHubRepository', () => {
     });
 
     it('should throw an AppError if counting fails', async () => {
-      mockGitHubPullRequestModel.countDocuments.mockRejectedValue(
-        new Error('DB error'),
-      );
+      const error = new Error('DB error');
+      mockGitHubPullRequestModel.countDocuments.mockRejectedValue(error);
 
       await expect(gitHubRepository.getTotalPRCount()).rejects.toThrow(
-        AppError,
+        'Failed to count pull requests',
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error counting pull requests:',
-        expect.any(Error),
+        error,
       );
     });
   });
@@ -370,16 +412,15 @@ describe('GitHubRepository', () => {
 
     it('should handle errors when marking pull requests as processed', async () => {
       const ids = ['1', '2', '3'];
-      mockGitHubPullRequestModel.updateMany.mockRejectedValue(
-        new Error('Database error'),
-      );
+      const error = new Error('Database error');
+      mockGitHubPullRequestModel.updateMany.mockRejectedValue(error);
 
       await expect(
         gitHubRepository.markPullRequestsAsProcessed(ids),
       ).rejects.toThrow('Failed to mark pull requests as processed');
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error marking pull requests as processed:',
-        expect.any(Error),
+        error,
       );
     });
   });
@@ -409,14 +450,15 @@ describe('GitHubRepository', () => {
     });
 
     it('should throw an AppError if deletion fails', async () => {
-      mockGitHubMetricModel.deleteMany.mockRejectedValue(new Error('DB error'));
+      const error = new Error('DB error');
+      mockGitHubMetricModel.deleteMany.mockRejectedValue(error);
 
       await expect(gitHubRepository.deleteAllMetrics()).rejects.toThrow(
-        AppError,
+        'Failed to delete GitHub metrics',
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error deleting GitHub metrics:',
-        expect.any(Error),
+        error,
       );
     });
   });
@@ -451,16 +493,15 @@ describe('GitHubRepository', () => {
     });
 
     it('should throw an AppError if reset fails', async () => {
-      mockGitHubPullRequestModel.updateMany.mockRejectedValue(
-        new Error('DB error'),
-      );
+      const error = new Error('DB error');
+      mockGitHubPullRequestModel.updateMany.mockRejectedValue(error);
 
       await expect(gitHubRepository.resetProcessedFlags()).rejects.toThrow(
-        AppError,
+        'Failed to reset processed flags',
       );
       expect(mockLogger.error).toHaveBeenCalledWith(
         'Error resetting processed flags:',
-        expect.any(Error),
+        error,
       );
     });
   });
