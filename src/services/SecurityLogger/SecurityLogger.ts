@@ -108,15 +108,21 @@ export class SecurityLogger implements ISecurityLogger {
     // Create a copy to avoid modifying the original
     const sanitized = { ...requestInfo };
 
+    // Create a headers object if it doesn't exist
+    if (!('headers' in sanitized)) {
+      sanitized.headers = {};
+    }
+
     // Remove sensitive headers if they were included
-    if ((sanitized as any).headers) {
-      const sanitizedHeaders = { ...(sanitized as any).headers };
+    if (sanitized.headers) {
+      const sanitizedHeaders = { ...sanitized.headers };
       SecurityLogger.SENSITIVE_HEADERS.forEach(header => {
-        if (sanitizedHeaders[header]) {
-          sanitizedHeaders[header] = '[REDACTED]';
+        const headerKey = header.toLowerCase();
+        if (sanitizedHeaders[headerKey]) {
+          sanitizedHeaders[headerKey] = '[REDACTED]';
         }
       });
-      (sanitized as any).headers = sanitizedHeaders;
+      sanitized.headers = sanitizedHeaders;
     }
 
     return sanitized;
@@ -156,6 +162,18 @@ export class SecurityLogger implements ISecurityLogger {
 
       return sanitizedObj;
     };
+
+    // Special handling for headers object if it exists
+    if (sanitized.headers && typeof sanitized.headers === 'object') {
+      const sanitizedHeaders = { ...sanitized.headers };
+      SecurityLogger.SENSITIVE_HEADERS.forEach(header => {
+        const headerKey = header.toLowerCase();
+        if (headerKey in sanitizedHeaders) {
+          sanitizedHeaders[headerKey] = '[REDACTED]';
+        }
+      });
+      sanitized.headers = sanitizedHeaders;
+    }
 
     return sanitizeObject(sanitized);
   }
