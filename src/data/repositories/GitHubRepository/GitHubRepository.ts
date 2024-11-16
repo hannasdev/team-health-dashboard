@@ -23,6 +23,9 @@ import type {
   ICacheService,
 } from '../../../interfaces';
 
+type GitHubApiErrorMeta = Record<string, unknown>;
+type PullRequestsErrorMeta = Record<string, unknown>;
+
 @injectable()
 export class GitHubRepository
   extends CacheableClass
@@ -78,14 +81,49 @@ export class GitHubRepository
           throw new Error('Operation timed out');
         }
 
+        // Log the query variables for debugging
+        const queryVariables = {
+          owner: this.owner,
+          repo: this.repo,
+          cursor: cursor,
+        };
+        this.logger.debug(
+          'Executing GitHub GraphQL query with variables:',
+          queryVariables,
+        );
+
         const response: IGraphQLResponse = await this.client.graphql(
           this.getPRQuery(),
-          {
+          queryVariables,
+        );
+
+        // Validate response structure
+        if (!response || !response.repository) {
+          const meta: GitHubApiErrorMeta = {
+            response,
             owner: this.owner,
             repo: this.repo,
-            cursor: cursor,
-          },
-        );
+          };
+          const error = new Error('Invalid GitHub API response structure');
+          this.logger.error('Invalid GitHub API response:', error, meta);
+          throw error;
+        }
+
+        if (
+          !response.repository.pullRequests ||
+          !Array.isArray(response.repository.pullRequests.nodes)
+        ) {
+          const meta: PullRequestsErrorMeta = {
+            pullRequests: response.repository.pullRequests,
+          };
+          const error = new Error('Invalid pull requests data structure');
+          this.logger.error(
+            'Invalid pull requests data in response:',
+            error,
+            meta,
+          );
+          throw error;
+        }
 
         const newPRs = response.repository.pullRequests.nodes.map(
           (node: IGraphQLPullRequest) => this.mapToPullRequest(node),
@@ -122,7 +160,20 @@ export class GitHubRepository
         timePeriod: timePeriod,
       };
     } catch (error) {
-      this.logger.error('Error fetching pull requests:', error as Error);
+      // Log detailed error information
+      const meta: GitHubApiErrorMeta = {
+        owner: this.owner,
+        repo: this.repo,
+        timePeriod,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      };
+
+      this.logger.error(
+        'Error fetching pull requests:',
+        error instanceof Error ? error : new Error('Unknown error'),
+        meta,
+      );
+
       throw new AppError(
         500,
         `Failed to fetch pull requests: ${error instanceof Error ? error.message : 'Unknown error'}`,
