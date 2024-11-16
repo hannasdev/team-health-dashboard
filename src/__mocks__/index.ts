@@ -17,6 +17,8 @@ export {
   createMockExpressRequest,
   createMockAuthMiddlewareResponse,
   createMockMetricsRequest,
+  createMockSecurityLogger,
+  createMockRequest,
 } from './mockMiddlewares';
 
 export {

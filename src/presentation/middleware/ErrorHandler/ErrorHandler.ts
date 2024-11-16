@@ -2,10 +2,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
 
-import { AppError } from '../../utils/errors.js';
-import { TYPES } from '../../utils/types.js';
+import { AppError } from '../../../utils/errors.js';
+import { TYPES } from '../../../utils/types.js';
 
-import type { ILogger, IApiResponse } from '../../interfaces/index.js';
+import type { ILogger, IApiResponse } from '../../../interfaces/index.js';
 
 @injectable()
 export class ErrorHandler {

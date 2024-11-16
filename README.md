@@ -2,6 +2,59 @@
 
 Gathers information from your github repository and from your google sheet, to render a dashboard with relevant team statistics.
 
+## Middleware Stack
+
+The application uses several middleware layers to handle security, authentication, and request processing:
+
+### Security Middleware
+
+1. **Security Headers Middleware**
+
+   - Sets secure HTTP headers
+   - Configures Content Security Policy (CSP)
+   - Enables XSS protection
+   - Sets HSTS headers
+   - Controls frame options
+   - Prevents MIME type sniffing
+
+2. **Rate Limiting Middleware**
+
+   - Protects against brute force attacks
+   - Limits requests per IP address
+   - Configurable time windows and request limits
+   - Returns 429 (Too Many Requests) when limit exceeded
+
+3. **CORS Middleware**
+   - Manages Cross-Origin Resource Sharing
+   - Configurable allowed origins
+   - Supports wildcard or specific origin lists
+   - Handles preflight OPTIONS requests
+   - Sets appropriate CORS headers
+
+### Authentication Middleware
+
+1. **Auth Middleware**
+   - Validates JWT tokens
+   - Handles token expiration
+   - Manages token refresh
+   - Controls access to protected routes
+   - Provides user context to requests
+
+### Request Processing
+
+1. **Body Parser Middleware**
+
+   - Parses JSON request bodies
+   - Handles URL-encoded data
+   - Configurable size limits
+   - Protects against oversized payloads
+
+2. **Error Handler Middleware**
+   - Catches and processes all errors
+   - Provides consistent error responses
+   - Handles different error types
+   - Logs errors appropriately
+
 ## APIs
 
 ### Public Endpoints
@@ -318,6 +371,41 @@ Refreshes access token with a refresh token.
 ```json
 {
   "error": "Invalid token"
+}
+```
+
+## Configuration
+
+### Middleware Configuration
+
+```typescript
+// CORS Configuration
+{
+  CORS_ORIGIN: 'http://localhost:3000,http://example.com' // comma-separated list of allowed origins
+}
+
+// Rate Limit Configuration
+{
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  maxRequests: 100 // requests per window
+}
+
+// Security Headers Configuration
+{
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'"]
+    }
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  }
 }
 ```
 

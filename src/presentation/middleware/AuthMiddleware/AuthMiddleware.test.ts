@@ -11,9 +11,9 @@ import {
   createMockAuthenticationService,
   createMockAuthRequest,
   createMockResponse,
-} from '../../__mocks__';
-import { UnauthorizedError } from '../../utils/errors';
-import { TYPES } from '../../utils/types';
+} from '../../../__mocks__';
+import { UnauthorizedError } from '../../../utils/errors';
+import { TYPES } from '../../../utils/types';
 
 describe('AuthMiddleware', () => {
   let container: Container;
