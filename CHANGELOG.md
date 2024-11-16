@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.2.0](https://github.com/your-username/your-repo/compare/v2.1.1...v2.2.0) (2024-11-16)
+
+
+### Features
+
+* add new security middlewares ([473998f](https://github.com/your-username/your-repo/commit/473998fa66a6785d9b13fb761d38fd8fb526a19b))
+
+
+### Bug Fixes
+
+* add inject to security headers config ([8b94278](https://github.com/your-username/your-repo/commit/8b942780e63a969227de23d199b4dd850e4b9448))
+* add missing inject for rate limit config ([8ea8769](https://github.com/your-username/your-repo/commit/8ea8769a3dc19caaafa19434376bd95e93bd5c95))
+
 ### [2.1.1](https://github.com/your-username/your-repo/compare/v2.1.0...v2.1.1) (2024-10-25)
 
 ## [2.1.0](https://github.com/your-username/your-repo/compare/v2.0.9...v2.1.0) (2024-10-13)
