@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [2.2.1](https://github.com/your-username/your-repo/compare/v2.2.0...v2.2.1) (2024-11-16)
+
+
+### Bug Fixes
+
+* catch circular dependency ([93cbd0f](https://github.com/your-username/your-repo/commit/93cbd0f3cdcf542bfd55cd6dda71c96f1b18ac23))
+* improve header sanitization ([d95fa03](https://github.com/your-username/your-repo/commit/d95fa0335bccbea060a69422fb140ecb6584ccf3))
+
 ## [2.2.0](https://github.com/your-username/your-repo/compare/v2.1.1...v2.2.0) (2024-11-16)
 
 
