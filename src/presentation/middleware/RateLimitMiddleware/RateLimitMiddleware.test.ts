@@ -1,5 +1,8 @@
-import { Request, Response } from 'express';
 import { Socket } from 'net';
+
+import { Request, Response } from 'express';
+
+import { RateLimitMiddleware } from './RateLimitMiddleware.js';
 import {
   createMockLogger,
   createMockCacheService,
@@ -7,7 +10,7 @@ import {
   createMockSecurityLogger,
 } from '../../../__mocks__/index.js';
 import { AppError } from '../../../utils/errors.js';
-import { RateLimitMiddleware } from './RateLimitMiddleware.js';
+
 import type { IRateLimitConfig } from '../../../interfaces/index.js';
 import type { ParamsDictionary, Query } from 'express-serve-static-core';
 

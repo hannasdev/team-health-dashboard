@@ -1,16 +1,17 @@
 import { Response } from 'express';
-import type { Request } from 'express';
-import type { ParamsDictionary } from 'express-serve-static-core';
-import type { ParsedQs } from 'qs';
 
+import { SecurityHeadersMiddleware } from './SecurityHeadersMiddleware.js';
 import {
   createMockLogger,
   createMockResponse,
   createMockSecurityLogger,
   createMockExpressRequest,
 } from '../../../__mocks__/index.js';
-import { SecurityHeadersMiddleware } from './SecurityHeadersMiddleware.js';
+
 import type { ISecurityHeadersConfig } from '../../../interfaces/index.js';
+import type { Request } from 'express';
+import type { ParamsDictionary } from 'express-serve-static-core';
+import type { ParsedQs } from 'qs';
 
 describe('SecurityHeadersMiddleware', () => {
   const mockLogger = createMockLogger();

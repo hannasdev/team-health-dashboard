@@ -1,13 +1,14 @@
+import {
+  SecurityEventType,
+  SecurityEventSeverity,
+} from '../../services/SecurityLogger/SecurityLogger.js';
+
 import type {
   ISecurityLogger,
   ISecurityEvent,
   ISecurityRequest,
   ILoggedMessage,
 } from '../../interfaces/index.js';
-import {
-  SecurityEventType,
-  SecurityEventSeverity,
-} from '../../services/SecurityLogger/SecurityLogger.js';
 
 export const createMockSecurityLogger = (): jest.Mocked<ISecurityLogger> => {
   const sensitiveKeys = ['password', 'token', 'apiKey', 'secret', 'credential'];

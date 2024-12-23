@@ -1,4 +1,5 @@
 import { Request } from 'express';
+
 import type { ISecurityRequest } from '../../interfaces/index.js';
 
 export const createMockSecurityRequest = (

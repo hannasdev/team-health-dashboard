@@ -2,10 +2,11 @@
 
 import { Container } from 'inversify';
 import mongoose from 'mongoose';
+
 import { MongoDbClient } from './MongoDbClient.js';
-import { TYPES } from '../../utils/types.js';
 import { createMockLogger } from '../../__mocks__/index.js';
 import { Config } from '../../cross-cutting/Config/config.js';
+import { TYPES } from '../../utils/types.js';
 
 jest.mock('mongoose');
 
