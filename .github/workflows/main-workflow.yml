@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md' # Ignore all markdown files
+      - 'docs/**' # Ignore everything in docs directory
+      - .aidigestignore
+      - .gitignore
 
 jobs:
   version-and-release:
@@ -18,9 +23,9 @@ jobs:
         id: check_version_bump
         run: |
           if git log -1 --pretty=%B | grep -q "chore(release):"; then
-            echo "is_version_bump=true" >> $GITHUB_OUTPUT
+            echo "is_version_bump=true" >> "$GITHUB_OUTPUT"
           else
-            echo "is_version_bump=false" >> $GITHUB_OUTPUT
+            echo "is_version_bump=false" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: ./.github/actions/setup-node
@@ -34,6 +39,18 @@ jobs:
       - name: Bump version and update CHANGELOG
         if: steps.check_version_bump.outputs.is_version_bump == 'false'
         run: |
+          set -eo pipefail
+
+          if ! git config user.name github-actions; then
+            echo "Failed to set git user name"
+            exit 1
+          fi
+
+          if ! git config user.email github-actions; then
+            echo "Failed to set git user email"
+            exit 1
+          fi
+
           git config user.name github-actions
           git config user.email github-actions@github.com
 

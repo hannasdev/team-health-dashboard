@@ -4,14 +4,53 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  build:
+  check-changes:
     runs-on: ubuntu-latest
+    outputs:
+      should_test: ${{ steps.check.outputs.should_test }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes requiring tests
+        id: check
+        run: |
+          echo "should_test=true" >> "$GITHUB_OUTPUT"
+
+          LAST_SUCCESS_SHA=$(gh run list --branch "${{ github.head_ref }}" --workflow "Branch Workflow" --status success --json headSha --jq '.[0].headSha // empty' || echo "")
+
+          if [ -n "$LAST_SUCCESS_SHA" ]; then
+            echo "Found last successful run SHA: $LAST_SUCCESS_SHA"
+            
+            CHANGES=$(git diff --name-only $LAST_SUCCESS_SHA HEAD | grep -E '^(src/|test/|package\.json|package-lock\.json)' || true)
+            
+            if [ -z "$CHANGES" ]; then
+              echo "No relevant changes since last successful test run"
+              echo "should_test=false" >> "$GITHUB_OUTPUT"
+            else
+              echo "Detected changes requiring tests:"
+              echo "$CHANGES"
+              echo "should_test=true" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "No previous successful run found, running tests"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: check-changes
+    if: needs.check-changes.outputs.should_test == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/build-and-cache
@@ -19,8 +58,10 @@ jobs:
           cache-key-prefix: pr-${{ github.event.pull_request.number }}
 
   test-unit:
-    needs: build
+    needs: [check-changes, build]
+    if: needs.check-changes.outputs.should_test == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-node
@@ -35,8 +76,10 @@ jobs:
         run: NODE_OPTIONS=--max_old_space_size=4096 npm run test:unit
 
   e2e-test:
-    needs: [build, test-unit]
+    needs: [check-changes, build, test-unit]
+    if: needs.check-changes.outputs.should_test == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/docker-setup
@@ -76,12 +119,19 @@ jobs:
         run: |
           docker compose --profile e2e-test build
           docker compose --profile e2e-test up --abort-on-container-exit --exit-code-from e2e-test-runner
-      - name: Display logs
+      - name: Display logs and cleanup
         if: always()
-        run: docker compose --profile e2e-test logs app-test
+        run: |
+          echo "Displaying Docker logs..."
+          docker compose --profile e2e-test logs app-test
+
+          echo "Cleaning up Docker resources..."
+          docker compose --profile e2e-test down -v
+          docker system prune -f
 
   check-breaking-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
