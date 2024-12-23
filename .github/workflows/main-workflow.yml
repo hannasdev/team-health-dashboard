@@ -18,9 +18,9 @@ jobs:
         id: check_version_bump
         run: |
           if git log -1 --pretty=%B | grep -q "chore(release):"; then
-            echo "is_version_bump=true" >> $GITHUB_OUTPUT
+            echo "is_version_bump=true" >> "$GITHUB_OUTPUT"
           else
-            echo "is_version_bump=false" >> $GITHUB_OUTPUT
+            echo "is_version_bump=false" >> "$GITHUB_OUTPUT"
           fi
 
       - uses: ./.github/actions/setup-node
