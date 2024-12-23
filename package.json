@@ -30,8 +30,7 @@
     "release": "standard-version",
     "release:minor": "standard-version --release-as minor",
     "release:major": "standard-version --release-as major",
-    "release:patch": "standard-version --release-as patch",
-    "prepare": "husky"
+    "release:patch": "standard-version --release-as patch"
   },
   "dependencies": {
     "@octokit/graphql": "^8.1.1",
