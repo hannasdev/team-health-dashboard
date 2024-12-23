@@ -15,10 +15,6 @@ import { container as appContainer } from './appContainer.js';
 import { ApiResponse } from './cross-cutting/ApiResponse/ApiResponse.js';
 import { CacheService } from './cross-cutting/CacheService/CacheService.js';
 import { Config } from './cross-cutting/Config/config.js';
-import {
-  rateLimitConfig,
-  securityHeadersConfig,
-} from './cross-cutting/Config/middlewareConfig.js';
 import { Logger } from './cross-cutting/Logger/index.js';
 import { GitHubAdapter } from './data/adapters/GitHubAdapter/GitHubAdapter.js';
 import { GoogleSheetsAdapter } from './data/adapters/GoogleSheetAdapter/GoogleSheetAdapter.js';
@@ -49,11 +45,11 @@ import { MetricsService } from './services/MetricsService/MetricsService.js';
 import { MongoDbClient } from './services/MongoDbClient/MongoDbClient.js';
 import { ProcessingService } from './services/ProcessingService/ProcessingService.js';
 import { ProgressTracker } from './services/ProgressTracker/ProgressTracker.js';
-import { SecurityLogger } from './services/SecurityLogger/SecurityLogger.js';
 import TokenBlacklistService from './services/TokenBlacklistService/index.js';
 import { TokenService } from './services/TokenService/index.js';
 import { UserService } from './services/UserService/UserService.js';
 import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
+
 import { TYPES } from './utils/types.js';
 
 import type {
@@ -99,6 +95,11 @@ import type {
   ISecurityHeadersConfig,
   ISecurityLogger,
 } from './interfaces/index.js';
+import {
+  rateLimitConfig,
+  securityHeadersConfig,
+} from './cross-cutting/Config/middlewareConfig.js';
+import { SecurityLogger } from './services/SecurityLogger/SecurityLogger.js';
 
 const config = Config.getInstance();
 

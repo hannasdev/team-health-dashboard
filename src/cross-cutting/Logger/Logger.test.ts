@@ -5,8 +5,8 @@ import { Container } from 'inversify';
 import winston from 'winston';
 
 import { Logger } from './Logger';
-import { AppError } from '../../utils/errors';
 import { TYPES } from '../../utils/types';
+import { AppError } from '../../utils/errors';
 
 import type { IConfig } from '../../interfaces/IConfig';
 

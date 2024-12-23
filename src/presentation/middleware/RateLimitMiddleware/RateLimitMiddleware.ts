@@ -1,12 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
+import type { ParamsDictionary, Query } from 'express-serve-static-core';
 
-import {
-  SecurityEventType,
-  SecurityEventSeverity,
-} from '../../../services/SecurityLogger/SecurityLogger.js';
-import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
+import { AppError } from '../../../utils/errors.js';
 
 import type {
   ILogger,
@@ -16,7 +13,11 @@ import type {
   ISecurityLogger,
   ISecurityRequest,
 } from '../../../interfaces/index.js';
-import type { ParamsDictionary, Query } from 'express-serve-static-core';
+
+import {
+  SecurityEventType,
+  SecurityEventSeverity,
+} from '../../../services/SecurityLogger/SecurityLogger.js';
 
 @injectable()
 export class RateLimitMiddleware implements IRateLimitMiddleware {

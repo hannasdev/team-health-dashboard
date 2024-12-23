@@ -1,10 +1,10 @@
+import { createMockLogger } from '../../__mocks__/index.js';
+import { createMockSecurityRequest } from './securityTestHelpers.js';
 import {
   SecurityLogger,
   SecurityEventType,
   SecurityEventSeverity,
 } from './SecurityLogger.js';
-import { createMockSecurityRequest } from './securityTestHelpers.js';
-import { createMockLogger } from '../../__mocks__/index.js';
 
 import type {
   ISecurityEvent,
