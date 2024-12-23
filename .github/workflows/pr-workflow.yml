@@ -7,8 +7,8 @@ on:
     types: [opened, synchronize, reopened]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   check-changes:
@@ -50,6 +50,7 @@ jobs:
     needs: check-changes
     if: needs.check-changes.outputs.should_test == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/build-and-cache
@@ -60,6 +61,7 @@ jobs:
     needs: [check-changes, build]
     if: needs.check-changes.outputs.should_test == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-node
@@ -77,6 +79,7 @@ jobs:
     needs: [check-changes, build, test-unit]
     if: needs.check-changes.outputs.should_test == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/docker-setup
@@ -116,12 +119,19 @@ jobs:
         run: |
           docker compose --profile e2e-test build
           docker compose --profile e2e-test up --abort-on-container-exit --exit-code-from e2e-test-runner
-      - name: Display logs
+      - name: Display logs and cleanup
         if: always()
-        run: docker compose --profile e2e-test logs app-test
+        run: |
+          echo "Displaying Docker logs..."
+          docker compose --profile e2e-test logs app-test
+
+          echo "Cleaning up Docker resources..."
+          docker compose --profile e2e-test down -v
+          docker system prune -f
 
   check-breaking-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:
