@@ -6,7 +6,7 @@ import type {
   ILogger,
   ISecurityEvent,
   ISecurityLogger,
-  ISecurityRequest,
+  IEnhancedRequest,
 } from '../../interfaces/index.js';
 
 export enum SecurityEventType {
@@ -60,19 +60,20 @@ export class SecurityLogger implements ISecurityLogger {
     }
   }
 
-  public getRequestInfo(req: ISecurityRequest): ISecurityEvent['requestInfo'] {
+  public getRequestInfo(req: IEnhancedRequest): ISecurityEvent['requestInfo'] {
     return {
       method: req.method,
       path: req.path,
-      ip: req.ip || 'unknown',
+      ip: req.ip || req.socket?.remoteAddress || 'unknown',
       userAgent: req.get('user-agent'),
       userId: req.user?.id,
+      headers: {},
     };
   }
 
   public createSecurityEvent(
     type: SecurityEventType,
-    req: ISecurityRequest,
+    req: IEnhancedRequest,
     details: Record<string, any>,
     severity: SecurityEventSeverity,
   ): ISecurityEvent {

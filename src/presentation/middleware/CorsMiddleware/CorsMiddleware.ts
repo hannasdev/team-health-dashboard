@@ -1,16 +1,18 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
 
 import { TYPES } from '../../../utils/types.js';
 
 import type {
-  ICorsMiddleware,
   IConfig,
   ILogger,
+  IMiddleware,
+  IEnhancedRequest,
+  IEnhancedResponse,
 } from '../../../interfaces/index.js';
 
 @injectable()
-export class CorsMiddleware implements ICorsMiddleware {
+export class CorsMiddleware implements IMiddleware {
   private allowedOrigins: string[];
   private allowedMethods: string[];
   private allowedHeaders: string[];
@@ -30,32 +32,53 @@ export class CorsMiddleware implements ICorsMiddleware {
     });
   }
 
-  public handle = (req: Request, res: Response, next: NextFunction): void => {
+  public handle = (
+    req: IEnhancedRequest,
+    res: IEnhancedResponse,
+    next: NextFunction,
+  ): void => {
     const origin = req.headers.origin;
 
-    const isAllowedOrigin =
-      origin &&
-      (this.allowedOrigins.includes('*') ||
-        this.allowedOrigins.includes(origin));
-
-    // Only set CORS headers if the origin is allowed
-    if (isAllowedOrigin) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader(
-        'Access-Control-Allow-Methods',
-        this.allowedMethods.join(', '),
-      );
-      res.setHeader(
-        'Access-Control-Allow-Headers',
-        this.allowedHeaders.join(', '),
-      );
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    const allowedOrigin = this.getAllowedOrigin(origin);
+    if (allowedOrigin) {
+      this.setCorsHeaders(res, allowedOrigin);
     }
 
     if (req.method === 'OPTIONS') {
-      res.sendStatus(204);
+      res.status(204).send('');
     } else {
       next();
     }
   };
+
+  private getAllowedOrigin(origin: string | undefined): string | null {
+    // If origin is undefined but wildcard is allowed, return wildcard
+    if (!origin && this.allowedOrigins.includes('*')) {
+      return '*';
+    }
+
+    // If origin is defined and either matches exactly or wildcard is allowed
+    if (
+      origin &&
+      (this.allowedOrigins.includes(origin) ||
+        this.allowedOrigins.includes('*'))
+    ) {
+      return origin;
+    }
+
+    return null;
+  }
+
+  private setCorsHeaders(res: IEnhancedResponse, origin: string): void {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      this.allowedMethods.join(', '),
+    );
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      this.allowedHeaders.join(', '),
+    );
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
 }

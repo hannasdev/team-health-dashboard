@@ -1,14 +1,14 @@
 import { Request } from 'express';
 
-export interface ISecurityRequest {
+export interface ISecurityRequest extends Request {
   method: string;
   path: string;
+  url?: string;
   ip: string;
-  get(name: string): string | undefined;
-  user?: {
-    id: string;
-    [key: string]: any;
-  };
+  socket: { remoteAddress: string };
+  get?(header: string): string | undefined;
+  body?: any;
+  user?: any;
 }
 
 export type SecurityRequestData = Pick<Request, 'method' | 'ip' | 'get'> & {

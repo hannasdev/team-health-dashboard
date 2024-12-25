@@ -1,5 +1,5 @@
 // src/presentation/middleware/AuthMiddleware.ts
-import { Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { HeaderKeys, HeaderValues } from '../../../types/index.js';
@@ -7,16 +7,18 @@ import { UnauthorizedError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
 import type {
-  IAuthRequest,
-  IAuthMiddleware,
+  IMiddleware,
   ITokenService,
   ITokenBlacklistService,
   ILogger,
   IAuthenticationService,
+  IEnhancedRequest,
+  IEnhancedResponse,
+  IAuthenticatedRequest,
 } from '../../../interfaces';
 
 @injectable()
-export class AuthMiddleware implements IAuthMiddleware {
+export class AuthMiddleware implements IMiddleware {
   constructor(
     @inject(TYPES.TokenService) private tokenService: ITokenService,
     @inject(TYPES.TokenBlacklistService)
@@ -27,42 +29,30 @@ export class AuthMiddleware implements IAuthMiddleware {
   ) {}
 
   public handle = async (
-    req: IAuthRequest,
-    res: Response,
+    req: IEnhancedRequest,
+    res: IEnhancedResponse,
     next: NextFunction,
   ): Promise<void> => {
     try {
       const token = this.extractTokenFromHeader(req);
       await this.validateToken(token);
-      let decoded = this.tokenService.validateAccessToken(token);
 
-      if (this.isTokenAboutToExpire(decoded)) {
-        const refreshToken = req.query.refreshToken as string;
-        if (refreshToken) {
-          try {
-            const newTokens = await this.authService.refreshToken(refreshToken);
-            this.updateRequestAndResponse(req, res, newTokens);
-            decoded = this.tokenService.validateAccessToken(
-              newTokens.accessToken,
-            );
-          } catch (refreshError) {
-            this.logger.error('Failed to refresh token', refreshError as Error);
-            throw new UnauthorizedError('Failed to refresh token');
-          }
-        } else {
-          res.setHeader(HeaderKeys.X_TOKEN_EXPIRING, 'true');
-        }
+      const authenticatedReq = req as IAuthenticatedRequest;
+      authenticatedReq.user = this.tokenService.validateAccessToken(token);
+
+      if (this.isTokenAboutToExpire(authenticatedReq.user)) {
+        await this.handleTokenRefresh(authenticatedReq, res);
+      } else {
+        res.setHeader(HeaderKeys.X_TOKEN_EXPIRING, 'true');
       }
 
-      req.user = decoded;
-      this.logger.info(`User authenticated: ${decoded.email}`);
       next();
     } catch (error) {
       this.handleAuthError(error, next);
     }
   };
 
-  private extractTokenFromHeader(req: IAuthRequest): string {
+  private extractTokenFromHeader(req: IEnhancedRequest): string {
     const authHeader = req.headers.authorization || req.headers.Authorization;
     if (!authHeader || typeof authHeader !== 'string') {
       throw new UnauthorizedError('No token provided');
@@ -90,9 +80,27 @@ export class AuthMiddleware implements IAuthMiddleware {
     return decoded.exp - currentTime < expirationThreshold;
   }
 
+  private async handleTokenRefresh(
+    req: IAuthenticatedRequest,
+    res: IEnhancedResponse,
+  ) {
+    try {
+      const newTokens = await this.authService.refreshToken(req.user.id);
+      this.updateRequestAndResponse(req, res, newTokens);
+      const decoded = this.tokenService.validateAccessToken(
+        newTokens.accessToken,
+      );
+      this.logger.info(`User authenticated: ${decoded.email}`);
+      return decoded;
+    } catch (refreshError) {
+      this.logger.error('Failed to refresh token', refreshError as Error);
+      throw new UnauthorizedError('Failed to refresh token');
+    }
+  }
+
   private updateRequestAndResponse(
-    req: IAuthRequest,
-    res: Response,
+    req: IAuthenticatedRequest,
+    res: IEnhancedResponse,
     newTokens: { accessToken: string; refreshToken: string },
   ): void {
     req.headers.authorization = `${HeaderValues.BEARER} ${newTokens.accessToken}`;
