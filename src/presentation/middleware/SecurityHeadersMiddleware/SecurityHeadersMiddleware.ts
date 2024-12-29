@@ -1,4 +1,4 @@
-import { NextFunction, Application, json } from 'express';
+import { NextFunction, Application } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { TYPES } from '../../../utils/types.js';
@@ -72,13 +72,42 @@ export class SecurityHeadersMiddleware implements IMiddleware {
       path: req.path,
       ip: req.ip,
     });
+
+    const setSecureHeader = (
+      name: string,
+      value: string | number | readonly string[],
+    ) => {
+      const originalValue = String(value);
+      // Convert to string if it's not already
+      const stringValue = Array.isArray(value)
+        ? value.join(', ')
+        : String(value);
+
+      const limitedValue = this.enforceHeaderSizeLimit(stringValue);
+
+      if (limitedValue !== originalValue) {
+        this.logger.warn('Header value was truncated', {
+          header: name,
+          originalLength: originalValue.length,
+          newLength: limitedValue.length,
+        });
+      }
+
+      res.setHeader(name, limitedValue);
+    };
+
     // Content Security Policy
     if (this.config.contentSecurityPolicy) {
       const cspValue =
         typeof this.config.contentSecurityPolicy === 'string'
-          ? this.config.contentSecurityPolicy
+          ? this.sanitizeCspValue(this.config.contentSecurityPolicy)
           : this.getDefaultCsp();
-      res.setHeader('Content-Security-Policy', cspValue);
+
+      setSecureHeader('Content-Security-Policy', cspValue);
+      setSecureHeader(
+        'Content-Security-Policy-Report-Only',
+        `${cspValue}; report-uri /api/csp-report`,
+      );
     }
 
     // XSS Protection
@@ -87,12 +116,13 @@ export class SecurityHeadersMiddleware implements IMiddleware {
         typeof this.config.xssProtection === 'string'
           ? this.config.xssProtection
           : '1; mode=block';
-      res.setHeader('X-XSS-Protection', xssValue);
+
+      setSecureHeader('X-XSS-Protection', xssValue);
     }
 
     // No Sniff
     if (this.config.noSniff) {
-      res.setHeader('X-Content-Type-Options', 'nosniff');
+      setSecureHeader('X-Content-Type-Options', 'nosniff');
     }
 
     // Frame Options
@@ -101,7 +131,8 @@ export class SecurityHeadersMiddleware implements IMiddleware {
         typeof this.config.frameOptions === 'string'
           ? this.config.frameOptions
           : 'DENY';
-      res.setHeader('X-Frame-Options', frameValue);
+
+      setSecureHeader('X-Frame-Options', frameValue);
     }
 
     // HSTS
@@ -116,6 +147,7 @@ export class SecurityHeadersMiddleware implements IMiddleware {
             };
 
       let hstsValue = `max-age=${hstsConfig.maxAge}`;
+
       if (hstsConfig.includeSubDomains) {
         hstsValue += '; includeSubDomains';
       }
@@ -123,26 +155,13 @@ export class SecurityHeadersMiddleware implements IMiddleware {
         hstsValue += '; preload';
       }
 
-      // Add CSP reporting
-      if (this.config.contentSecurityPolicy) {
-        const cspValue =
-          typeof this.config.contentSecurityPolicy === 'string'
-            ? this.config.contentSecurityPolicy
-            : this.getDefaultCsp();
-
-        res.setHeader(
-          'Content-Security-Policy-Report-Only',
-          `${cspValue}; report-uri /api/csp-report`,
-        );
-      }
-
-      res.setHeader('Strict-Transport-Security', hstsValue);
+      setSecureHeader('Strict-Transport-Security', hstsValue);
     }
 
     // Additional Security Headers
-    res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('X-Download-Options', 'noopen');
+    setSecureHeader('X-Permitted-Cross-Domain-Policies', 'none');
+    setSecureHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    setSecureHeader('X-Download-Options', 'noopen');
 
     this.logger.info('Successfully applied all security headers', {
       method: req.method,
@@ -151,32 +170,22 @@ export class SecurityHeadersMiddleware implements IMiddleware {
     });
   }
 
-  private handleSecurityError(
-    req: IEnhancedRequest,
-    error: unknown,
-    next: NextFunction,
-  ): void {
-    this.logger.error('Failed to apply security headers', error as Error, {
-      errorMessage: error instanceof Error ? error.message : 'Unknown error',
-    });
+  private sanitizeCspValue(value: string): string {
+    // Remove any HTML tags while preserving valid CSP directives
+    const sanitized = value.replace(/<[^>]*>/g, '');
 
-    const securityRequest: ISecurityRequest = {
-      method: req.method,
-      path: req.path,
-      ip: req.ip,
-      user: req.user,
-      socket: { remoteAddress: req.ip },
-    };
-    // Log security header failures
-    this.securityLogger.logSecurityEvent(
-      this.securityLogger.createSecurityEvent(
-        SecurityEventType.SECURITY_HEADER_FAILURE,
-        securityRequest,
-        { error: error instanceof Error ? error.message : 'Unknown error' },
-        SecurityEventSeverity.HIGH,
-      ),
-    );
-    next(error);
+    // Ensure we maintain valid CSP structure
+    const validDirectives = sanitized
+      .split(';')
+      .map(directive => directive.trim())
+      .filter(directive => {
+        // Basic validation of directive structure
+        const [directiveName, ...sources] = directive.split(/\s+/);
+        return directiveName && sources.length > 0;
+      })
+      .join('; ');
+
+    return validDirectives;
   }
 
   private getDefaultCsp(): string {
@@ -198,14 +207,24 @@ export class SecurityHeadersMiddleware implements IMiddleware {
     return directives.join('; ');
   }
 
+  private getConfiguredCspValue(config: ISecurityHeadersConfig): string {
+    if (typeof config.contentSecurityPolicy === 'string') {
+      return this.sanitizeCspValue(config.contentSecurityPolicy);
+    }
+    return this.getDefaultCsp();
+  }
+
   public configureCspReporting(app: Application): void {
     if (this.cspReportingConfigured) {
       this.logger.debug('CSP reporting already configured, skipping');
       return;
     }
 
-    this.logger.info('Configuring CSP reporting endpoint');
+    this.logger.info(
+      'Configuring CSP reporting endpoint - This functionality is not yet implemented',
+    );
 
+    // TODO: Implement CSP reporting endpoint
     // app.post(
     //   '/api/csp-report',
     //   (req: IEnhancedRequest, res: ISecurityResponse) => {
@@ -234,7 +253,79 @@ export class SecurityHeadersMiddleware implements IMiddleware {
     //   },
     // );
 
-    this.cspReportingConfigured = true;
-    this.logger.info('CSP reporting endpoint configured successfully');
+    // this.cspReportingConfigured = true;
+    // this.logger.info('CSP reporting endpoint configured successfully');
+  }
+
+  private enforceHeaderSizeLimit(
+    value: string,
+    maxLength: number = 16384,
+  ): string {
+    if (value.length <= maxLength) {
+      return value;
+    }
+
+    this.logger.warn('Header value exceeded maximum length, truncating', {
+      originalLength: value.length,
+      maxLength,
+    });
+
+    // For CSP, try to preserve complete directives
+    if (value.includes(';')) {
+      const directives = value.split(';');
+      let result = '';
+
+      for (const directive of directives) {
+        if ((result + directive + ';').length > maxLength) {
+          break;
+        }
+        result += (result ? '; ' : '') + directive.trim();
+      }
+      return result;
+    }
+
+    return value.slice(0, maxLength);
+  }
+
+  private handleSecurityError(
+    req: IEnhancedRequest,
+    error: unknown,
+    next: NextFunction,
+  ): void {
+    this.logger.error('Failed to apply security headers', error as Error, {
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+    });
+
+    try {
+      const securityRequest: ISecurityRequest = {
+        method: req.method,
+        path: req.path,
+        ip: req.ip,
+        user: req.user,
+        socket: { remoteAddress: req.ip },
+      };
+
+      try {
+        // Log security header failures
+        const securityEvent = this.securityLogger.createSecurityEvent(
+          SecurityEventType.SECURITY_HEADER_FAILURE,
+          securityRequest,
+          { error: error instanceof Error ? error.message : 'Unknown error' },
+          SecurityEventSeverity.HIGH,
+        );
+        this.securityLogger.logSecurityEvent(securityEvent);
+      } catch (loggerError) {
+        this.logger.error(
+          'Failed to log security event',
+          loggerError as Error,
+          {
+            originalError:
+              error instanceof Error ? error.message : 'Unknown error',
+          },
+        );
+      }
+    } finally {
+      next(error);
+    }
   }
 }

@@ -1,6 +1,7 @@
 // src/interfaces/middleware/IEnhancedRequest.ts
 import type { IncomingHttpHeaders } from 'http';
 import type { Request } from 'express';
+import type { ParsedQs } from 'qs';
 
 export interface IEnhancedRequest extends Request {
   user?: {
@@ -16,5 +17,6 @@ export interface IEnhancedRequest extends Request {
   headers: IncomingHttpHeaders;
   socket: { remoteAddress: string };
   get(header: string): string | undefined;
-  body?: any;
+  body: any;
+  query?: ParsedQs;
 }

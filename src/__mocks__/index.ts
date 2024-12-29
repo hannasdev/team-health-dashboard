@@ -12,14 +12,14 @@ export { createMockAuthControllerResponse } from './mockControllers';
 export { createCacheDecoratorMock, createMockConfig } from './mockCrossCutting';
 
 export {
-  createMockAuthRequest,
-  createMockResponse,
-  createMockExpressRequest,
-  createMockAuthMiddlewareResponse,
-  createMockMetricsRequest,
-  createMockSecurityLogger,
   createMockRequest,
+  createMockResponse,
+  createDefaultSecurityConfig,
+  createMockSecurityLogger,
+  createMockAuthenticatedRequest,
+  createMockAuthRequest,
 } from './mockMiddlewares';
+export type { MockRequestOptions } from './mockMiddlewares';
 
 export {
   createMockGitHubPullRequestModel,

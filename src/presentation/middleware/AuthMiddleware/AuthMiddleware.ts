@@ -55,11 +55,22 @@ export class AuthMiddleware implements IMiddleware {
   private extractTokenFromHeader(req: IEnhancedRequest): string {
     const authHeader = req.headers.authorization || req.headers.Authorization;
     if (!authHeader || typeof authHeader !== 'string') {
+      this.logger.warn('Authorization header missing', {
+        path: req.path,
+        method: req.method,
+        ip: req.ip,
+      });
       throw new UnauthorizedError('No token provided');
     }
 
     const [bearer, token] = authHeader.split(' ');
     if (bearer.toLowerCase() !== HeaderValues.BEARER.toLowerCase() || !token) {
+      this.logger.warn('Invalid authorization header format', {
+        path: req.path,
+        method: req.method,
+        ip: req.ip,
+        bearer,
+      });
       throw new UnauthorizedError('Invalid token format');
     }
 
@@ -70,6 +81,9 @@ export class AuthMiddleware implements IMiddleware {
     const isRevoked =
       await this.tokenBlacklistService.isTokenBlacklisted(token);
     if (isRevoked) {
+      this.logger.warn('Attempt to use revoked token', {
+        token: token.substring(0, 10) + '...',
+      });
       throw new UnauthorizedError('Token has been revoked');
     }
   }
@@ -77,7 +91,14 @@ export class AuthMiddleware implements IMiddleware {
   private isTokenAboutToExpire(decoded: any): boolean {
     const expirationThreshold = 5 * 60; // 5 minutes
     const currentTime = Math.floor(Date.now() / 1000);
-    return decoded.exp - currentTime < expirationThreshold;
+    const timeUntilExpiry = decoded.exp - currentTime;
+
+    this.logger.debug('Checking token expiration', {
+      timeUntilExpiry,
+      threshold: expirationThreshold,
+    });
+
+    return timeUntilExpiry < expirationThreshold;
   }
 
   private async handleTokenRefresh(
@@ -87,13 +108,26 @@ export class AuthMiddleware implements IMiddleware {
     try {
       const newTokens = await this.authService.refreshToken(req.user.id);
       this.updateRequestAndResponse(req, res, newTokens);
+
       const decoded = this.tokenService.validateAccessToken(
         newTokens.accessToken,
       );
-      this.logger.info(`User authenticated: ${decoded.email}`);
+      this.logger.info('Token refreshed successfully', {
+        userId: decoded.id,
+        email: decoded.email,
+      });
+
       return decoded;
     } catch (refreshError) {
-      this.logger.error('Failed to refresh token', refreshError as Error);
+      this.logger.error(
+        'Token refresh failed',
+        refreshError instanceof Error
+          ? refreshError
+          : new Error('Unknown error'),
+        {
+          userId: req.user?.id,
+        },
+      );
       throw new UnauthorizedError('Failed to refresh token');
     }
   }
@@ -109,13 +143,28 @@ export class AuthMiddleware implements IMiddleware {
       secure: true,
     });
     res.setHeader(HeaderKeys.X_TOKEN_REFRESHED, 'true');
+
+    this.logger.debug('Updated request and response with new tokens', {
+      userId: req.user?.id,
+      tokenRefreshed: true,
+    });
   }
 
   private handleAuthError(error: unknown, next: NextFunction): void {
     if (error instanceof UnauthorizedError) {
-      this.logger.warn(`Authentication error: ${error.message}`);
+      this.logger.warn('Authentication error', {
+        error: error.message,
+        type: error.constructor.name,
+        statusCode: error.statusCode,
+      });
     } else {
-      this.logger.error('Authentication error:', error as Error);
+      this.logger.error(
+        'Authentication error',
+        error instanceof Error ? error : new Error('Unknown error'),
+        {
+          type: error instanceof Error ? error.constructor.name : 'Unknown',
+        },
+      );
     }
     next(error);
   }

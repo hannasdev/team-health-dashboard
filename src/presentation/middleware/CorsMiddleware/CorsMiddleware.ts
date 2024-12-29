@@ -37,17 +37,21 @@ export class CorsMiddleware implements IMiddleware {
     res: IEnhancedResponse,
     next: NextFunction,
   ): void => {
-    const origin = req.headers.origin;
+    try {
+      const origin = req.headers.origin;
+      const allowedOrigin = this.getAllowedOrigin(origin);
 
-    const allowedOrigin = this.getAllowedOrigin(origin);
-    if (allowedOrigin) {
-      this.setCorsHeaders(res, allowedOrigin);
-    }
+      if (allowedOrigin) {
+        this.setCorsHeaders(res, allowedOrigin);
+      }
 
-    if (req.method === 'OPTIONS') {
-      res.status(204).send('');
-    } else {
-      next();
+      if (req.method === 'OPTIONS') {
+        res.status(204).send('');
+      } else {
+        next();
+      }
+    } catch (error) {
+      this.handleError(error as Error, next);
     }
   };
 
@@ -80,5 +84,10 @@ export class CorsMiddleware implements IMiddleware {
       this.allowedHeaders.join(', '),
     );
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
+  private handleError(error: Error, next: NextFunction): void {
+    this.logger.error('Failed to apply CORS headers:', error);
+    next(error);
   }
 }

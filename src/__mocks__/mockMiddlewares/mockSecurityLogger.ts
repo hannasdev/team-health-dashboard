@@ -2,7 +2,6 @@ import type {
   ISecurityLogger,
   ISecurityEvent,
   ISecurityRequest,
-  ILoggedMessage,
 } from '../../interfaces/index.js';
 import {
   SecurityEventType,
@@ -53,22 +52,18 @@ export const createMockSecurityLogger = (): jest.Mocked<ISecurityLogger> => {
   };
 
   return {
-    logSecurityEvent: jest.fn((event: ISecurityEvent): void => {
-      const sanitizedEvent = {
-        ...event,
-        details: sanitizeObject(event.details),
-        requestInfo: sanitizeRequestInfo(event.requestInfo),
-      };
-      // Mock implementation of logging if needed
-    }),
+    logSecurityEvent: jest.fn((event: ISecurityEvent): void => {}),
 
-    getRequestInfo: jest.fn((req: ISecurityRequest) => ({
-      method: req.method,
-      path: req.path,
-      ip: req.ip,
-      userAgent: req.get('user-agent'),
-      userId: req.user?.id,
-    })),
+    getRequestInfo: jest.fn(
+      (req: ISecurityRequest): ISecurityEvent['requestInfo'] => ({
+        method: req.method,
+        path: req.path,
+        ip: req.ip || 'unknown',
+        userAgent: req.get?.('user-agent'),
+        userId: req.user?.id,
+        headers: {},
+      }),
+    ),
 
     createSecurityEvent: jest.fn(
       (
@@ -82,11 +77,12 @@ export const createMockSecurityLogger = (): jest.Mocked<ISecurityLogger> => {
         requestInfo: {
           method: req.method,
           path: req.path,
-          ip: req.ip,
-          userAgent: req.get('user-agent'),
+          ip: req.ip || 'unknown',
+          userAgent: req.get?.('user-agent'),
           userId: req.user?.id,
+          headers: {},
         },
-        details: sanitizeObject(details),
+        details,
         severity,
       }),
     ),
