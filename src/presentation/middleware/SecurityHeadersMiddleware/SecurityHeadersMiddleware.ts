@@ -1,11 +1,11 @@
 import { NextFunction, Application } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { TYPES } from '../../../utils/types.js';
 import {
   SecurityEventType,
   SecurityEventSeverity,
 } from '../../../services/SecurityLogger/SecurityLogger.js';
+import { TYPES } from '../../../utils/types.js';
 
 import type {
   ILogger,

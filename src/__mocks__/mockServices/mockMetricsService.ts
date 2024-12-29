@@ -1,5 +1,5 @@
-import type { Types } from 'mongoose';
 import type { IMetricsService, IMetric } from '../../interfaces/index.js';
+import type { Types } from 'mongoose';
 
 /**
  * Creates a mock metrics service with predefined behavior

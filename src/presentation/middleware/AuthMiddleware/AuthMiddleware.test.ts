@@ -1,3 +1,5 @@
+import { AuthMiddleware } from './AuthMiddleware';
+
 import {
   createMockRequest,
   createMockResponse,
@@ -6,9 +8,9 @@ import {
   createMockTokenBlacklistService,
   createMockAuthenticationService,
 } from '../../../__mocks__/index.js';
-import { AuthMiddleware } from './AuthMiddleware';
-import { UnauthorizedError } from '../../../utils/errors.js';
+
 import { HeaderKeys, HeaderValues } from '../../../types/index.js';
+import { UnauthorizedError } from '../../../utils/errors.js';
 
 import type {
   IEnhancedRequest,

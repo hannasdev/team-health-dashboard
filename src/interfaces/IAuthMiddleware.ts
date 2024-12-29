@@ -1,8 +1,13 @@
 // src/interfaces/IAuthMiddleware.ts
-import { Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
 
-import { IAuthRequest } from './IAuthRequest.js';
+import { IEnhancedRequest } from './IEnhancedRequest.js';
+import { IEnhancedResponse } from './IEnhancedResponse.js';
 
 export interface IAuthMiddleware {
-  handle(req: IAuthRequest, res: Response, next: NextFunction): void;
+  handle(
+    req: IEnhancedRequest,
+    res: IEnhancedResponse,
+    next: NextFunction,
+  ): void;
 }

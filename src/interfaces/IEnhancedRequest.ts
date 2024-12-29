@@ -1,6 +1,6 @@
 // src/interfaces/middleware/IEnhancedRequest.ts
-import type { IncomingHttpHeaders } from 'http';
 import type { Request } from 'express';
+import type { IncomingHttpHeaders } from 'http';
 import type { ParsedQs } from 'qs';
 
 export interface IEnhancedRequest extends Request {

@@ -1,3 +1,4 @@
+import { SecurityHeadersMiddleware } from './SecurityHeadersMiddleware';
 import {
   createMockRequest,
   createMockResponse,
@@ -5,7 +6,11 @@ import {
   createMockLogger,
   createMockSecurityLogger,
 } from '../../../__mocks__/index.js';
-import { SecurityHeadersMiddleware } from './SecurityHeadersMiddleware';
+import {
+  SecurityEventType,
+  SecurityEventSeverity,
+} from '../../../services/SecurityLogger/SecurityLogger.js';
+
 import type {
   ISecurityHeadersConfig,
   IEnhancedRequest,
@@ -13,11 +18,6 @@ import type {
   ILogger,
   ISecurityLogger,
 } from '../../../interfaces/index.js';
-
-import {
-  SecurityEventType,
-  SecurityEventSeverity,
-} from '../../../services/SecurityLogger/SecurityLogger.js';
 
 describe('SecurityHeadersMiddleware', () => {
   let middleware: SecurityHeadersMiddleware;

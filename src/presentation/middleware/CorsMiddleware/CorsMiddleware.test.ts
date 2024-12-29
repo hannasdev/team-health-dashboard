@@ -1,9 +1,10 @@
+import { CorsMiddleware } from './CorsMiddleware.js';
 import {
   createMockRequest,
   createMockResponse,
   createMockLogger,
 } from '../../../__mocks__/index.js';
-import { CorsMiddleware } from './CorsMiddleware.js';
+
 import type {
   IEnhancedRequest,
   IEnhancedResponse,

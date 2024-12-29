@@ -1,3 +1,5 @@
+import { RateLimitMiddleware } from './RateLimitMiddleware';
+
 import {
   createMockRequest,
   createMockResponse,
@@ -5,7 +7,12 @@ import {
   createMockCacheService,
   createMockSecurityLogger,
 } from '../../../__mocks__/index.js';
-import { RateLimitMiddleware } from './RateLimitMiddleware';
+
+import {
+  SecurityEventType,
+  SecurityEventSeverity,
+} from '../../../services/SecurityLogger/SecurityLogger.js';
+
 import type {
   IRateLimitConfig,
   IEnhancedRequest,
@@ -14,11 +21,6 @@ import type {
   ICacheService,
   ISecurityLogger,
 } from '../../../interfaces/index.js';
-
-import {
-  SecurityEventType,
-  SecurityEventSeverity,
-} from '../../../services/SecurityLogger/SecurityLogger.js';
 
 describe('RateLimitMiddleware', () => {
   let middleware: RateLimitMiddleware;

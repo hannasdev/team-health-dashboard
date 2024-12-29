@@ -1,16 +1,12 @@
-import { createMockLogger } from '../../__mocks__/index.js';
 import { createMockRequest } from './securityTestHelpers.js';
 import {
   SecurityLogger,
   SecurityEventType,
   SecurityEventSeverity,
 } from './SecurityLogger.js';
+import { createMockLogger } from '../../__mocks__/index.js';
 
-import type {
-  ISecurityEvent,
-  IEnhancedRequest,
-  ILogger,
-} from '../../interfaces/index.js';
+import type { ISecurityEvent, ILogger } from '../../interfaces/index.js';
 
 describe('SecurityLogger', () => {
   let securityLogger: SecurityLogger;
