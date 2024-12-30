@@ -3,11 +3,6 @@ import { NextFunction } from 'express';
 
 import { IEnhancedRequest } from './IEnhancedRequest.js';
 import { IEnhancedResponse } from './IEnhancedResponse.js';
+import { IMiddleware } from './IMiddleware.js';
 
-export interface IAuthMiddleware {
-  handle(
-    req: IEnhancedRequest,
-    res: IEnhancedResponse,
-    next: NextFunction,
-  ): void;
-}
+export interface IAuthMiddleware extends IMiddleware {}

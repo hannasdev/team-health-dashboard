@@ -1,20 +1,10 @@
-import { Request } from 'express';
+import type { IEnhancedRequest } from './IEnhancedRequest';
+import type { ISecurityEvent } from './ISecurityEvent';
 
-export interface ISecurityRequest extends Request {
-  method: string;
-  path: string;
-  url?: string;
-  ip: string;
-  socket: { remoteAddress: string };
-  get?(header: string): string | undefined;
-  body?: any;
-  user?: any;
+export interface ISecurityRequest extends IEnhancedRequest {
+  securityEvent?: ISecurityEvent;
+  'user-agent': string;
+  authorization?: string;
+  'x-api-key'?: string;
+  cookie?: string;
 }
-
-export type SecurityRequestData = Pick<Request, 'method' | 'ip' | 'get'> & {
-  path: string;
-  user?: {
-    id: string;
-    [key: string]: any;
-  };
-};

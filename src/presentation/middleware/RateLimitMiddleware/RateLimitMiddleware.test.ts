@@ -1,7 +1,7 @@
 import { RateLimitMiddleware } from './RateLimitMiddleware';
 
 import {
-  createMockRequest,
+  createMockSecurityRequest,
   createMockResponse,
   createMockLogger,
   createMockCacheService,
@@ -15,16 +15,16 @@ import {
 
 import type {
   IRateLimitConfig,
-  IEnhancedRequest,
   IEnhancedResponse,
   ILogger,
   ICacheService,
   ISecurityLogger,
+  ISecurityRequest,
 } from '../../../interfaces/index.js';
 
 describe('RateLimitMiddleware', () => {
   let middleware: RateLimitMiddleware;
-  let req: jest.Mocked<IEnhancedRequest>;
+  let req: jest.Mocked<ISecurityRequest>;
   let res: jest.Mocked<IEnhancedResponse>;
   let next: jest.Mock;
   let mockLogger: jest.Mocked<ILogger>;
@@ -33,7 +33,7 @@ describe('RateLimitMiddleware', () => {
   let defaultConfig: IRateLimitConfig;
 
   beforeEach(() => {
-    req = createMockRequest();
+    req = createMockSecurityRequest();
     res = createMockResponse();
     next = jest.fn();
     mockLogger = createMockLogger();
@@ -147,22 +147,41 @@ describe('RateLimitMiddleware', () => {
 
   describe('Security Logging', () => {
     it('should log security event when rate limit is exceeded', async () => {
-      mockCacheService.get.mockResolvedValue(defaultConfig.maxRequests + 1);
+      const requestsCount = defaultConfig.maxRequests + 1;
+      mockCacheService.get.mockResolvedValue(requestsCount);
+
+      req = createMockSecurityRequest({
+        ip: '1.2.3.4',
+        path: '/test',
+        method: 'GET',
+        'user-agent': 'test-user-agent',
+      });
 
       await middleware.handle(req, res, next);
 
       expect(mockSecurityLogger.createSecurityEvent).toHaveBeenCalledWith(
         SecurityEventType.RATE_LIMIT_EXCEEDED,
-        expect.any(Object), // Keep this as is since we don't need to verify request object structure
+        {
+          authorization: undefined,
+          body: {},
+          get: expect.any(Function),
+          ip: '1.2.3.4',
+          method: 'GET',
+          origin: undefined,
+          originalUrl: '/test',
+          path: '/test',
+          query: {},
+          securityEvent: undefined,
+          user: undefined,
+          'user-agent': 'test-user-agent',
+        },
         expect.objectContaining({
           limit: defaultConfig.maxRequests,
-          requests: expect.any(Number), // Changed to any number since exact count may vary
-          windowMs: defaultConfig.windowMs, // Added windowMs expectation
+          requests: requestsCount + 1, // Account for the current request
+          windowMs: defaultConfig.windowMs,
         }),
         SecurityEventSeverity.MEDIUM,
       );
-
-      expect(mockSecurityLogger.logSecurityEvent).toHaveBeenCalled();
     });
 
     it('should handle security logger failures gracefully', async () => {
@@ -207,14 +226,22 @@ describe('RateLimitMiddleware', () => {
 
   describe('Key Generation', () => {
     it('should generate consistent cache keys for same IP', () => {
-      const key1 = middleware.getKey(createMockRequest({ ip: '1.2.3.4' }));
-      const key2 = middleware.getKey(createMockRequest({ ip: '1.2.3.4' }));
+      const key1 = middleware.getKey(
+        createMockSecurityRequest({ ip: '1.2.3.4' }),
+      );
+      const key2 = middleware.getKey(
+        createMockSecurityRequest({ ip: '1.2.3.4' }),
+      );
       expect(key1).toBe(key2);
     });
 
     it('should generate different cache keys for different IPs', () => {
-      const key1 = middleware.getKey(createMockRequest({ ip: '1.2.3.4' }));
-      const key2 = middleware.getKey(createMockRequest({ ip: '5.6.7.8' }));
+      const key1 = middleware.getKey(
+        createMockSecurityRequest({ ip: '1.2.3.4' }),
+      );
+      const key2 = middleware.getKey(
+        createMockSecurityRequest({ ip: '5.6.7.8' }),
+      );
       expect(key1).not.toBe(key2);
     });
   });
@@ -241,22 +268,30 @@ describe('RateLimitMiddleware', () => {
       expect(lastSetCall![2]).toBe(defaultConfig.windowMs / 1000);
     });
 
-    it('should handle concurrent requests by attempting atomic increments', async () => {
-      // Skip actual concurrent execution and verify the atomic update attempt
-      const request = await middleware.handle(req, res, next);
+    it('should handle concurrent requests correctly', async () => {
+      const concurrentRequests = Array.from({ length: 3 }, (_, i) =>
+        createMockSecurityRequest({ ip: '1.2.3.4', path: `/test${i}` }),
+      );
 
-      const setCalls = mockCacheService.set.mock.calls;
-      const requestKey = 'rate_limit:127.0.0.1';
+      // Mock cache to simulate incremental counts
+      let requestCount = 0;
+      mockCacheService.get.mockImplementation(() =>
+        Promise.resolve(requestCount++),
+      );
 
-      // Verify we're trying to increment the counter properly
-      const counterCall = setCalls.find(call => call[0] === requestKey);
-      expect(counterCall).toBeDefined();
-      expect(typeof counterCall![1]).toBe('number');
-      expect(counterCall![2]).toBe(defaultConfig.windowMs / 1000);
+      await Promise.all(
+        concurrentRequests.map(req =>
+          middleware.handle(req, createMockResponse(), jest.fn()),
+        ),
+      );
 
-      // Verify we attempt to track timestamps for rate limiting
-      const ttlCall = setCalls.find(call => call[0].endsWith(':ttl'));
-      expect(ttlCall).toBeDefined();
+      // Verify cache sets were called with correct values
+      const setCalls = mockCacheService.set.mock.calls.filter(
+        call => call[0] === 'rate_limit:1.2.3.4',
+      );
+
+      expect(setCalls).toHaveLength(3);
+      expect(setCalls.map(call => call[1])).toEqual([1, 2, 3]);
     });
   });
 

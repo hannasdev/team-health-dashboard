@@ -12,16 +12,21 @@ import type {
   IHealthCheckController,
   IMongoDbClient,
   IApiResponse,
+  IEnhancedRequest,
+  IEnhancedResponse,
 } from '../../../interfaces/index.js';
 @injectable()
 export class HealthCheckController implements IHealthCheckController {
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.MongoDbClient) private mongoClient: IMongoDbClient,
-    @inject(TYPES.ApiResponse) private apiResponse: IApiResponse, // ADDED: Inject ApiResponse
+    @inject(TYPES.ApiResponse) private apiResponse: IApiResponse,
   ) {}
 
-  public async getHealth(req: Request, res: Response): Promise<void> {
+  public async getHealth(
+    req: IEnhancedRequest,
+    res: IEnhancedResponse,
+  ): Promise<void> {
     try {
       // Check if we can get the database object
       const connection = this.mongoClient.getDb() as Connection;

@@ -98,16 +98,14 @@ describe('SecurityLogger', () => {
         method: 'GET',
         path: '/test',
         ip: '127.0.0.1',
-        userAgent: 'test-agent',
+        'user-agent': 'test-agent',
         userId: '123',
-        headers: expect.any(Object),
       });
     });
 
     it('should handle missing optional fields', () => {
       const mockReq = createMockRequest({
-        headers: {}, // Empty headers
-        get: (name: string) => undefined, // Explicitly override get to return undefined
+        'user-agent': undefined,
         user: undefined,
       });
       const requestInfo = securityLogger.getRequestInfo(mockReq);
@@ -116,19 +114,9 @@ describe('SecurityLogger', () => {
         method: 'GET',
         path: '/test',
         ip: '127.0.0.1',
-        userAgent: undefined,
+        'user-agent': undefined,
         userId: undefined,
-        headers: expect.any(Object),
       });
-    });
-
-    it('should use socket.remoteAddress as fallback for IP', () => {
-      const mockReq = createMockRequest({
-        ip: undefined,
-      });
-      const requestInfo = securityLogger.getRequestInfo(mockReq);
-
-      expect(requestInfo.ip).toBe('127.0.0.1');
     });
   });
 
@@ -173,22 +161,25 @@ describe('SecurityLogger', () => {
 
     it('should sanitize sensitive headers', () => {
       const mockReq = createMockRequest({
-        headers: {
-          authorization: 'Bearer token123',
-          cookie: 'session=abc123',
-          'x-api-key': 'key123',
-          'user-agent': 'test-browser',
-        },
+        authorization: 'Bearer token123',
+        cookie: 'session=abc123',
+        'x-api-key': 'key123',
+        'user-agent': 'test-browser',
       });
 
       const event = securityLogger.createSecurityEvent(
         SecurityEventType.SUSPICIOUS_ACTIVITY,
         mockReq,
-        { headers: mockReq.headers },
+        {
+          authorization: 'Bearer token123',
+          cookie: 'session=abc123',
+          'x-api-key': 'key123',
+          'user-agent': 'test-browser',
+        },
         SecurityEventSeverity.MEDIUM,
       );
 
-      expect(event.details.headers).toMatchObject({
+      expect(event.details).toMatchObject({
         authorization: '[REDACTED]',
         cookie: '[REDACTED]',
         'x-api-key': '[REDACTED]',

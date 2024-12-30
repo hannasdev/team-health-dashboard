@@ -1,6 +1,5 @@
 // src/controllers/AuthController.ts
-
-import { Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { InvalidInputError, AppError } from '../../../utils/errors.js';

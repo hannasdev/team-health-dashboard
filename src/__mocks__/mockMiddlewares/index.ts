@@ -8,6 +8,8 @@ import type {
   ISecurityHeadersConfig,
   IAuthenticatedRequest,
   IAuthRequest,
+  ISecurityEvent,
+  ISecurityRequest,
 } from '../../interfaces';
 
 export interface MockRequestOptions {
@@ -15,6 +17,8 @@ export interface MockRequestOptions {
   method?: string;
   ip?: string;
   query?: ParsedQs;
+  origin?: string;
+  authorization?: string;
   body?: {
     email?: string;
     password?: string;
@@ -32,19 +36,53 @@ export function createMockRequest(
   options: MockRequestOptions = {},
 ): jest.Mocked<IEnhancedRequest> {
   return {
-    // Base properties
     method: options.method ?? 'GET',
     path: options.path ?? '/test',
     ip: options.ip ?? '127.0.0.1',
     originalUrl: '/test',
     query: options.query ?? {},
     body: options.body ?? {},
-    headers: {},
-    get: jest.fn(),
-    socket: {
-      remoteAddress: '127.0.0.1',
-    },
+    origin: options.origin,
+    authorization: options.authorization,
+    get: jest.fn((name: string) => {
+      // Case-insensitive header lookup
+      const normalizedName = name.toLowerCase();
+      switch (normalizedName) {
+        case 'origin':
+          // Return undefined if origin was explicitly set to undefined
+          return 'origin' in options ? options.origin : undefined;
+        case 'authorization':
+          // Return undefined if authorization was explicitly set to undefined
+          return 'authorization' in options ? options.authorization : undefined;
+        default:
+          return undefined;
+      }
+    }),
+    user: options.user ?? undefined,
   } as jest.Mocked<IEnhancedRequest>;
+}
+
+export interface MockSecurityRequestOptions extends MockRequestOptions {
+  'user-agent'?: string;
+  securityEvent?: ISecurityEvent;
+}
+
+export function createMockSecurityRequest(
+  options: MockSecurityRequestOptions = {},
+): jest.Mocked<ISecurityRequest> {
+  const baseRequest = createMockRequest(options);
+
+  return {
+    ...baseRequest,
+    'user-agent': options['user-agent'] ?? 'test-user-agent',
+    securityEvent: options.securityEvent,
+    get: jest.fn((name: string) => {
+      if (name.toLowerCase() === 'user-agent') {
+        return options['user-agent'] ?? 'test-user-agent';
+      }
+      return baseRequest.get(name);
+    }),
+  } as jest.Mocked<ISecurityRequest>;
 }
 
 /**
@@ -82,7 +120,6 @@ export function createMockAuthRequest(
       refreshToken: undefined,
       shortLived: undefined,
     },
-    user: options.user,
   } as jest.Mocked<IAuthRequest>;
 }
 
@@ -91,8 +128,6 @@ export function createMockResponse(): jest.Mocked<IEnhancedResponse> {
     setHeader: jest.fn().mockReturnThis(),
     status: jest.fn().mockReturnThis(),
     end: jest.fn().mockReturnThis(),
-    // Include these because they're part of the interface contract,
-    // even though this middleware doesn't use them
     json: jest.fn().mockReturnThis(),
     send: jest.fn().mockReturnThis(),
     cookie: jest.fn().mockReturnThis(),

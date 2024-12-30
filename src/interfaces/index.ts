@@ -42,7 +42,6 @@ export type { IProgressTracker } from './IProgressTracker.js';
 export type { IPullRequest } from './IPullRequest.js';
 export type { IRateLimitConfig } from './IRateLimitConfig.js';
 export type { IRateLimitMiddleware } from './IRateLimitMiddleware.js';
-export type { IRateLimitedRequest } from './IRateLimitedRequest.js';
 export type { ISecurityEvent } from './ISecurityEvent.js';
 export type { ISecurityHeadersConfig } from './ISecurityHeadersConfig.js';
 export type { ISecurityHeadersMiddleware } from './ISecurityHeadersMiddleware.js';

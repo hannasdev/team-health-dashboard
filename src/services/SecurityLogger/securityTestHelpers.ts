@@ -1,25 +1,29 @@
 // src/services/SecurityLogger/securityTestHelpers.ts
-import type { IEnhancedRequest } from '../../interfaces/index.js';
+import type { ISecurityRequest } from '../../interfaces/index.js';
 
 export const createMockRequest = (
-  overrides?: Partial<IEnhancedRequest>,
-): IEnhancedRequest => ({
+  overrides?: Partial<ISecurityRequest>,
+): ISecurityRequest => ({
   method: 'GET',
   path: '/test',
-  url: '/test',
-  originalUrl: '/test',
   ip: '127.0.0.1',
-  socket: {
-    remoteAddress: '127.0.0.1',
-  },
-  headers: {
-    'user-agent': 'test-agent',
-  },
-  body: {},
-  get: jest.fn(name => {
-    if (name.toLowerCase() === 'user-agent') return 'test-agent';
-    return undefined;
+  'user-agent': 'test-agent',
+  securityEvent: undefined,
+  cookie: undefined,
+  'x-api-key': undefined,
+  authorization: undefined,
+  get: jest.fn((name: string) => {
+    // Case-insensitive header lookup
+    const normalizedName = name.toLowerCase();
+    switch (normalizedName) {
+      case 'user-agent':
+        return overrides?.['user-agent'] ?? 'test-agent';
+      case 'authorization':
+        return overrides?.authorization;
+      default:
+        return undefined;
+    }
   }),
-  user: { id: '123', email: 'test@example.com' },
+  user: overrides?.user ?? { id: '123', email: 'test@example.com' },
   ...overrides,
 });

@@ -38,7 +38,7 @@ export class CorsMiddleware implements IMiddleware {
     next: NextFunction,
   ): void => {
     try {
-      const origin = req.headers.origin;
+      const origin = req.get('origin');
       const allowedOrigin = this.getAllowedOrigin(origin);
 
       if (allowedOrigin) {

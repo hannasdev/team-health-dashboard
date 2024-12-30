@@ -13,9 +13,9 @@ export interface CookieOptions {
 }
 
 export interface IEnhancedResponse extends Response {
-  setHeader(name: string, value: string | number | readonly string[]): this;
-  status(code: number): this;
   json(body: any): this;
   send(body: any): this;
   cookie(name: string, value: string | object, options?: CookieOptions): this;
+  status(status: number): this;
+  setHeader(name: string, value: string | number | readonly string[]): this;
 }

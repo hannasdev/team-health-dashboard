@@ -7,4 +7,9 @@ export interface IAuthenticatedRequest extends IEnhancedRequest {
     email: string;
     exp: number;
   };
+  query: {
+    page?: string;
+    pageSize?: string;
+  };
+  authorization: string;
 }

@@ -1,6 +1,6 @@
 import { SecurityHeadersMiddleware } from './SecurityHeadersMiddleware';
 import {
-  createMockRequest,
+  createMockSecurityRequest,
   createMockResponse,
   createDefaultSecurityConfig,
   createMockLogger,
@@ -13,22 +13,22 @@ import {
 
 import type {
   ISecurityHeadersConfig,
-  IEnhancedRequest,
   IEnhancedResponse,
   ILogger,
   ISecurityLogger,
+  ISecurityRequest,
 } from '../../../interfaces/index.js';
 
 describe('SecurityHeadersMiddleware', () => {
   let middleware: SecurityHeadersMiddleware;
-  let req: jest.Mocked<IEnhancedRequest>;
+  let req: jest.Mocked<ISecurityRequest>;
   let res: jest.Mocked<IEnhancedResponse>;
   let next: jest.Mock;
   let mockLogger: jest.Mocked<ILogger>;
   let mockSecurityLogger: jest.Mocked<ISecurityLogger>;
 
   beforeEach(() => {
-    req = createMockRequest();
+    req = createMockSecurityRequest();
     res = createMockResponse();
     next = jest.fn();
     mockLogger = createMockLogger();
@@ -55,6 +55,11 @@ describe('SecurityHeadersMiddleware', () => {
       });
 
       middleware.handle(req, res, next);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to apply security headers',
+        error,
+        { errorMessage: error.message },
+      );
       expect(next).toHaveBeenCalledWith(error);
     });
   });
@@ -280,71 +285,37 @@ describe('SecurityHeadersMiddleware', () => {
   });
 
   describe('Security Logging', () => {
-    let error: Error;
-
-    beforeEach(() => {
-      error = new Error('Header setting failed');
+    it('should log security event when header application fails', () => {
+      const error = new Error('Header setting failed');
       res.setHeader.mockImplementationOnce(() => {
         throw error;
       });
 
-      // Create the expected security event
-      const mockSecurityEvent = {
+      req = createMockSecurityRequest({
+        method: 'GET',
+        path: '/test',
+        ip: '127.0.0.1',
+        'user-agent': 'test-browser/1.0',
+      });
+
+      middleware.handle(req, res, next);
+
+      expect(mockSecurityLogger.logSecurityEvent).toHaveBeenCalledWith({
         eventType: SecurityEventType.SECURITY_HEADER_FAILURE,
-        timestamp: expect.any(Date),
+        severity: SecurityEventSeverity.HIGH,
         requestInfo: {
           method: 'GET',
           path: '/test',
           ip: '127.0.0.1',
-          userAgent: undefined,
+          'user-agent': req.get('user-agent'), // Use the value from request
           userId: undefined,
         },
+        timestamp: expect.any(Date),
         details: {
           error: 'Header setting failed',
         },
-        severity: SecurityEventSeverity.HIGH,
-      };
+      });
 
-      // Set up the mock on our tracked instance
-      mockSecurityLogger.createSecurityEvent.mockReturnValue(mockSecurityEvent);
-    });
-
-    it('should log security event when header application fails', () => {
-      // Act
-      middleware.handle(req, res, next);
-
-      // Assert
-      // 1. Verify the security event was created with correct parameters
-      expect(mockSecurityLogger.createSecurityEvent).toHaveBeenCalledWith(
-        SecurityEventType.SECURITY_HEADER_FAILURE,
-        // The security request object created in handleSecurityError
-        expect.objectContaining({
-          method: 'GET',
-          path: '/test',
-          ip: '127.0.0.1',
-          socket: { remoteAddress: '127.0.0.1' },
-        }),
-        // The error details
-        expect.objectContaining({
-          error: error.message,
-        }),
-        SecurityEventSeverity.HIGH,
-      );
-
-      // 2. Verify the created event was logged
-      expect(mockSecurityLogger.logSecurityEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventType: SecurityEventType.SECURITY_HEADER_FAILURE,
-          severity: SecurityEventSeverity.HIGH,
-          requestInfo: expect.objectContaining({
-            method: 'GET',
-            path: '/test',
-            ip: '127.0.0.1',
-          }),
-        }),
-      );
-
-      // 3. Verify error was passed to next()
       expect(next).toHaveBeenCalledWith(error);
     });
   });
@@ -391,29 +362,29 @@ describe('SecurityHeadersMiddleware', () => {
 
   describe('Error Handling', () => {
     it('should handle multiple header setting failures', () => {
+      const firstError = new Error('CSP setting failed');
       const headerErrors = new Map([
-        ['Content-Security-Policy', new Error('CSP setting failed')],
+        ['Content-Security-Policy', firstError],
         ['X-Frame-Options', new Error('Frame options setting failed')],
       ]);
 
-      res.setHeader.mockImplementation(
-        (header: string, value: string | number | readonly string[]) => {
-          const error = headerErrors.get(header);
-          if (error) {
-            throw error;
-          }
-          return res; // Maintain chainable API
-        },
-      );
+      res.setHeader.mockImplementation((header: string) => {
+        const error = headerErrors.get(header);
+        if (error) {
+          throw error;
+        }
+        return res;
+      });
 
       middleware.handle(req, res, next);
 
-      expect(next).toHaveBeenCalledTimes(1);
-      expect(next).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'CSP setting failed',
-        }),
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to apply security headers', // Removed colon
+        firstError,
+        { errorMessage: firstError.message }, // Added meta object
       );
+      expect(next).toHaveBeenCalledTimes(1);
+      expect(next).toHaveBeenCalledWith(firstError);
     });
 
     it('should handle security logger failures gracefully', () => {
@@ -437,7 +408,10 @@ describe('SecurityHeadersMiddleware', () => {
     it('should handle rapid successive calls', async () => {
       // Create multiple unique request/response pairs
       const requests = Array.from({ length: 3 }, (_, i) => ({
-        req: createMockRequest({ path: `/test${i}` }),
+        req: createMockSecurityRequest({
+          path: `/test${i}`,
+          'user-agent': `test-browser/${i}`,
+        }),
         res: createMockResponse(),
         next: jest.fn(),
       }));

@@ -1,11 +1,16 @@
 // src/middleware/ErrorHandler.ts
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
 
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
-import type { ILogger, IApiResponse } from '../../../interfaces/index.js';
+import type {
+  ILogger,
+  IApiResponse,
+  IEnhancedRequest,
+  IEnhancedResponse,
+} from '../../../interfaces/index.js';
 
 @injectable()
 export class ErrorHandler {
@@ -16,8 +21,8 @@ export class ErrorHandler {
 
   public handle = (
     err: Error,
-    req: Request,
-    res: Response,
+    req: IEnhancedRequest,
+    res: IEnhancedResponse,
     next: NextFunction,
   ) => {
     this.logger.error('Error caught in error handler:', err);

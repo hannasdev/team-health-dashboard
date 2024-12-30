@@ -49,7 +49,9 @@ describe('CorsMiddleware', () => {
 
   describe('Origin Handling', () => {
     it('should allow requests from configured origins', () => {
-      req.headers.origin = 'http://localhost:3000';
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
       middleware.handle(req, res, next);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Access-Control-Allow-Origin',
@@ -58,11 +60,13 @@ describe('CorsMiddleware', () => {
     });
 
     it('should handle multiple configured origins', () => {
-      req.headers.origin = 'http://example.com';
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
       middleware.handle(req, res, next);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Access-Control-Allow-Origin',
-        'http://example.com',
+        'http://localhost:3000',
       );
     });
 
@@ -70,7 +74,9 @@ describe('CorsMiddleware', () => {
       mockConfig.CORS_ORIGIN = '*';
       middleware = new CorsMiddleware(mockConfig, mockLogger);
 
-      req.headers.origin = 'http://unknown-domain.com';
+      req = createMockRequest({
+        origin: 'http://unknown-domain.com',
+      });
       middleware.handle(req, res, next);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Access-Control-Allow-Origin',
@@ -81,8 +87,7 @@ describe('CorsMiddleware', () => {
     it('should handle requests without origin header when wildcard is allowed', () => {
       mockConfig.CORS_ORIGIN = '*';
       middleware = new CorsMiddleware(mockConfig, mockLogger);
-
-      delete req.headers.origin;
+      req = createMockRequest({ origin: undefined });
       middleware.handle(req, res, next);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Access-Control-Allow-Origin',
@@ -91,7 +96,10 @@ describe('CorsMiddleware', () => {
     });
 
     it('should not set CORS headers for disallowed origins', () => {
-      req.headers.origin = 'http://malicious-site.com';
+      req = createMockRequest({
+        origin: 'http://malicious-site.com',
+      });
+
       middleware.handle(req, res, next);
       expect(res.setHeader).not.toHaveBeenCalledWith(
         'Access-Control-Allow-Origin',
@@ -102,7 +110,9 @@ describe('CorsMiddleware', () => {
 
   describe('CORS Headers', () => {
     beforeEach(() => {
-      req.headers.origin = 'http://localhost:3000';
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
     });
 
     it('should set allowed methods', () => {
@@ -142,8 +152,10 @@ describe('CorsMiddleware', () => {
     it('should handle empty CORS_ORIGIN configuration', () => {
       mockConfig.CORS_ORIGIN = '';
       middleware = new CorsMiddleware(mockConfig, mockLogger);
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
 
-      req.headers.origin = 'http://example.com';
       middleware.handle(req, res, next);
       expect(res.setHeader).not.toHaveBeenCalledWith(
         'Access-Control-Allow-Origin',
@@ -155,7 +167,9 @@ describe('CorsMiddleware', () => {
       mockConfig.CORS_ORIGIN = 'invalid,,,config,,';
       middleware = new CorsMiddleware(mockConfig, mockLogger);
 
-      req.headers.origin = 'http://example.com';
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
       middleware.handle(req, res, next);
       expect(res.setHeader).not.toHaveBeenCalledWith(
         'Access-Control-Allow-Origin',
@@ -167,7 +181,9 @@ describe('CorsMiddleware', () => {
   describe('Error Handling', () => {
     it('should pass errors to next middleware', () => {
       // Arrange
-      req.headers.origin = 'http://localhost:3000';
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
       const errorMessage = 'Test error';
 
       res.setHeader.mockImplementationOnce(() => {
@@ -210,7 +226,9 @@ describe('CorsMiddleware', () => {
 
       // Clear logs and make a request
       mockLogger.info.mockClear();
-      req.headers.origin = 'http://localhost:3000';
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
       middleware.handle(req, res, next);
 
       // Verify no additional logging during request handling
@@ -222,8 +240,9 @@ describe('CorsMiddleware', () => {
   describe('Performance Considerations', () => {
     it('should handle rapid successive calls', async () => {
       const requests = Array.from({ length: 3 }, (_, i) => {
-        const req = createMockRequest();
-        req.headers.origin = 'http://localhost:3000';
+        req = createMockRequest({
+          origin: 'http://localhost:3000',
+        });
         return {
           req,
           res: createMockResponse(),
@@ -257,7 +276,9 @@ describe('CorsMiddleware', () => {
   describe('Middleware Chain', () => {
     it('should preserve response modifications from previous middleware', () => {
       res.setHeader('X-Previous-Middleware', 'test');
-      req.headers.origin = 'http://localhost:3000'; // Set allowed origin
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
       middleware.handle(req, res, next);
 
       // Verify previous headers remain

@@ -42,6 +42,7 @@ export class AuthMiddleware implements IMiddleware {
 
       if (this.isTokenAboutToExpire(authenticatedReq.user)) {
         await this.handleTokenRefresh(authenticatedReq, res);
+        // !No return value from handleTokenRefresh?
       } else {
         res.setHeader(HeaderKeys.X_TOKEN_EXPIRING, 'true');
       }
@@ -53,7 +54,7 @@ export class AuthMiddleware implements IMiddleware {
   };
 
   private extractTokenFromHeader(req: IEnhancedRequest): string {
-    const authHeader = req.headers.authorization || req.headers.Authorization;
+    const authHeader = req.get('authorization');
     if (!authHeader || typeof authHeader !== 'string') {
       this.logger.warn('Authorization header missing', {
         path: req.path,
@@ -137,7 +138,8 @@ export class AuthMiddleware implements IMiddleware {
     res: IEnhancedResponse,
     newTokens: { accessToken: string; refreshToken: string },
   ): void {
-    req.headers.authorization = `${HeaderValues.BEARER} ${newTokens.accessToken}`;
+    req['authorization'] = `${HeaderValues.BEARER} ${newTokens.accessToken}`;
+
     res.cookie('refreshToken', newTokens.refreshToken, {
       httpOnly: true,
       secure: true,

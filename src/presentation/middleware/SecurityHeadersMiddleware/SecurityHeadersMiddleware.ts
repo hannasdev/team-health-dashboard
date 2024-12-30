@@ -13,8 +13,7 @@ import type {
   ISecurityLogger,
   ISecurityRequest,
   IMiddleware,
-  IEnhancedRequest,
-  IEnhancedResponse,
+  ISecurityResponse,
 } from '../../../interfaces/index.js';
 
 @injectable()
@@ -51,8 +50,8 @@ export class SecurityHeadersMiddleware implements IMiddleware {
   }
 
   public handle(
-    req: IEnhancedRequest,
-    res: IEnhancedResponse,
+    req: ISecurityRequest,
+    res: ISecurityResponse,
     next: NextFunction,
   ): void {
     try {
@@ -64,8 +63,8 @@ export class SecurityHeadersMiddleware implements IMiddleware {
   }
 
   private applySecurityHeaders(
-    req: IEnhancedRequest,
-    res: IEnhancedResponse,
+    req: ISecurityRequest,
+    res: ISecurityResponse,
   ): void {
     this.logger.debug('Applying security headers to request', {
       method: req.method,
@@ -288,7 +287,7 @@ export class SecurityHeadersMiddleware implements IMiddleware {
   }
 
   private handleSecurityError(
-    req: IEnhancedRequest,
+    req: ISecurityRequest,
     error: unknown,
     next: NextFunction,
   ): void {
@@ -297,34 +296,19 @@ export class SecurityHeadersMiddleware implements IMiddleware {
     });
 
     try {
-      const securityRequest: ISecurityRequest = {
-        method: req.method,
-        path: req.path,
-        ip: req.ip,
-        user: req.user,
-        socket: { remoteAddress: req.ip },
-      };
-
-      try {
-        // Log security header failures
-        const securityEvent = this.securityLogger.createSecurityEvent(
-          SecurityEventType.SECURITY_HEADER_FAILURE,
-          securityRequest,
-          { error: error instanceof Error ? error.message : 'Unknown error' },
-          SecurityEventSeverity.HIGH,
-        );
-        this.securityLogger.logSecurityEvent(securityEvent);
-      } catch (loggerError) {
-        this.logger.error(
-          'Failed to log security event',
-          loggerError as Error,
-          {
-            originalError:
-              error instanceof Error ? error.message : 'Unknown error',
-          },
-        );
-      }
-    } finally {
+      // Log security header failures
+      const securityEvent = this.securityLogger.createSecurityEvent(
+        SecurityEventType.SECURITY_HEADER_FAILURE,
+        req,
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        SecurityEventSeverity.HIGH,
+      );
+      this.securityLogger.logSecurityEvent(securityEvent);
+      next(error);
+    } catch (loggingError) {
+      this.logger.error('Failed to log security event', loggingError as Error, {
+        originalError: error instanceof Error ? error.message : 'Unknown error',
+      });
       next(error);
     }
   }

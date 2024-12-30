@@ -1,7 +1,7 @@
-import { Request, Response, NextFunction } from 'express';
+import { IMiddleware } from './IMiddleware';
+import { IEnhancedRequest } from './IEnhancedRequest';
 
-export interface IRateLimitMiddleware {
-  handle(req: Request, res: Response, next: NextFunction): Promise<void>;
-  getKey(req: Request): string;
+export interface IRateLimitMiddleware extends IMiddleware {
+  getKey(req: IEnhancedRequest): string;
   getRemainingRequests(key: string): Promise<number>;
 }

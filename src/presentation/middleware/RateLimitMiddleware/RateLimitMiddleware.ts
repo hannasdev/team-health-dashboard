@@ -11,8 +11,8 @@ import type {
   ISecurityLogger,
   IMiddleware,
   IEnhancedRequest,
-  IEnhancedResponse,
-  IRateLimitedRequest,
+  ISecurityResponse,
+  ISecurityRequest,
 } from '../../../interfaces/index.js';
 
 import {
@@ -49,30 +49,23 @@ export class RateLimitMiddleware implements IMiddleware {
   }
 
   public async handle(
-    req: IEnhancedRequest,
-    res: IEnhancedResponse,
+    req: ISecurityRequest,
+    res: ISecurityResponse,
     next: NextFunction,
   ): Promise<void> {
     try {
       const state = await this.getRateLimitState(req);
-      const rateLimitedReq = req as IRateLimitedRequest;
-
-      rateLimitedReq.rateLimit = {
-        remaining: state.remaining,
-        reset: state.reset,
-        limit: this.config.maxRequests,
-      };
 
       this.setRateLimitHeaders(res, state);
 
       if (state.requests > this.config.maxRequests) {
-        await this.handleRateLimitExceeded(rateLimitedReq, state.requests);
+        await this.handleRateLimitExceeded(req, state.requests);
         throw new AppError(429, this.config.message);
       }
 
       this.logger.debug('Rate limit check passed', {
-        ip: rateLimitedReq.ip,
-        path: rateLimitedReq.path,
+        ip: req.ip,
+        path: req.path,
         remainingRequests: state.remaining,
       });
 
@@ -83,7 +76,7 @@ export class RateLimitMiddleware implements IMiddleware {
   }
 
   public getKey(req: IEnhancedRequest): string {
-    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    const ip = req.ip || 'unknown';
     return this.getCacheKeys(ip).requestKey;
   }
 
@@ -148,7 +141,7 @@ export class RateLimitMiddleware implements IMiddleware {
   }
 
   private setRateLimitHeaders(
-    res: IEnhancedResponse,
+    res: ISecurityResponse,
     state: RateLimitState,
   ): void {
     res.setHeader('X-RateLimit-Limit', this.config.maxRequests);
@@ -157,7 +150,7 @@ export class RateLimitMiddleware implements IMiddleware {
   }
 
   private async handleRateLimitExceeded(
-    req: IRateLimitedRequest,
+    req: ISecurityRequest,
     requests: number,
   ): Promise<void> {
     try {

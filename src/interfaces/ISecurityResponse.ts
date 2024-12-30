@@ -1,7 +1,3 @@
-import { Response } from 'express';
+import { IEnhancedResponse } from './IEnhancedResponse';
 
-export interface ISecurityResponse extends Response {
-  setHeader(name: string, value: string | number | readonly string[]): this;
-  status(code: number): this;
-  end(): this;
-}
+export interface ISecurityResponse extends IEnhancedResponse {}

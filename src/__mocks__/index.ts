@@ -14,6 +14,7 @@ export { createCacheDecoratorMock, createMockConfig } from './mockCrossCutting';
 export {
   createMockRequest,
   createMockResponse,
+  createMockSecurityRequest,
   createDefaultSecurityConfig,
   createMockSecurityLogger,
   createMockAuthenticatedRequest,
