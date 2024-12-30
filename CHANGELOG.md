@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.0.1](https://github.com/hannasdev/team-health-dashboard/compare/v3.0.0...v3.0.1) (2024-12-30)
+
+
+### Maintenance
+
+* replace set-output in workflow ([9673010](https://github.com/hannasdev/team-health-dashboard/commit/9673010047c80af6190cf450b9cdb4139a3d2c3f))
+
 ## [3.0.0](https://github.com/hannasdev/team-health-dashboard/compare/v2.2.5...v3.0.0) (2024-12-30)
 
 
