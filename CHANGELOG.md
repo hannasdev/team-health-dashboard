@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.0.0](https://github.com/hannasdev/team-health-dashboard/compare/v2.2.5...v3.0.0) (2024-12-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* Refactoring Interfaces in Controllers, Routes and Middleware
+
+### Maintenance
+
+* add chores to CHANGELOG ([3a88402](https://github.com/hannasdev/team-health-dashboard/commit/3a8840207bb30d0846c0ad1d569848b043f357e3))
+* fix lint errors ([67833bb](https://github.com/hannasdev/team-health-dashboard/commit/67833bba885a09cc53f51e5ca7b2d52ca8c25613))
+
+
+* Merge pull request #26 from hannasdev/test/cleanup ([d07b9d7](https://github.com/hannasdev/team-health-dashboard/commit/d07b9d77df95ab994370468ad12a0c84db9100e4)), closes [#26](https://github.com/hannasdev/team-health-dashboard/issues/26)
+
 ### [2.2.5](https://github.com/hannasdev/team-health-dashboard/compare/v2.2.4...v2.2.5) (2024-12-23)
 
 
