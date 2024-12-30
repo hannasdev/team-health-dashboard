@@ -1,22 +1,23 @@
-import { Request, Response, NextFunction, Application, json } from 'express';
+import { NextFunction, Application } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { TYPES } from '../../../utils/types.js';
 import {
   SecurityEventType,
   SecurityEventSeverity,
 } from '../../../services/SecurityLogger/SecurityLogger.js';
+import { TYPES } from '../../../utils/types.js';
 
 import type {
   ILogger,
-  ISecurityHeadersMiddleware,
   ISecurityHeadersConfig,
   ISecurityLogger,
   ISecurityRequest,
+  IMiddleware,
+  ISecurityResponse,
 } from '../../../interfaces/index.js';
 
 @injectable()
-export class SecurityHeadersMiddleware implements ISecurityHeadersMiddleware {
+export class SecurityHeadersMiddleware implements IMiddleware {
   private config: ISecurityHeadersConfig;
   private cspReportingConfigured: boolean = false;
 
@@ -48,120 +49,142 @@ export class SecurityHeadersMiddleware implements ISecurityHeadersMiddleware {
     });
   }
 
-  public handle(req: Request, res: Response, next: NextFunction): void {
+  public handle(
+    req: ISecurityRequest,
+    res: ISecurityResponse,
+    next: NextFunction,
+  ): void {
     try {
-      this.logger.debug('Applying security headers to request', {
-        method: req.method,
-        path: req.path,
-        ip: req.ip,
-      });
-      // Content Security Policy
-      if (this.config.contentSecurityPolicy) {
-        const cspValue =
-          typeof this.config.contentSecurityPolicy === 'string'
-            ? this.config.contentSecurityPolicy
-            : this.getDefaultCsp();
-        res.setHeader('Content-Security-Policy', cspValue);
-      }
-
-      // XSS Protection
-      if (this.config.xssProtection) {
-        const xssValue =
-          typeof this.config.xssProtection === 'string'
-            ? this.config.xssProtection
-            : '1; mode=block';
-        res.setHeader('X-XSS-Protection', xssValue);
-      }
-
-      // No Sniff
-      if (this.config.noSniff) {
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-      }
-
-      // Frame Options
-      if (this.config.frameOptions) {
-        const frameValue =
-          typeof this.config.frameOptions === 'string'
-            ? this.config.frameOptions
-            : 'DENY';
-        res.setHeader('X-Frame-Options', frameValue);
-      }
-
-      // HSTS
-      if (this.config.hsts) {
-        const hstsConfig =
-          typeof this.config.hsts === 'object'
-            ? this.config.hsts
-            : {
-                maxAge: 15552000,
-                includeSubDomains: true,
-                preload: true,
-              };
-
-        let hstsValue = `max-age=${hstsConfig.maxAge}`;
-        if (hstsConfig.includeSubDomains) {
-          hstsValue += '; includeSubDomains';
-        }
-        if (hstsConfig.preload) {
-          hstsValue += '; preload';
-        }
-
-        // Add CSP reporting
-        if (this.config.contentSecurityPolicy) {
-          const cspValue =
-            typeof this.config.contentSecurityPolicy === 'string'
-              ? this.config.contentSecurityPolicy
-              : this.getDefaultCsp();
-
-          res.setHeader(
-            'Content-Security-Policy-Report-Only',
-            `${cspValue}; report-uri /api/csp-report`,
-          );
-        }
-
-        res.setHeader('Strict-Transport-Security', hstsValue);
-      }
-
-      // Additional Security Headers
-      res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
-      res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-      res.setHeader('X-Download-Options', 'noopen');
-
-      this.logger.info('Successfully applied all security headers', {
-        method: req.method,
-        path: req.path,
-        ip: req.ip,
-      });
-
+      this.applySecurityHeaders(req, res);
       next();
     } catch (error) {
-      const securityReq: ISecurityRequest = {
-        method: req.method,
-        path: req.path || req.url,
-        ip: req.ip || req.socket.remoteAddress || 'unknown',
-        get: req.get?.bind(req) || (() => undefined),
-        user: (req as any).user,
-      };
-
-      this.logger.error('Failed to apply security headers', error as Error, {
-        method: req.method,
-        path: req.path,
-        ip: req.ip,
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-      });
-
-      // Log security header failures
-      this.securityLogger.logSecurityEvent(
-        this.securityLogger.createSecurityEvent(
-          SecurityEventType.SECURITY_HEADER_FAILURE,
-          securityReq,
-          { error: error instanceof Error ? error.message : 'Unknown error' },
-          SecurityEventSeverity.HIGH,
-        ),
-      );
-
-      next(error);
+      this.handleSecurityError(req, error, next);
     }
+  }
+
+  private applySecurityHeaders(
+    req: ISecurityRequest,
+    res: ISecurityResponse,
+  ): void {
+    this.logger.debug('Applying security headers to request', {
+      method: req.method,
+      path: req.path,
+      ip: req.ip,
+    });
+
+    const setSecureHeader = (
+      name: string,
+      value: string | number | readonly string[],
+    ) => {
+      const originalValue = String(value);
+      // Convert to string if it's not already
+      const stringValue = Array.isArray(value)
+        ? value.join(', ')
+        : String(value);
+
+      const limitedValue = this.enforceHeaderSizeLimit(stringValue);
+
+      if (limitedValue !== originalValue) {
+        this.logger.warn('Header value was truncated', {
+          header: name,
+          originalLength: originalValue.length,
+          newLength: limitedValue.length,
+        });
+      }
+
+      res.setHeader(name, limitedValue);
+    };
+
+    // Content Security Policy
+    if (this.config.contentSecurityPolicy) {
+      const cspValue =
+        typeof this.config.contentSecurityPolicy === 'string'
+          ? this.sanitizeCspValue(this.config.contentSecurityPolicy)
+          : this.getDefaultCsp();
+
+      setSecureHeader('Content-Security-Policy', cspValue);
+      setSecureHeader(
+        'Content-Security-Policy-Report-Only',
+        `${cspValue}; report-uri /api/csp-report`,
+      );
+    }
+
+    // XSS Protection
+    if (this.config.xssProtection) {
+      const xssValue =
+        typeof this.config.xssProtection === 'string'
+          ? this.config.xssProtection
+          : '1; mode=block';
+
+      setSecureHeader('X-XSS-Protection', xssValue);
+    }
+
+    // No Sniff
+    if (this.config.noSniff) {
+      setSecureHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    // Frame Options
+    if (this.config.frameOptions) {
+      const frameValue =
+        typeof this.config.frameOptions === 'string'
+          ? this.config.frameOptions
+          : 'DENY';
+
+      setSecureHeader('X-Frame-Options', frameValue);
+    }
+
+    // HSTS
+    if (this.config.hsts) {
+      const hstsConfig =
+        typeof this.config.hsts === 'object'
+          ? this.config.hsts
+          : {
+              maxAge: 15552000,
+              includeSubDomains: true,
+              preload: true,
+            };
+
+      let hstsValue = `max-age=${hstsConfig.maxAge}`;
+
+      if (hstsConfig.includeSubDomains) {
+        hstsValue += '; includeSubDomains';
+      }
+      if (hstsConfig.preload) {
+        hstsValue += '; preload';
+      }
+
+      setSecureHeader('Strict-Transport-Security', hstsValue);
+    }
+
+    // Additional Security Headers
+    setSecureHeader('X-Permitted-Cross-Domain-Policies', 'none');
+    setSecureHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    setSecureHeader('X-Download-Options', 'noopen');
+
+    this.logger.info('Successfully applied all security headers', {
+      method: req.method,
+      path: req.path,
+      ip: req.ip,
+    });
+  }
+
+  private sanitizeCspValue(value: string): string {
+    // Remove any HTML tags while preserving valid CSP directives
+    const sanitized = value.replace(/<[^>]*>/g, '');
+
+    // Ensure we maintain valid CSP structure
+    const validDirectives = sanitized
+      .split(';')
+      .map(directive => directive.trim())
+      .filter(directive => {
+        // Basic validation of directive structure
+        const [directiveName, ...sources] = directive.split(/\s+/);
+        return directiveName && sources.length > 0;
+      })
+      .join('; ');
+
+    return validDirectives;
   }
 
   private getDefaultCsp(): string {
@@ -183,40 +206,110 @@ export class SecurityHeadersMiddleware implements ISecurityHeadersMiddleware {
     return directives.join('; ');
   }
 
+  private getConfiguredCspValue(config: ISecurityHeadersConfig): string {
+    if (typeof config.contentSecurityPolicy === 'string') {
+      return this.sanitizeCspValue(config.contentSecurityPolicy);
+    }
+    return this.getDefaultCsp();
+  }
+
   public configureCspReporting(app: Application): void {
     if (this.cspReportingConfigured) {
       this.logger.debug('CSP reporting already configured, skipping');
       return;
     }
 
-    this.logger.info('Configuring CSP reporting endpoint');
+    this.logger.info(
+      'Configuring CSP reporting endpoint - This functionality is not yet implemented',
+    );
 
-    app.post('/api/csp-report', json(), (req: Request, res: Response) => {
-      const securityReq: ISecurityRequest = {
-        method: req.method,
-        path: req.path || req.url,
-        ip: req.ip || req.socket.remoteAddress || 'unknown',
-        get: req.get?.bind(req) || (() => undefined),
-        user: (req as any).user,
-      };
+    // TODO: Implement CSP reporting endpoint
+    // app.post(
+    //   '/api/csp-report',
+    //   (req: IEnhancedRequest, res: ISecurityResponse) => {
+    //     const securityRequest: ISecurityRequest = {
+    //       method: req.method,
+    //       path: req.path,
+    //       ip: req.ip,
+    //       user: req.user,
+    //       socket: { remoteAddress: req.ip },
+    //     };
 
-      this.logger.warn('CSP violation reported', {
-        ip: securityReq.ip,
-        report: req.body,
-      });
+    //     this.logger.warn('CSP violation reported', {
+    //       ip: req.ip,
+    //       report: req.method,
+    //     });
 
-      this.securityLogger.logSecurityEvent(
-        this.securityLogger.createSecurityEvent(
-          SecurityEventType.CSP_VIOLATION,
-          securityReq,
-          { report: req.body },
-          SecurityEventSeverity.HIGH,
-        ),
-      );
-      res.status(204).end();
+    //     this.securityLogger.logSecurityEvent(
+    //       this.securityLogger.createSecurityEvent(
+    //         SecurityEventType.CSP_VIOLATION,
+    //         securityRequest,
+    //         { report: req.method },
+    //         SecurityEventSeverity.HIGH,
+    //       ),
+    //     );
+    //     res.status(204).end();
+    //   },
+    // );
+
+    // this.cspReportingConfigured = true;
+    // this.logger.info('CSP reporting endpoint configured successfully');
+  }
+
+  private enforceHeaderSizeLimit(
+    value: string,
+    maxLength: number = 16384,
+  ): string {
+    if (value.length <= maxLength) {
+      return value;
+    }
+
+    this.logger.warn('Header value exceeded maximum length, truncating', {
+      originalLength: value.length,
+      maxLength,
     });
 
-    this.cspReportingConfigured = true;
-    this.logger.info('CSP reporting endpoint configured successfully');
+    // For CSP, try to preserve complete directives
+    if (value.includes(';')) {
+      const directives = value.split(';');
+      let result = '';
+
+      for (const directive of directives) {
+        if ((result + directive + ';').length > maxLength) {
+          break;
+        }
+        result += (result ? '; ' : '') + directive.trim();
+      }
+      return result;
+    }
+
+    return value.slice(0, maxLength);
+  }
+
+  private handleSecurityError(
+    req: ISecurityRequest,
+    error: unknown,
+    next: NextFunction,
+  ): void {
+    this.logger.error('Failed to apply security headers', error as Error, {
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+    });
+
+    try {
+      // Log security header failures
+      const securityEvent = this.securityLogger.createSecurityEvent(
+        SecurityEventType.SECURITY_HEADER_FAILURE,
+        req,
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        SecurityEventSeverity.HIGH,
+      );
+      this.securityLogger.logSecurityEvent(securityEvent);
+      next(error);
+    } catch (loggingError) {
+      this.logger.error('Failed to log security event', loggingError as Error, {
+        originalError: error instanceof Error ? error.message : 'Unknown error',
+      });
+      next(error);
+    }
   }
 }

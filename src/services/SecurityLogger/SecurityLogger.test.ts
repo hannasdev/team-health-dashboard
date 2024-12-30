@@ -1,16 +1,12 @@
-import { createMockLogger } from '../../__mocks__/index.js';
-import { createMockSecurityRequest } from './securityTestHelpers.js';
+import { createMockRequest } from './securityTestHelpers.js';
 import {
   SecurityLogger,
   SecurityEventType,
   SecurityEventSeverity,
 } from './SecurityLogger.js';
+import { createMockLogger } from '../../__mocks__/index.js';
 
-import type {
-  ISecurityEvent,
-  ISecurityRequest,
-  ILogger,
-} from '../../interfaces/index.js';
+import type { ISecurityEvent, ILogger } from '../../interfaces/index.js';
 
 describe('SecurityLogger', () => {
   let securityLogger: SecurityLogger;
@@ -95,21 +91,21 @@ describe('SecurityLogger', () => {
 
   describe('getRequestInfo', () => {
     it('should extract basic request information', () => {
-      const mockReq = createMockSecurityRequest();
+      const mockReq = createMockRequest();
       const requestInfo = securityLogger.getRequestInfo(mockReq);
 
       expect(requestInfo).toEqual({
         method: 'GET',
         path: '/test',
         ip: '127.0.0.1',
-        userAgent: 'test-agent',
+        'user-agent': 'test-agent',
         userId: '123',
       });
     });
 
     it('should handle missing optional fields', () => {
-      const mockReq = createMockSecurityRequest({
-        get: jest.fn(() => undefined),
+      const mockReq = createMockRequest({
+        'user-agent': undefined,
         user: undefined,
       });
       const requestInfo = securityLogger.getRequestInfo(mockReq);
@@ -118,7 +114,7 @@ describe('SecurityLogger', () => {
         method: 'GET',
         path: '/test',
         ip: '127.0.0.1',
-        userAgent: undefined,
+        'user-agent': undefined,
         userId: undefined,
       });
     });
@@ -126,7 +122,7 @@ describe('SecurityLogger', () => {
 
   describe('sanitization', () => {
     it('should recursively sanitize nested sensitive data', () => {
-      const mockReq = createMockSecurityRequest();
+      const mockReq = createMockRequest();
       const details = {
         user: {
           password: 'secret',
@@ -148,52 +144,53 @@ describe('SecurityLogger', () => {
         SecurityEventSeverity.HIGH,
       );
 
-      expect(event.details.user.password).toBe('[REDACTED]');
-      expect(event.details.user.apiToken).toBe('[REDACTED]');
-      expect(event.details.user.profile.email).toBe('test@example.com');
-      expect(event.details.user.profile.secretQuestion).toBe('[REDACTED]');
-      expect(event.details.metadata.credentials).toBe('[REDACTED]');
+      expect(event.details).toMatchObject({
+        user: {
+          password: '[REDACTED]',
+          apiToken: '[REDACTED]',
+          profile: {
+            email: 'test@example.com',
+            secretQuestion: '[REDACTED]',
+          },
+        },
+        metadata: {
+          credentials: '[REDACTED]',
+        },
+      });
     });
 
     it('should sanitize sensitive headers', () => {
-      const mockReq = createMockSecurityRequest({
-        get: jest.fn((name: string) => {
-          const headers: Record<string, string> = {
-            authorization: 'Bearer token123',
-            cookie: 'session=abc123',
-            'x-api-key': 'key123',
-            'user-agent': 'test-browser',
-          };
-          return headers[name.toLowerCase()];
-        }),
+      const mockReq = createMockRequest({
+        authorization: 'Bearer token123',
+        cookie: 'session=abc123',
+        'x-api-key': 'key123',
+        'user-agent': 'test-browser',
       });
 
-      // Create the event directly to test header sanitization
       const event = securityLogger.createSecurityEvent(
         SecurityEventType.SUSPICIOUS_ACTIVITY,
-        mockReq as ISecurityRequest,
+        mockReq,
         {
-          headers: {
-            authorization: 'Bearer token123',
-            cookie: 'session=abc123',
-            'x-api-key': 'key123',
-            'user-agent': 'test-browser',
-          },
+          authorization: 'Bearer token123',
+          cookie: 'session=abc123',
+          'x-api-key': 'key123',
+          'user-agent': 'test-browser',
         },
         SecurityEventSeverity.MEDIUM,
       );
 
-      // Test that sensitive headers are redacted in the event details
-      expect(event.details.headers.authorization).toBe('[REDACTED]');
-      expect(event.details.headers.cookie).toBe('[REDACTED]');
-      expect(event.details.headers['x-api-key']).toBe('[REDACTED]');
-      expect(event.details.headers['user-agent']).toBe('test-browser');
+      expect(event.details).toMatchObject({
+        authorization: '[REDACTED]',
+        cookie: '[REDACTED]',
+        'x-api-key': '[REDACTED]',
+        'user-agent': 'test-browser',
+      });
     });
   });
 
   describe('createSecurityEvent', () => {
     it('should handle all SecurityEventTypes', () => {
-      const mockReq = createMockSecurityRequest();
+      const mockReq = createMockRequest();
       const details = { reason: 'test' };
 
       Object.values(SecurityEventType).forEach(eventType => {
@@ -215,7 +212,7 @@ describe('SecurityLogger', () => {
     });
 
     it('should preserve non-sensitive data in details', () => {
-      const mockReq = createMockSecurityRequest();
+      const mockReq = createMockRequest();
       const details = {
         public: 'safe-data',
         metrics: {

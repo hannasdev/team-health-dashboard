@@ -1,5 +1,5 @@
 // src/TeamHealthDashboardApp.ts
-import express, { Express, Request, Response, NextFunction } from 'express';
+import express, { Express, NextFunction, Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 
 import authRouter from './presentation/routes/auth.js';
@@ -8,15 +8,17 @@ import metricsRouter from './presentation/routes/metrics.js';
 import { TYPES } from './utils/types.js';
 
 import type {
-  IAuthMiddleware,
   IConfig,
-  ICorsMiddleware,
-  IErrorHandler,
   ILogger,
   IMongoDbClient,
-  IRateLimitMiddleware,
-  ISecurityHeadersMiddleware,
   ITeamHealthDashboardApp,
+  IEnhancedRequest,
+  IEnhancedResponse,
+  IMiddleware,
+  IErrorHandler,
+  ISecurityHeadersMiddleware,
+  IRateLimitMiddleware,
+  ISecurityRequest,
 } from './interfaces/index.js';
 
 @injectable()
@@ -28,14 +30,15 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     @inject(TYPES.MongoDbClient) private mongoDbClient: IMongoDbClient,
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.ErrorHandler) private errorHandler: IErrorHandler,
-    @inject(TYPES.CorsMiddleware) private corsMiddleware: ICorsMiddleware,
+    @inject(TYPES.CorsMiddleware) private corsMiddleware: IMiddleware,
     @inject(TYPES.RateLimitMiddleware)
     private rateLimitMiddleware: IRateLimitMiddleware,
     @inject(TYPES.SecurityHeadersMiddleware)
     private securityHeadersMiddleware: ISecurityHeadersMiddleware,
-    @inject(TYPES.AuthMiddleware) private authMiddleware: IAuthMiddleware,
+    @inject(TYPES.AuthMiddleware) private authMiddleware: IMiddleware,
   ) {
     this.expressApp = express();
+    this.configureJson();
     this.configureSecurityMiddleware();
     this.configureCors();
     this.configureMiddleware();
@@ -71,52 +74,79 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     }
   }
 
+  private configureJson(): void {
+    this.expressApp.use(express.json);
+    this.expressApp.use(express.urlencoded);
+  }
+
   private configureCors(): void {
-    this.expressApp.use(this.corsMiddleware.handle.bind(this.corsMiddleware));
+    this.expressApp.use((req: Request, res: Response, next) =>
+      this.corsMiddleware.handle(
+        req as IEnhancedRequest,
+        res as IEnhancedResponse,
+        next as NextFunction,
+      ),
+    );
+
     this.logger.info('CORS configured', {
       corsOrigin: this.config.CORS_ORIGIN,
     });
   }
 
   private configureMiddleware(): void {
-    this.expressApp.use(express.json({ limit: '10mb' }));
-    this.expressApp.use(express.urlencoded({ extended: true, limit: '10mb' }));
+    this.expressApp.use((req: Request, res: Response, next) =>
+      this.rateLimitMiddleware.handle(
+        req as IEnhancedRequest,
+        res as IEnhancedResponse,
+        next as NextFunction,
+      ),
+    );
+
+    this.expressApp.use((req: Request, res: Response, next) =>
+      this.authMiddleware.handle(
+        req as IEnhancedRequest,
+        res as IEnhancedResponse,
+        next as NextFunction,
+      ),
+    );
 
     this.logger.info('Basic middleware configured');
   }
 
   private configureSecurityMiddleware(): void {
     // Security headers should be applied early
-    this.expressApp.use((req, res, next) =>
-      this.securityHeadersMiddleware.handle(req, res, next),
+    this.expressApp.use((req: Request, res: Response, next) =>
+      this.securityHeadersMiddleware.handle(
+        req as unknown as ISecurityRequest,
+        res as IEnhancedResponse,
+        next as NextFunction,
+      ),
     );
 
     // Configure CSP reporting
     this.securityHeadersMiddleware.configureCspReporting(this.expressApp);
 
     // Rate limiting for API routes
-    this.expressApp.use('/api', (req, res, next) =>
-      this.rateLimitMiddleware.handle(req, res, next),
+    this.expressApp.use('/api', (req: Request, res: Response, next) =>
+      this.rateLimitMiddleware.handle(
+        req as unknown as ISecurityRequest,
+        res as IEnhancedResponse,
+        next as NextFunction,
+      ),
     );
 
     // Security settings
-    this.expressApp.disable('x-powered-by');
-    this.expressApp.enable('trust proxy');
-    this.expressApp.set('env', process.env.NODE_ENV || 'production');
-    this.expressApp.set('query parser', 'extended');
-
-    this.logger.info('Security middleware configured', {
-      environment: process.env.NODE_ENV,
-      trustProxy: true,
-      xPoweredBy: false,
-    });
+    this.configureSecuritySettings();
   }
 
   private configureRoutes(): void {
     // Public routes
-    this.expressApp.get('/', (req: Request, res: Response) => {
-      res.send('Team Health Dashboard API');
-    });
+    this.expressApp.get(
+      '/',
+      (req: IEnhancedRequest, res: IEnhancedResponse) => {
+        res.send('Team Health Dashboard API');
+      },
+    );
 
     this.expressApp.use('/health', healthCheckRouter);
 
@@ -124,13 +154,17 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     this.expressApp.use('/api/auth', authRouter);
 
     // Protected routes
-    this.expressApp.use('/api', (req, res, next) =>
-      this.authMiddleware.handle(req, res, next),
+    this.expressApp.use('/api', (req: Request, res: Response, next) =>
+      this.authMiddleware.handle(
+        req as unknown as ISecurityRequest,
+        res as IEnhancedResponse,
+        next as NextFunction,
+      ),
     );
     this.expressApp.use('/api', metricsRouter);
 
     // 404 handler
-    this.expressApp.use((req: Request, res: Response) => {
+    this.expressApp.use((req: IEnhancedRequest, res: IEnhancedResponse) => {
       res.status(404).json({
         success: false,
         error: 'Not Found',
@@ -143,7 +177,12 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
 
   private configureErrorHandling(): void {
     this.expressApp.use(
-      (err: Error, req: Request, res: Response, next: NextFunction) => {
+      (
+        err: Error,
+        req: IEnhancedRequest,
+        res: IEnhancedResponse,
+        next: NextFunction,
+      ) => {
         this.errorHandler.handle(err, req, res, next);
       },
     );
@@ -161,5 +200,18 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     } catch {
       return 'invalid-url';
     }
+  }
+
+  private configureSecuritySettings(): void {
+    this.expressApp.disable('x-powered-by');
+    this.expressApp.enable('trust proxy');
+    this.expressApp.set('env', process.env.NODE_ENV || 'production');
+    this.expressApp.set('query parser', 'extended');
+
+    this.logger.info('Security middleware configured', {
+      environment: process.env.NODE_ENV,
+      trustProxy: true,
+      xPoweredBy: false,
+    });
   }
 }

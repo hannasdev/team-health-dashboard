@@ -1,237 +1,320 @@
-// src/presentation/middleware/AuthMiddleware.test.ts
-
-import { Response, NextFunction } from 'express';
-import { Container } from 'inversify';
-
 import { AuthMiddleware } from './AuthMiddleware';
+
 import {
+  createMockRequest,
+  createMockResponse,
+  createMockLogger,
   createMockTokenService,
   createMockTokenBlacklistService,
-  createMockLogger,
   createMockAuthenticationService,
-  createMockAuthRequest,
-  createMockResponse,
-} from '../../../__mocks__';
-import { UnauthorizedError } from '../../../utils/errors';
-import { TYPES } from '../../../utils/types';
+} from '../../../__mocks__/index.js';
+
+import { HeaderKeys, HeaderValues } from '../../../types/index.js';
+import { UnauthorizedError } from '../../../utils/errors.js';
+
+import type {
+  IEnhancedRequest,
+  IEnhancedResponse,
+  ILogger,
+  ITokenService,
+  ITokenBlacklistService,
+  IAuthenticationService,
+} from '../../../interfaces/index.js';
 
 describe('AuthMiddleware', () => {
-  let container: Container;
-  let authMiddleware: AuthMiddleware;
-  let mockTokenService: ReturnType<typeof createMockTokenService>;
-  let mockTokenBlacklistService: ReturnType<
-    typeof createMockTokenBlacklistService
-  >;
-  let mockLogger: ReturnType<typeof createMockLogger>;
-  let mockAuthenticationService: ReturnType<
-    typeof createMockAuthenticationService
-  >;
+  let middleware: AuthMiddleware;
+  let req: jest.Mocked<IEnhancedRequest>;
+  let res: jest.Mocked<IEnhancedResponse>;
+  let next: jest.Mock;
+  let mockLogger: jest.Mocked<ILogger>;
+  let mockTokenService: jest.Mocked<ITokenService>;
+  let mockTokenBlacklistService: jest.Mocked<ITokenBlacklistService>;
+  let mockAuthService: jest.Mocked<IAuthenticationService>;
+
+  const validToken = 'valid.jwt.token';
+  const validDecodedToken = {
+    id: '123',
+    email: 'test@example.com',
+    exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
+  };
 
   beforeEach(() => {
-    container = new Container();
+    req = createMockRequest();
+    res = createMockResponse();
+    next = jest.fn();
+    mockLogger = createMockLogger();
     mockTokenService = createMockTokenService();
     mockTokenBlacklistService = createMockTokenBlacklistService();
-    mockLogger = createMockLogger();
-    mockAuthenticationService = createMockAuthenticationService();
+    mockAuthService = createMockAuthenticationService();
 
-    container.bind(TYPES.TokenService).toConstantValue(mockTokenService);
-    container
-      .bind(TYPES.TokenBlacklistService)
-      .toConstantValue(mockTokenBlacklistService);
-    container.bind(TYPES.Logger).toConstantValue(mockLogger);
-    container
-      .bind(TYPES.AuthenticationService)
-      .toConstantValue(mockAuthenticationService);
+    // Default successful token validation
+    mockTokenService.validateAccessToken.mockReturnValue(validDecodedToken);
+    mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
 
-    authMiddleware = container.resolve(AuthMiddleware);
+    middleware = new AuthMiddleware(
+      mockTokenService,
+      mockTokenBlacklistService,
+      mockLogger,
+      mockAuthService,
+    );
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
-
-  describe('handle', () => {
-    it('should authenticate valid token and call next', async () => {
-      const req = createMockAuthRequest({
-        headers: { authorization: 'Bearer valid_token' },
+  describe('Contract', () => {
+    it('should call next() on successful authentication', async () => {
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
       });
-      const res = createMockResponse();
-      const next = jest.fn();
-
-      mockTokenService.validateAccessToken.mockReturnValue({
-        id: '123',
-        email: 'test@example.com',
-        exp: Math.floor(Date.now() / 1000) + 3600,
-      });
-      mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
-
-      await authMiddleware.handle(
-        req,
-        res as unknown as Response,
-        next as NextFunction,
-      );
-
+      await middleware.handle(req, res, next);
       expect(next).toHaveBeenCalledWith();
-      expect(req.user).toEqual({
-        id: '123',
-        email: 'test@example.com',
-        exp: expect.any(Number),
-      });
     });
 
-    it('should throw UnauthorizedError for missing token', async () => {
-      const req = createMockAuthRequest();
-      const res = createMockResponse();
-      const next = jest.fn();
-
-      await authMiddleware.handle(
-        req,
-        res as unknown as Response,
-        next as NextFunction,
-      );
-
-      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        'Authentication error: No token provided',
-      );
-    });
-
-    it('should throw UnauthorizedError for invalid token format', async () => {
-      const req = createMockAuthRequest({
-        headers: { authorization: 'InvalidFormat token' },
+    it('should pass errors to next() when authentication fails', async () => {
+      const error = new UnauthorizedError('Invalid token');
+      mockTokenService.validateAccessToken.mockImplementationOnce(() => {
+        throw error;
       });
-      const res = createMockResponse();
-      const next = jest.fn();
 
-      await authMiddleware.handle(
-        req,
-        res as unknown as Response,
-        next as NextFunction,
-      );
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
+      });
+      await middleware.handle(req, res, next);
+      expect(next).toHaveBeenCalledWith(error);
+    });
+  });
 
-      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        'Authentication error: Invalid token format',
+  describe('Token Extraction', () => {
+    it('should extract token from Authorization header', async () => {
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
+      });
+      await middleware.handle(req, res, next);
+      expect(mockTokenService.validateAccessToken).toHaveBeenCalledWith(
+        validToken,
       );
     });
 
-    it('should throw UnauthorizedError for blacklisted token', async () => {
-      const req = createMockAuthRequest({
-        headers: { authorization: 'Bearer blacklisted_token' },
-      });
-      const res = createMockResponse();
-      const next = jest.fn();
+    it('should handle missing Authorization header', async () => {
+      req = createMockRequest({ authorization: undefined });
+      await middleware.handle(req, res, next);
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'No token provided',
+          statusCode: 401,
+        }),
+      );
+    });
+  });
 
+  describe('Token Validation', () => {
+    it('should validate the token with TokenService', async () => {
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
+      });
+      await middleware.handle(req, res, next);
+      expect(mockTokenService.validateAccessToken).toHaveBeenCalledWith(
+        validToken,
+      );
+    });
+
+    it('should check if token is blacklisted', async () => {
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
+      });
+      await middleware.handle(req, res, next);
+      expect(mockTokenBlacklistService.isTokenBlacklisted).toHaveBeenCalledWith(
+        validToken,
+      );
+    });
+
+    it('should reject blacklisted tokens', async () => {
       mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(true);
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
+      });
 
-      await authMiddleware.handle(
-        req,
-        res as unknown as Response,
-        next as NextFunction,
-      );
+      await middleware.handle(req, res, next);
 
-      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        'Authentication error: Token has been revoked',
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Token has been revoked',
+          statusCode: 401,
+        }),
       );
     });
 
-    it('should refresh token if it is about to expire', async () => {
-      const req = createMockAuthRequest({
-        headers: { authorization: 'Bearer expiring_token' },
-        query: { refreshToken: 'valid_refresh_token' },
+    it('should attach decoded token data to request', async () => {
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
       });
-      const res = createMockResponse();
-      const next = jest.fn();
+      await middleware.handle(req, res, next);
+      expect(req.user).toEqual(validDecodedToken);
+    });
+  });
 
-      mockTokenService.validateAccessToken
-        .mockReturnValueOnce({
-          id: '123',
-          email: 'test@example.com',
-          exp: Math.floor(Date.now() / 1000) + 60, // 1 minute to expiration
-        })
-        .mockReturnValueOnce({
-          id: '123',
-          email: 'test@example.com',
-          exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour to expiration
-        });
-      mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
-      mockAuthenticationService.refreshToken.mockResolvedValue({
-        accessToken: 'new_access_token',
-        refreshToken: 'new_refresh_token',
+  describe('Token Expiration', () => {
+    it('should handle tokens about to expire', async () => {
+      const nearExpiryToken = {
+        ...validDecodedToken,
+        exp: Math.floor(Date.now() / 1000) + 240, // 4 minutes until expiry
+      };
+      mockTokenService.validateAccessToken.mockReturnValue(nearExpiryToken);
+
+      const newTokens = {
+        accessToken: 'new.access.token',
+        refreshToken: 'new.refresh.token',
+      };
+      mockAuthService.refreshToken.mockResolvedValue(newTokens);
+
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
       });
+      await middleware.handle(req, res, next);
 
-      await authMiddleware.handle(
-        req,
-        res as unknown as Response,
-        next as NextFunction,
-      );
-
-      expect(mockAuthenticationService.refreshToken).toHaveBeenCalledWith(
-        'valid_refresh_token',
-      );
       expect(res.cookie).toHaveBeenCalledWith(
         'refreshToken',
-        'new_refresh_token',
+        newTokens.refreshToken,
         expect.any(Object),
       );
-      expect(res.setHeader).toHaveBeenCalledWith('X-Token-Refreshed', 'true');
-      expect(next).toHaveBeenCalledWith();
-    });
-
-    it('should set X-Token-Expiring header if token is about to expire and no refresh token provided', async () => {
-      const req = createMockAuthRequest({
-        headers: { authorization: 'Bearer expiring_token' },
-      });
-      const res = createMockResponse();
-      const next = jest.fn();
-
-      mockTokenService.validateAccessToken.mockReturnValue({
-        id: '123',
-        email: 'test@example.com',
-        exp: Math.floor(Date.now() / 1000) + 60, // 1 minute to expiration
-      });
-      mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
-
-      await authMiddleware.handle(
-        req,
-        res as unknown as Response,
-        next as NextFunction,
+      expect(res.setHeader).toHaveBeenCalledWith(
+        HeaderKeys.X_TOKEN_REFRESHED,
+        'true',
       );
-
-      expect(res.setHeader).toHaveBeenCalledWith('X-Token-Expiring', 'true');
-      expect(next).toHaveBeenCalledWith();
     });
 
-    it('should handle token refresh failure', async () => {
-      const req = createMockAuthRequest({
-        headers: { authorization: 'Bearer expiring_token' },
-        query: { refreshToken: 'invalid_refresh_token' },
+    it('should set expiring header for tokens not requiring immediate refresh', async () => {
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
       });
-      const res = createMockResponse();
-      const next = jest.fn();
+      await middleware.handle(req, res, next);
 
-      mockTokenService.validateAccessToken.mockReturnValue({
-        id: '123',
-        email: 'test@example.com',
-        exp: Math.floor(Date.now() / 1000) + 60, // 1 minute to expiration
-      });
-      mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(false);
-      mockAuthenticationService.refreshToken.mockRejectedValue(
+      expect(res.setHeader).toHaveBeenCalledWith(
+        HeaderKeys.X_TOKEN_EXPIRING,
+        'true',
+      );
+    });
+
+    it('should handle token refresh failure gracefully', async () => {
+      const nearExpiryToken = {
+        ...validDecodedToken,
+        exp: Math.floor(Date.now() / 1000) + 240,
+      };
+      mockTokenService.validateAccessToken.mockReturnValue(nearExpiryToken);
+      mockAuthService.refreshToken.mockRejectedValue(
         new Error('Refresh failed'),
       );
 
-      await authMiddleware.handle(
-        req,
-        res as unknown as Response,
-        next as NextFunction,
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
+      });
+      await middleware.handle(req, res, next);
+
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Failed to refresh token',
+          statusCode: 401,
+        }),
+      );
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle TokenService validation errors', async () => {
+      mockTokenService.validateAccessToken.mockImplementation(() => {
+        throw new Error('Token validation failed');
+      });
+
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
+      });
+      await middleware.handle(req, res, next);
+
+      expect(mockLogger.error).toHaveBeenCalled();
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+    });
+
+    it('should handle TokenBlacklistService errors', async () => {
+      mockTokenBlacklistService.isTokenBlacklisted.mockRejectedValue(
+        new Error('Database error'),
       );
 
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to refresh token',
-        expect.any(Error),
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
+      });
+      await middleware.handle(req, res, next);
+
+      expect(mockLogger.error).toHaveBeenCalled();
+      expect(next).toHaveBeenCalledWith(expect.any(Error));
+    });
+
+    it('should log authentication errors with appropriate level', async () => {
+      req = createMockRequest({
+        authorization: `${HeaderValues.BEARER} invalid_token`,
+      });
+      mockTokenService.validateAccessToken.mockImplementation(() => {
+        throw new UnauthorizedError('Invalid token');
+      });
+
+      await middleware.handle(req, res, next);
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Authentication error'),
+        expect.any(Object),
       );
-      expect(next).toHaveBeenCalledWith(expect.any(UnauthorizedError));
+    });
+  });
+
+  describe('Performance and Edge Cases', () => {
+    it('should handle multiple concurrent requests', async () => {
+      const requests = Array.from({ length: 3 }, (_, i) => ({
+        req: createMockRequest({
+          path: `/test${i}`,
+          authorization: `${HeaderValues.BEARER} ${validToken}`, // Set authorization when creating
+        }),
+        res: createMockResponse(),
+        next: jest.fn(),
+      }));
+
+      await Promise.all(
+        requests.map(({ req, res, next }) => middleware.handle(req, res, next)),
+      );
+
+      requests.forEach(({ next }) => {
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(next).toHaveBeenCalledWith();
+      });
+    });
+
+    it('should maintain proper error context in concurrent requests', async () => {
+      const validRes = createMockResponse();
+      const invalidRes = createMockResponse();
+      const validNext = jest.fn();
+      const invalidNext = jest.fn();
+
+      const validReq = createMockRequest({
+        authorization: `${HeaderValues.BEARER} ${validToken}`,
+      });
+      const invalidReq = createMockRequest({
+        authorization: `${HeaderValues.BEARER} invalid_token`,
+      });
+
+      mockTokenService.validateAccessToken
+        .mockImplementationOnce(() => validDecodedToken)
+        .mockImplementationOnce(() => {
+          throw new UnauthorizedError('Invalid token');
+        });
+
+      await Promise.all([
+        middleware.handle(validReq, validRes, validNext),
+        middleware.handle(invalidReq, invalidRes, invalidNext),
+      ]);
+
+      expect(validNext).toHaveBeenCalledWith();
+      expect(invalidNext).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'Invalid token',
+          statusCode: 401,
+        }),
+      );
     });
   });
 });

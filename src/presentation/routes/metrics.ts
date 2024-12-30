@@ -1,5 +1,5 @@
 // src/routes/metrics.ts
-import { Request, Response, NextFunction, Router } from 'express';
+import { NextFunction, Router } from 'express';
 
 import { container } from '../../container.js';
 import { AppError } from '../../utils/errors.js';
@@ -7,9 +7,11 @@ import { TYPES } from '../../utils/types.js';
 import { MetricsController } from '../controllers/MetricsController/MetricsController.js';
 
 import type {
-  IAuthRequest,
   IAuthMiddleware,
   ILogger,
+  IAuthenticatedRequest,
+  IEnhancedResponse,
+  IAuthRequest,
 } from '../../interfaces/index.js';
 
 const router = Router();
@@ -25,12 +27,20 @@ const getLogger = () => container.get<ILogger>(TYPES.Logger);
 // GET /metrics endpoint
 router.get(
   '/metrics',
-  (req: IAuthRequest, res: Response, next: NextFunction) => {
+  (req, res, next?: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics endpoint');
-    return getAuthMiddleware().handle(req, res, next);
+    return getAuthMiddleware().handle(
+      req as unknown as IAuthenticatedRequest,
+      res as IEnhancedResponse,
+      next as NextFunction,
+    );
   },
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req, res, next) => {
+    if (!next) {
+      throw new Error('Next function is required');
+    }
+
     const logger = getLogger();
     try {
       const page = parseInt(req.query.page as string) || 1;
@@ -46,7 +56,11 @@ router.get(
       }
 
       logger.debug('Calling getAllMetrics on MetricsController');
-      await metricsController.getAllMetrics(req, res, next);
+      await metricsController.getAllMetrics(
+        req as unknown as IAuthenticatedRequest,
+        res as IEnhancedResponse,
+        next as NextFunction,
+      );
     } catch (error) {
       logger.error('Error in metrics route handler:', error as Error);
       next(error);
@@ -57,12 +71,19 @@ router.get(
 // POST /metrics/sync endpoint
 router.post(
   '/metrics/sync',
-  (req: IAuthRequest, res: Response, next: NextFunction) => {
+  (req, res, next?: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics/sync endpoint');
-    return getAuthMiddleware().handle(req, res, next);
+    return getAuthMiddleware().handle(
+      req as unknown as IAuthenticatedRequest,
+      res as IEnhancedResponse,
+      next as NextFunction,
+    );
   },
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req, res, next) => {
+    if (!next) {
+      throw new Error('Next function is required');
+    }
     const logger = getLogger();
     try {
       logger.debug('Initiating metrics sync');
@@ -74,7 +95,11 @@ router.post(
       }
 
       logger.debug('Calling syncMetrics on MetricsController');
-      await metricsController.syncMetrics(req, res, next);
+      await metricsController.syncMetrics(
+        req as unknown as IAuthenticatedRequest,
+        res as IEnhancedResponse,
+        next as NextFunction,
+      );
     } catch (error) {
       logger.error('Error in metrics sync route handler:', error as Error);
       next(error);
@@ -84,12 +109,19 @@ router.post(
 
 router.post(
   '/metrics/reset-database',
-  (req: IAuthRequest, res: Response, next: NextFunction) => {
+  (req, res, next?: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics/reset-database endpoint');
-    return getAuthMiddleware().handle(req, res, next);
+    return getAuthMiddleware().handle(
+      req as unknown as IAuthenticatedRequest,
+      res,
+      next as NextFunction,
+    );
   },
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req, res, next) => {
+    if (!next) {
+      throw new Error('Next function is required');
+    }
     const logger = getLogger();
     try {
       logger.debug('Initiating database reset');
@@ -101,7 +133,11 @@ router.post(
       }
 
       logger.debug('Calling resetDatabase on MetricsController');
-      await metricsController.resetDatabase(req, res, next);
+      await metricsController.resetDatabase(
+        req as unknown as IAuthenticatedRequest,
+        res as IEnhancedResponse,
+        next as NextFunction,
+      );
     } catch (error) {
       logger.error('Error in database reset route handler:', error as Error);
       next(error);

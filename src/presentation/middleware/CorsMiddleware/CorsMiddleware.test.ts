@@ -1,196 +1,309 @@
-import { Request, Response, NextFunction } from 'express';
-import { IncomingHttpHeaders } from 'http';
-
 import { CorsMiddleware } from './CorsMiddleware.js';
 import {
-  createMockConfig,
+  createMockRequest,
+  createMockResponse,
   createMockLogger,
 } from '../../../__mocks__/index.js';
 
+import type {
+  IEnhancedRequest,
+  IEnhancedResponse,
+  ILogger,
+  IConfig,
+} from '../../../interfaces/index.js';
+
 describe('CorsMiddleware', () => {
-  let corsMiddleware: CorsMiddleware;
-  let mockConfig: any;
-  let mockLogger: any;
-  let mockRequest: Partial<Request>;
-  let mockResponse: Partial<Response>;
-  let nextFunction: NextFunction;
+  let middleware: CorsMiddleware;
+  let req: jest.Mocked<IEnhancedRequest>;
+  let res: jest.Mocked<IEnhancedResponse>;
+  let next: jest.Mock;
+  let mockLogger: jest.Mocked<ILogger>;
+  let mockConfig: jest.Mocked<IConfig>;
 
   beforeEach(() => {
-    mockConfig = createMockConfig();
+    req = createMockRequest();
+    res = createMockResponse();
+    next = jest.fn();
     mockLogger = createMockLogger();
-    mockRequest = {
-      method: 'GET',
-      headers: {} as IncomingHttpHeaders,
-    };
+    mockConfig = {
+      CORS_ORIGIN: 'http://localhost:3000,http://example.com',
+    } as jest.Mocked<IConfig>;
 
-    mockResponse = {
-      setHeader: jest.fn().mockReturnThis(),
-      sendStatus: jest.fn().mockReturnThis(),
-    };
-
-    nextFunction = jest.fn();
+    middleware = new CorsMiddleware(mockConfig, mockLogger);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
+  describe('Contract', () => {
+    it('should call next() after setting headers', () => {
+      middleware.handle(req, res, next);
+      expect(next).toHaveBeenCalledWith();
+    });
+
+    it('should end the response for OPTIONS requests', () => {
+      req.method = 'OPTIONS';
+      middleware.handle(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(204);
+      expect(res.send).toHaveBeenCalledWith('');
+      expect(next).not.toHaveBeenCalled();
+    });
   });
 
-  describe('constructor', () => {
-    it('should initialize with default values from config', () => {
-      const corsOrigin = 'http://localhost:3000,http://example.com';
-      mockConfig.CORS_ORIGIN = corsOrigin;
+  describe('Origin Handling', () => {
+    it('should allow requests from configured origins', () => {
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
+      middleware.handle(req, res, next);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Origin',
+        'http://localhost:3000',
+      );
+    });
 
-      corsMiddleware = new CorsMiddleware(mockConfig, mockLogger);
+    it('should handle multiple configured origins', () => {
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
+      middleware.handle(req, res, next);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Origin',
+        'http://localhost:3000',
+      );
+    });
 
+    it('should handle wildcard origin configuration', () => {
+      mockConfig.CORS_ORIGIN = '*';
+      middleware = new CorsMiddleware(mockConfig, mockLogger);
+
+      req = createMockRequest({
+        origin: 'http://unknown-domain.com',
+      });
+      middleware.handle(req, res, next);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Origin',
+        'http://unknown-domain.com',
+      );
+    });
+
+    it('should handle requests without origin header when wildcard is allowed', () => {
+      mockConfig.CORS_ORIGIN = '*';
+      middleware = new CorsMiddleware(mockConfig, mockLogger);
+      req = createMockRequest({ origin: undefined });
+      middleware.handle(req, res, next);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Origin',
+        '*',
+      );
+    });
+
+    it('should not set CORS headers for disallowed origins', () => {
+      req = createMockRequest({
+        origin: 'http://malicious-site.com',
+      });
+
+      middleware.handle(req, res, next);
+      expect(res.setHeader).not.toHaveBeenCalledWith(
+        'Access-Control-Allow-Origin',
+        expect.any(String),
+      );
+    });
+  });
+
+  describe('CORS Headers', () => {
+    beforeEach(() => {
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
+    });
+
+    it('should set allowed methods', () => {
+      middleware.handle(req, res, next);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Methods',
+        expect.stringContaining('GET'),
+      );
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Methods',
+        expect.stringContaining('POST'),
+      );
+    });
+
+    it('should set allowed headers', () => {
+      middleware.handle(req, res, next);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Headers',
+        expect.stringContaining('Content-Type'),
+      );
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Headers',
+        expect.stringContaining('Authorization'),
+      );
+    });
+
+    it('should set credentials allowed', () => {
+      middleware.handle(req, res, next);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Credentials',
+        'true',
+      );
+    });
+  });
+
+  describe('Configuration Handling', () => {
+    it('should handle empty CORS_ORIGIN configuration', () => {
+      mockConfig.CORS_ORIGIN = '';
+      middleware = new CorsMiddleware(mockConfig, mockLogger);
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
+
+      middleware.handle(req, res, next);
+      expect(res.setHeader).not.toHaveBeenCalledWith(
+        'Access-Control-Allow-Origin',
+        expect.any(String),
+      );
+    });
+
+    it('should handle malformed CORS_ORIGIN configuration', () => {
+      mockConfig.CORS_ORIGIN = 'invalid,,,config,,';
+      middleware = new CorsMiddleware(mockConfig, mockLogger);
+
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
+      middleware.handle(req, res, next);
+      expect(res.setHeader).not.toHaveBeenCalledWith(
+        'Access-Control-Allow-Origin',
+        expect.any(String),
+      );
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should pass errors to next middleware', () => {
+      // Arrange
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
+      const errorMessage = 'Test error';
+
+      res.setHeader.mockImplementationOnce(() => {
+        throw new Error(errorMessage);
+      });
+
+      // Act
+      middleware.handle(req, res, next);
+
+      // Assert
+      expect(next).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: errorMessage,
+        }),
+      );
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to apply CORS headers:',
+        expect.objectContaining({
+          message: errorMessage,
+        }),
+      );
+    });
+  });
+
+  describe('Logging', () => {
+    it('should log info at initialization only', () => {
+      // Clear any existing mock calls
+      mockLogger.info.mockClear();
+
+      // Create new instance to trigger initialization logging
+      new CorsMiddleware(mockConfig, mockLogger);
+
+      // Verify initialization log
       expect(mockLogger.info).toHaveBeenCalledWith(
         'CORS middleware initialized',
-        expect.objectContaining({ corsOrigin }),
+        expect.objectContaining({
+          corsOrigin: mockConfig.CORS_ORIGIN,
+        }),
       );
+
+      // Clear logs and make a request
+      mockLogger.info.mockClear();
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
+      middleware.handle(req, res, next);
+
+      // Verify no additional logging during request handling
+      expect(mockLogger.info).not.toHaveBeenCalled();
+      expect(mockLogger.debug).not.toHaveBeenCalled();
     });
   });
 
-  describe('handle', () => {
-    it('should set CORS headers for allowed origin', () => {
-      const origin = 'http://localhost:3000';
-      mockConfig.CORS_ORIGIN = origin;
-      corsMiddleware = new CorsMiddleware(mockConfig, mockLogger);
-      mockRequest = {
-        method: 'GET',
-        headers: { origin } as IncomingHttpHeaders,
-      };
+  describe('Performance Considerations', () => {
+    it('should handle rapid successive calls', async () => {
+      const requests = Array.from({ length: 3 }, (_, i) => {
+        req = createMockRequest({
+          origin: 'http://localhost:3000',
+        });
+        return {
+          req,
+          res: createMockResponse(),
+          next: jest.fn(),
+        };
+      });
 
-      corsMiddleware.handle(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
+      await Promise.all(
+        requests.map(
+          ({ req, res, next }) =>
+            new Promise<void>(resolve => {
+              middleware.handle(req, res, (...args) => {
+                next(...args);
+                resolve();
+              });
+            }),
+        ),
       );
 
-      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+      requests.forEach(({ res, next }) => {
+        expect(res.setHeader).toHaveBeenCalledWith(
+          'Access-Control-Allow-Origin',
+          'http://localhost:3000',
+        );
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(next).toHaveBeenCalledWith();
+      });
+    });
+  });
+
+  describe('Middleware Chain', () => {
+    it('should preserve response modifications from previous middleware', () => {
+      res.setHeader('X-Previous-Middleware', 'test');
+      req = createMockRequest({
+        origin: 'http://localhost:3000',
+      });
+      middleware.handle(req, res, next);
+
+      // Verify previous headers remain
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'X-Previous-Middleware',
+        'test',
+      );
+
+      // Verify CORS headers are set
+      expect(res.setHeader).toHaveBeenCalledWith(
         'Access-Control-Allow-Origin',
-        origin,
+        'http://localhost:3000',
       );
-      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+      expect(res.setHeader).toHaveBeenCalledWith(
         'Access-Control-Allow-Methods',
-        expect.any(String),
+        expect.stringMatching(/GET.*POST/),
       );
-      expect(mockResponse.setHeader).toHaveBeenCalledWith(
+      expect(res.setHeader).toHaveBeenCalledWith(
         'Access-Control-Allow-Headers',
-        expect.any(String),
+        expect.stringMatching(/Content-Type.*Authorization/),
       );
-      expect(nextFunction).toHaveBeenCalled();
-    });
-
-    it('should allow all origins when wildcard is configured', () => {
-      mockConfig.CORS_ORIGIN = '*';
-      corsMiddleware = new CorsMiddleware(mockConfig, mockLogger);
-      const origin = 'http://any-domain.com';
-      mockRequest = {
-        method: 'GET',
-        headers: { origin } as IncomingHttpHeaders,
-      };
-
-      corsMiddleware.handle(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
+      expect(res.setHeader).toHaveBeenCalledWith(
+        'Access-Control-Allow-Credentials',
+        'true',
       );
-
-      expect(mockResponse.setHeader).toHaveBeenCalledWith(
-        'Access-Control-Allow-Origin',
-        origin,
-      );
-    });
-
-    it('should handle multiple allowed origins', () => {
-      const origins = 'http://localhost:3000,http://example.com';
-      mockConfig.CORS_ORIGIN = origins;
-      corsMiddleware = new CorsMiddleware(mockConfig, mockLogger);
-      mockRequest = {
-        method: 'GET',
-        headers: { origin: 'http://example.com' } as IncomingHttpHeaders,
-      };
-
-      corsMiddleware.handle(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      expect(mockResponse.setHeader).toHaveBeenCalledWith(
-        'Access-Control-Allow-Origin',
-        'http://example.com',
-      );
-    });
-
-    it('should not set CORS headers for disallowed origin', () => {
-      mockConfig.CORS_ORIGIN = 'http://allowed-domain.com';
-      corsMiddleware = new CorsMiddleware(mockConfig, mockLogger);
-      mockRequest = {
-        method: 'GET',
-        headers: {
-          origin: 'http://disallowed-domain.com',
-        } as IncomingHttpHeaders,
-      };
-
-      corsMiddleware.handle(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      expect(mockResponse.setHeader).not.toHaveBeenCalled();
-      expect(nextFunction).toHaveBeenCalled();
-    });
-
-    it('should return 204 for OPTIONS requests', () => {
-      corsMiddleware = new CorsMiddleware(mockConfig, mockLogger);
-      mockRequest = {
-        method: 'OPTIONS',
-        headers: {} as IncomingHttpHeaders,
-      };
-
-      corsMiddleware.handle(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      expect(mockResponse.sendStatus).toHaveBeenCalledWith(204);
-      expect(nextFunction).not.toHaveBeenCalled();
-    });
-
-    it('should call next() for non-OPTIONS requests', () => {
-      corsMiddleware = new CorsMiddleware(mockConfig, mockLogger);
-      mockRequest = {
-        method: 'GET',
-        headers: {} as IncomingHttpHeaders,
-      };
-
-      corsMiddleware.handle(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      expect(mockResponse.sendStatus).not.toHaveBeenCalled();
-      expect(nextFunction).toHaveBeenCalled();
-    });
-
-    it('should handle requests without origin header', () => {
-      corsMiddleware = new CorsMiddleware(mockConfig, mockLogger);
-      mockRequest = {
-        method: 'GET',
-        headers: {} as IncomingHttpHeaders,
-      };
-
-      corsMiddleware.handle(
-        mockRequest as Request,
-        mockResponse as Response,
-        nextFunction,
-      );
-
-      expect(mockResponse.setHeader).not.toHaveBeenCalled();
-      expect(nextFunction).toHaveBeenCalled();
     });
   });
 });

@@ -64,8 +64,8 @@ export class SecurityLogger implements ISecurityLogger {
     return {
       method: req.method,
       path: req.path,
-      ip: req.ip || 'unknown',
-      userAgent: req.get('user-agent'),
+      ip: req.ip,
+      'user-agent': req['user-agent'],
       userId: req.user?.id,
     };
   }
@@ -131,51 +131,36 @@ export class SecurityLogger implements ISecurityLogger {
   private sanitizeEventDetails(
     details: Record<string, any>,
   ): Record<string, any> {
-    const sanitized = { ...details };
-
-    // List of sensitive field patterns
-    const sensitivePatterns = [
+    const sensitiveKeys = [
       /password/i,
       /token/i,
       /api[-_]?key/i,
       /secret/i,
       /credential/i,
       /authorization/i,
+      /cookie/i,
     ];
 
-    // Recursively sanitize the object
-    const sanitizeObject = (obj: Record<string, any>): Record<string, any> => {
-      const sanitizedObj = { ...obj };
+    const sanitizeValue = (value: any): any => {
+      if (value === null || value === undefined) {
+        return value;
+      }
 
-      Object.entries(sanitizedObj).forEach(([key, value]) => {
-        // Check if the key matches any sensitive patterns
-        const isSensitive = sensitivePatterns.some(pattern =>
-          pattern.test(key),
+      if (typeof value === 'object') {
+        return Object.fromEntries(
+          Object.entries(value).map(([key, val]) => [
+            key,
+            sensitiveKeys.some(pattern => pattern.test(key))
+              ? '[REDACTED]'
+              : sanitizeValue(val),
+          ]),
         );
+      }
 
-        if (isSensitive) {
-          sanitizedObj[key] = '[REDACTED]';
-        } else if (value && typeof value === 'object') {
-          sanitizedObj[key] = sanitizeObject(value);
-        }
-      });
-
-      return sanitizedObj;
+      return value;
     };
 
-    // Special handling for headers object if it exists
-    if (sanitized.headers && typeof sanitized.headers === 'object') {
-      const sanitizedHeaders = { ...sanitized.headers };
-      SecurityLogger.SENSITIVE_HEADERS.forEach(header => {
-        const headerKey = header.toLowerCase();
-        if (headerKey in sanitizedHeaders) {
-          sanitizedHeaders[headerKey] = '[REDACTED]';
-        }
-      });
-      sanitized.headers = sanitizedHeaders;
-    }
-
-    return sanitizeObject(sanitized);
+    return sanitizeValue(details);
   }
 
   private async triggerSecurityAlert(event: ISecurityEvent): Promise<void> {

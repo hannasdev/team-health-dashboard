@@ -1,6 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
-import type { ParamsDictionary, Query } from 'express-serve-static-core';
 
 import { TYPES } from '../../../utils/types.js';
 import { AppError } from '../../../utils/errors.js';
@@ -9,8 +8,10 @@ import type {
   ILogger,
   ICacheService,
   IRateLimitConfig,
-  IRateLimitMiddleware,
   ISecurityLogger,
+  IMiddleware,
+  IEnhancedRequest,
+  ISecurityResponse,
   ISecurityRequest,
 } from '../../../interfaces/index.js';
 
@@ -19,8 +20,15 @@ import {
   SecurityEventSeverity,
 } from '../../../services/SecurityLogger/SecurityLogger.js';
 
+interface RateLimitState {
+  key: string;
+  requests: number;
+  remaining: number;
+  reset: number;
+}
+
 @injectable()
-export class RateLimitMiddleware implements IRateLimitMiddleware {
+export class RateLimitMiddleware implements IMiddleware {
   private config: Required<IRateLimitConfig>;
 
   constructor(
@@ -29,91 +37,47 @@ export class RateLimitMiddleware implements IRateLimitMiddleware {
     @inject(TYPES.SecurityLogger) private securityLogger: ISecurityLogger,
     @inject(TYPES.RateLimitConfig) config: IRateLimitConfig,
   ) {
+    if (config.windowMs <= 0 || config.maxRequests <= 0) {
+      throw new Error('Invalid rate limit configuration');
+    }
+
     this.config = {
-      windowMs: config?.windowMs ?? 15 * 60 * 1000,
-      maxRequests: config?.maxRequests ?? 100,
+      windowMs: config.windowMs,
+      maxRequests: config.maxRequests,
       message: config?.message ?? 'Too many requests, please try again later',
     };
   }
 
   public async handle(
-    req: Request<ParamsDictionary, any, any, Query>,
-    res: Response,
+    req: ISecurityRequest,
+    res: ISecurityResponse,
     next: NextFunction,
   ): Promise<void> {
     try {
-      const securityReq: ISecurityRequest = {
-        method: req.method,
-        path: req.path || req.url,
-        ip: req.ip || req.socket?.remoteAddress || 'unknown',
-        get: (name: string) => req.get?.(name),
-        user: (req as any).user,
-      };
+      const state = await this.getRateLimitState(req);
 
-      const key = this.getKey(req);
-      const requests = await this.incrementRequests(key);
+      this.setRateLimitHeaders(res, state);
 
-      this.logger.debug('Rate limit check', {
-        ip: securityReq.ip,
-        path: securityReq.path,
-        currentRequests: requests,
-        limit: this.config.maxRequests,
-      });
-
-      res.setHeader('X-RateLimit-Limit', this.config.maxRequests);
-      res.setHeader(
-        'X-RateLimit-Remaining',
-        Math.max(0, this.config.maxRequests - requests),
-      );
-      res.setHeader('X-RateLimit-Reset', await this.getResetTime(key));
-
-      if (requests > this.config.maxRequests) {
-        this.logger.warn(`Rate limit exceeded for IP: ${securityReq.ip}`, {
-          requests,
-          limit: this.config.maxRequests,
-          path: securityReq.path,
-        });
-
-        this.securityLogger.logSecurityEvent(
-          this.securityLogger.createSecurityEvent(
-            SecurityEventType.RATE_LIMIT_EXCEEDED,
-            securityReq,
-            {
-              requests,
-              limit: this.config.maxRequests,
-              windowMs: this.config.windowMs,
-            },
-            SecurityEventSeverity.MEDIUM,
-          ),
-        );
-
+      if (state.requests > this.config.maxRequests) {
+        await this.handleRateLimitExceeded(req, state.requests);
         throw new AppError(429, this.config.message);
       }
 
       this.logger.debug('Rate limit check passed', {
-        ip: securityReq.ip,
-        path: securityReq.path,
-        remainingRequests: this.config.maxRequests - requests,
+        ip: req.ip,
+        path: req.path,
+        remainingRequests: state.remaining,
       });
 
       next();
     } catch (error) {
-      this.logger.error('Error in rate limit middleware:', error as Error, {
-        ip: req.ip,
-        path: req.path,
-      });
-
-      next(
-        error instanceof AppError
-          ? error
-          : new AppError(500, 'Internal server error during rate limiting'),
-      );
+      this.handleError(error, req, next);
     }
   }
 
-  public getKey(req: Request): string {
-    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
-    return `rate_limit:${ip}`;
+  public getKey(req: IEnhancedRequest): string {
+    const ip = req.ip || 'unknown';
+    return this.getCacheKeys(ip).requestKey;
   }
 
   public async getRemainingRequests(key: string): Promise<number> {
@@ -121,22 +85,18 @@ export class RateLimitMiddleware implements IRateLimitMiddleware {
     return Math.max(0, this.config.maxRequests - requests);
   }
 
-  private async incrementRequests(key: string): Promise<number> {
-    const current = (await this.cacheService.get<number>(key)) || 0;
-    const incremented = current + 1;
-
-    this.logger.debug('Incrementing rate limit counter', {
-      key,
-      previousCount: current,
-      newCount: incremented,
-    });
-
-    await this.cacheService.set(key, incremented, this.config.windowMs / 1000);
-    return incremented;
+  private getCacheKeys(ip: string) {
+    const baseKey = `rate_limit:${ip}`;
+    return {
+      requestKey: baseKey,
+      ttlKey: `${baseKey}:ttl`,
+    };
   }
 
   private async getResetTime(key: string): Promise<number> {
-    const ttl = await this.cacheService.get<number>(`${key}:ttl`);
+    const { ttlKey } = this.getCacheKeys(key.split(':')[1]);
+    const ttl = await this.cacheService.get<number>(`${ttlKey}:ttl`);
+
     if (!ttl) {
       const resetTime = Date.now() + this.config.windowMs;
 
@@ -153,5 +113,87 @@ export class RateLimitMiddleware implements IRateLimitMiddleware {
       return resetTime;
     }
     return ttl;
+  }
+
+  private async getRateLimitState(
+    req: IEnhancedRequest,
+  ): Promise<RateLimitState> {
+    const key = this.getKey(req);
+    const requests = await this.incrementRequests(key);
+    const reset = await this.getResetTime(key);
+    const remaining = Math.max(0, this.config.maxRequests - requests);
+
+    return { key, requests, remaining, reset };
+  }
+
+  private async incrementRequests(key: string): Promise<number> {
+    const current = (await this.cacheService.get<number>(key)) || 0;
+    const incremented = current + 1;
+
+    this.logger.debug('Incrementing rate limit counter', {
+      key,
+      previousCount: current,
+      newCount: incremented,
+    });
+
+    await this.cacheService.set(key, incremented, this.config.windowMs / 1000);
+    return incremented;
+  }
+
+  private setRateLimitHeaders(
+    res: ISecurityResponse,
+    state: RateLimitState,
+  ): void {
+    res.setHeader('X-RateLimit-Limit', this.config.maxRequests);
+    res.setHeader('X-RateLimit-Remaining', state.remaining);
+    res.setHeader('X-RateLimit-Reset', state.reset);
+  }
+
+  private async handleRateLimitExceeded(
+    req: ISecurityRequest,
+    requests: number,
+  ): Promise<void> {
+    try {
+      this.logger.warn(`Rate limit exceeded for IP: ${req.ip}`, {
+        requests,
+        limit: this.config.maxRequests,
+        path: req.path,
+      });
+
+      await this.securityLogger.logSecurityEvent(
+        this.securityLogger.createSecurityEvent(
+          SecurityEventType.RATE_LIMIT_EXCEEDED,
+          req,
+          {
+            requests,
+            limit: this.config.maxRequests,
+            windowMs: this.config.windowMs,
+          },
+          SecurityEventSeverity.MEDIUM,
+        ),
+      );
+    } catch (error) {
+      this.logger.error(
+        'Failed to log rate limit security event:',
+        error as Error,
+      );
+    }
+  }
+
+  private handleError(
+    error: unknown,
+    req: IEnhancedRequest,
+    next: NextFunction,
+  ): void {
+    this.logger.error('Error in rate limit middleware:', error as Error, {
+      ip: req.ip,
+      path: req.path,
+    });
+
+    next(
+      error instanceof AppError
+        ? error
+        : new AppError(500, 'Internal server error during rate limiting'),
+    );
   }
 }

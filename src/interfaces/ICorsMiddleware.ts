@@ -1,5 +1,12 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
+import { IMiddleware } from './IMiddleware';
+import { IEnhancedRequest } from './IEnhancedRequest';
+import { IEnhancedResponse } from './IEnhancedResponse';
 
-export interface ICorsMiddleware {
-  handle(req: Request, res: Response, next: NextFunction): void;
+export interface ICorsMiddleware extends IMiddleware {
+  handle(
+    req: IEnhancedRequest,
+    res: IEnhancedResponse,
+    next: NextFunction,
+  ): void;
 }

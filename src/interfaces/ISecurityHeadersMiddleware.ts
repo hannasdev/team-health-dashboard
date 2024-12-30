@@ -1,6 +1,13 @@
-import { Request, Response, NextFunction, Application } from 'express';
+import { NextFunction, Application } from 'express';
+import { IMiddleware } from './IMiddleware';
+import { ISecurityRequest } from './ISecurityRequest';
+import { IEnhancedResponse } from './IEnhancedResponse';
 
-export interface ISecurityHeadersMiddleware {
-  handle(req: Request, res: Response, next: NextFunction): void;
+export interface ISecurityHeadersMiddleware extends IMiddleware {
+  handle(
+    req: ISecurityRequest,
+    res: IEnhancedResponse,
+    next: NextFunction,
+  ): void;
   configureCspReporting(app: Application): void;
 }

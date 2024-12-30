@@ -1,5 +1,5 @@
 // src/controllers/MetricsController/MetricsController.ts
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { AppError } from '../../../utils/errors.js';
@@ -10,6 +10,8 @@ import type {
   IMetricsController,
   ILogger,
   IApiResponse,
+  IAuthenticatedRequest,
+  IEnhancedResponse,
 } from '../../../interfaces/index.js';
 
 @injectable()
@@ -21,15 +23,36 @@ export class MetricsController implements IMetricsController {
   ) {}
 
   public async getAllMetrics(
-    req: Request,
-    res: Response,
+    req: IAuthenticatedRequest,
+    res: IEnhancedResponse,
     next: NextFunction,
   ): Promise<void> {
     try {
-      const page = parseInt(req.query.page as string) || 1;
-      const pageSize = parseInt(req.query.pageSize as string) || 20;
+      // Check if query parameters are present and valid before using defaults
+      const pageStr = req.query?.page as string | undefined;
+      const pageSizeStr = req.query?.pageSize as string | undefined;
 
-      if (isNaN(page) || isNaN(pageSize) || page < 1 || pageSize < 1) {
+      // Parse values
+      let page = 1;
+      let pageSize = 20;
+
+      if (pageStr !== undefined) {
+        const parsedPage = parseInt(pageStr);
+        if (isNaN(parsedPage)) {
+          throw new AppError(400, 'Invalid pagination parameters');
+        }
+        page = parsedPage;
+      }
+
+      if (pageSizeStr !== undefined) {
+        const parsedPageSize = parseInt(pageSizeStr);
+        if (isNaN(parsedPageSize)) {
+          throw new AppError(400, 'Invalid pagination parameters');
+        }
+        pageSize = parsedPageSize;
+      }
+
+      if (page < 1 || pageSize < 1) {
         throw new AppError(400, 'Invalid pagination parameters');
       }
 
@@ -57,8 +80,8 @@ export class MetricsController implements IMetricsController {
   }
 
   public async syncMetrics(
-    req: Request,
-    res: Response,
+    req: IAuthenticatedRequest,
+    res: IEnhancedResponse,
     next: NextFunction,
   ): Promise<void> {
     try {
@@ -80,8 +103,8 @@ export class MetricsController implements IMetricsController {
   }
 
   public async resetDatabase(
-    req: Request,
-    res: Response,
+    req: IAuthenticatedRequest,
+    res: IEnhancedResponse,
     next: NextFunction,
   ): Promise<void> {
     try {

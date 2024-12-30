@@ -11,7 +11,6 @@ import {
   createMockConfig,
 } from '../../../__mocks__/index.js';
 import { TYPES } from '../../../utils/types.js';
-import { AppError } from '../../../utils/errors.js';
 
 import type {
   IGitHubClient,

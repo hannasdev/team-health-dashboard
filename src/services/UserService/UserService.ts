@@ -1,7 +1,6 @@
 // src/services/user/UserService.ts
 import { injectable, inject } from 'inversify';
 
-import { User } from '../../data/models/User.js';
 import {
   UserAlreadyExistsError,
   UserNotFoundError,

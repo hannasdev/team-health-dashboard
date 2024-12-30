@@ -1,9 +1,6 @@
 // src/interfaces/IAuthRequest.ts
-
-import { Request } from 'express';
-
-export interface IAuthRequest extends Request {
-  user?: { id: string; email: string };
+import type { IEnhancedRequest } from './IEnhancedRequest';
+export interface IAuthRequest extends IEnhancedRequest {
   body: {
     email?: string;
     password?: string;

@@ -10,7 +10,7 @@ export interface ISecurityEvent {
     method: string;
     path: string;
     ip: string;
-    userAgent?: string;
+    'user-agent'?: string;
     userId?: string;
     headers?: Record<string, string>;
   };

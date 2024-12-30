@@ -1,6 +1,5 @@
 // src/controllers/AuthController.ts
-
-import { Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
 import { InvalidInputError, AppError } from '../../../utils/errors.js';
@@ -15,6 +14,7 @@ import type {
   IUserService,
   IUser,
   SanitizedUser,
+  IEnhancedResponse,
 } from '../../../interfaces/index.js';
 
 @injectable()
@@ -29,7 +29,7 @@ export class AuthController implements IAuthController {
 
   public async login(
     req: IAuthRequest,
-    res: Response,
+    res: IEnhancedResponse,
     next: NextFunction,
   ): Promise<void> {
     try {
@@ -43,12 +43,12 @@ export class AuthController implements IAuthController {
         password,
         shortLived,
       );
-      res.json(
-        this.apiResponse.createSuccessResponse({
-          ...result,
-          user: this.sanitizeUser(result.user),
-        }),
-      );
+      const response = this.apiResponse.createSuccessResponse({
+        ...result,
+        user: this.sanitizeUser(result.user),
+      });
+
+      res.json(response);
     } catch (error) {
       if (error instanceof InvalidInputError) {
         next(new AppError(401, 'No token provided', 'ERR_UNAUTHORIZED'));
@@ -60,7 +60,7 @@ export class AuthController implements IAuthController {
 
   public async register(
     req: IAuthRequest,
-    res: Response,
+    res: IEnhancedResponse,
     next: NextFunction,
   ): Promise<void> {
     try {
@@ -72,14 +72,16 @@ export class AuthController implements IAuthController {
       const user = await this.userService.registerUser(email, password);
       const { accessToken, refreshToken } =
         await this.authenticationService.login(email, password);
+
       this.logger.debug('Register successful', { email });
-      res.status(201).json(
-        this.apiResponse.createSuccessResponse({
-          user: this.sanitizeUser(user),
-          accessToken,
-          refreshToken,
-        }),
-      );
+
+      const response = this.apiResponse.createSuccessResponse({
+        user: this.sanitizeUser(user),
+        accessToken,
+        refreshToken,
+      });
+
+      res.status(201).json(response);
     } catch (error) {
       this.logger.error(
         'Register failed',
@@ -91,7 +93,7 @@ export class AuthController implements IAuthController {
 
   public async refreshToken(
     req: IAuthRequest,
-    res: Response,
+    res: IEnhancedResponse,
     next: NextFunction,
   ): Promise<void> {
     try {
@@ -100,12 +102,16 @@ export class AuthController implements IAuthController {
         this.logger.error('Refresh token is required');
         throw new InvalidInputError('Refresh token is required');
       }
+
       this.logger.debug('Attempting to refresh token', {
         refreshToken: refreshToken.substring(0, 10) + '...',
       });
+
       const result =
         await this.authenticationService.refreshToken(refreshToken);
+
       this.logger.debug('Token refresh successful');
+
       res.json(this.apiResponse.createSuccessResponse(result));
     } catch (error) {
       this.logger.error('Token refresh failed', error as Error);
@@ -115,7 +121,7 @@ export class AuthController implements IAuthController {
 
   public async logout(
     req: IAuthRequest,
-    res: Response,
+    res: IEnhancedResponse,
     next: NextFunction,
   ): Promise<void> {
     try {
@@ -124,7 +130,7 @@ export class AuthController implements IAuthController {
         throw new InvalidInputError('Refresh token is required');
       }
       await this.authenticationService.logout(refreshToken);
-      res.status(204).send();
+      res.status(204).send('Logged out successfully');
     } catch (error) {
       next(error);
     }

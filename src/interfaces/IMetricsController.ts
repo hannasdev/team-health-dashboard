@@ -1,6 +1,23 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction } from 'express';
+
+import type { IAuthenticatedRequest, IEnhancedResponse } from './index.js';
 
 export interface IMetricsController {
-  getAllMetrics(req: Request, res: Response, next: NextFunction): Promise<void>;
-  syncMetrics(req: Request, res: Response, next: NextFunction): Promise<void>;
+  getAllMetrics(
+    req: IAuthenticatedRequest,
+    res: IEnhancedResponse,
+    next: NextFunction,
+  ): Promise<void>;
+
+  syncMetrics(
+    req: IAuthenticatedRequest,
+    res: IEnhancedResponse,
+    next: NextFunction,
+  ): Promise<void>;
+
+  resetDatabase(
+    req: IAuthenticatedRequest,
+    res: IEnhancedResponse,
+    next: NextFunction,
+  ): Promise<void>;
 }
