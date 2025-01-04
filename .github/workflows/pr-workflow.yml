@@ -55,12 +55,10 @@ jobs:
       - name: Check if E2E tests have run
         id: check
         run: |
-          # Get run IDs for this branch's workflow runs
           RUN_IDS=$(gh run list --branch "${{ github.head_ref }}" --workflow "PR Workflow" --json databaseId --jq '.[].databaseId')
 
           E2E_SUCCESS=false
           for RUN_ID in $RUN_IDS; do
-            # Check if this run had a successful e2e-test job
             if gh run view $RUN_ID --json jobs --jq '.jobs[] | select(.name == "e2e-test" and .conclusion == "success")' | grep -q .; then
               E2E_SUCCESS=true
               break
