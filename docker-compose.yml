@@ -68,8 +68,9 @@ services:
       dockerfile: Dockerfile
     environment:
       - NODE_ENV="e2e"
+      - HOST=0.0.0.0
       - CORS_ORIGIN=${CORS_ORIGIN}
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=mongodb://root:example@db-test:27017/myapp?authSource=admin
       - GOOGLE_SHEETS_CLIENT_EMAIL=${GOOGLE_SHEETS_CLIENT_EMAIL}
       - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
       - GOOGLE_SHEETS_PRIVATE_KEY=${GOOGLE_SHEETS_PRIVATE_KEY}
@@ -96,13 +97,7 @@ services:
     networks:
       - test-network
     healthcheck:
-      test: |
-        CMD /bin/sh -c '
-        echo "Running health check..." &&
-        echo "Checking app status..." &&
-        curl -v http://localhost:3000/health ||
-        (echo "Health check failed with exit code $?" && false)
-        '
+      test: ['CMD', '/usr/local/bin/docker-healthcheck.sh']
       interval: 30s
       timeout: 10s
       retries: 5
