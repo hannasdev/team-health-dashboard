@@ -55,15 +55,24 @@ jobs:
       - name: Check if E2E tests have run
         id: check
         run: |
-          # Look for successful E2E test run in this PR
-          E2E_SUCCESS=$(gh run list --branch "${{ github.head_ref }}" --workflow "PR Workflow" --json conclusion,jobs --jq '[.[] | select(.jobs[].name == "e2e-test" and .conclusion == "success")] | length')
+          # Get run IDs for this branch's workflow runs
+          RUN_IDS=$(gh run list --branch "${{ github.head_ref }}" --workflow "PR Workflow" --json databaseId --jq '.[].databaseId')
 
-          if [ "$E2E_SUCCESS" -eq "0" ]; then
-            echo "No successful E2E test runs found, E2E tests needed"
-            echo "needs_e2e=true" >> "$GITHUB_OUTPUT"
-          else
+          E2E_SUCCESS=false
+          for RUN_ID in $RUN_IDS; do
+            # Check if this run had a successful e2e-test job
+            if gh run view $RUN_ID --json jobs --jq '.jobs[] | select(.name == "e2e-test" and .conclusion == "success")' | grep -q .; then
+              E2E_SUCCESS=true
+              break
+            fi
+          done
+
+          if [ "$E2E_SUCCESS" = true ]; then
             echo "Found successful E2E test run"
             echo "needs_e2e=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "No successful E2E test runs found, E2E tests needed"
+            echo "needs_e2e=true" >> "$GITHUB_OUTPUT"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
