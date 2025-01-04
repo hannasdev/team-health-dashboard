@@ -1,6 +1,8 @@
 // src/TeamHealthDashboardApp.ts
-import express, { Express, NextFunction, Request, Response } from 'express';
+import express, { Express, Request, Response, RequestHandler } from 'express';
 import { inject, injectable } from 'inversify';
+import { NextFunction } from 'express-serve-static-core';
+import { IncomingMessage, ServerResponse } from 'http';
 
 import authRouter from './presentation/routes/auth.js';
 import healthCheckRouter from './presentation/routes/healthCheck.js';
@@ -75,8 +77,34 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureJson(): void {
-    this.expressApp.use(express.json);
-    this.expressApp.use(express.urlencoded);
+    const jsonMiddleware: RequestHandler = (
+      req: Request,
+      res: Response,
+      next: NextFunction,
+    ) => {
+      const parser = express.json();
+      parser(
+        req as unknown as IncomingMessage,
+        res as unknown as ServerResponse<IncomingMessage>,
+        next,
+      );
+    };
+
+    const urlEncodedMiddleware: RequestHandler = (
+      req: Request,
+      res: Response,
+      next: NextFunction,
+    ) => {
+      const parser = express.urlencoded({ extended: true });
+      parser(
+        req as unknown as IncomingMessage,
+        res as unknown as ServerResponse<IncomingMessage>,
+        next,
+      );
+    };
+
+    this.expressApp.use(jsonMiddleware as any);
+    this.expressApp.use(urlEncodedMiddleware as any);
   }
 
   private configureCors(): void {
@@ -94,7 +122,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureMiddleware(): void {
-    this.expressApp.use((req: Request, res: Response, next) =>
+    this.expressApp.use((req, res, next) =>
       this.rateLimitMiddleware.handle(
         req as IEnhancedRequest,
         res as IEnhancedResponse,
@@ -102,7 +130,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
       ),
     );
 
-    this.expressApp.use((req: Request, res: Response, next) =>
+    this.expressApp.use((req, res, next) =>
       this.authMiddleware.handle(
         req as IEnhancedRequest,
         res as IEnhancedResponse,
@@ -115,7 +143,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
 
   private configureSecurityMiddleware(): void {
     // Security headers should be applied early
-    this.expressApp.use((req: Request, res: Response, next) =>
+    this.expressApp.use((req, res, next) =>
       this.securityHeadersMiddleware.handle(
         req as unknown as ISecurityRequest,
         res as IEnhancedResponse,
@@ -127,7 +155,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     this.securityHeadersMiddleware.configureCspReporting(this.expressApp);
 
     // Rate limiting for API routes
-    this.expressApp.use('/api', (req: Request, res: Response, next) =>
+    this.expressApp.use('/api', (req, res, next) =>
       this.rateLimitMiddleware.handle(
         req as unknown as ISecurityRequest,
         res as IEnhancedResponse,
@@ -154,7 +182,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     this.expressApp.use('/api/auth', authRouter);
 
     // Protected routes
-    this.expressApp.use('/api', (req: Request, res: Response, next) =>
+    this.expressApp.use('/api', (req, res, next) =>
       this.authMiddleware.handle(
         req as unknown as ISecurityRequest,
         res as IEnhancedResponse,
