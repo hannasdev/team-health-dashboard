@@ -69,7 +69,7 @@ services:
     environment:
       - NODE_ENV="e2e"
       - CORS_ORIGIN=http://localhost:5173,http://localhost:3000,http://localhost:8080,http://127.0.0.1:8080
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=mongodb://root:example@db-test:27017/myapp?authSource=admin
       - GOOGLE_SHEETS_CLIENT_EMAIL=${GOOGLE_SHEETS_CLIENT_EMAIL}
       - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
       - GOOGLE_SHEETS_PRIVATE_KEY=${GOOGLE_SHEETS_PRIVATE_KEY}
@@ -96,7 +96,13 @@ services:
     networks:
       - test-network
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      test: |
+        CMD /bin/sh -c '
+        echo "Running health check..." &&
+        echo "Checking app status..." &&
+        curl -v http://localhost:3000/health ||
+        (echo "Health check failed with exit code $?" && false)
+        '
       interval: 30s
       timeout: 10s
       retries: 5
@@ -190,14 +196,18 @@ services:
         limits:
           memory: 3G
     command: >
-      /bin/bash -c '
-      echo "Starting E2E test runner..." &&
-      echo "Waiting for app-test to be ready..." &&
-      /home/nodejs/wait-for-it.sh app-test:3000 -t 120 &&
-      echo "App-test is ready." &&
-      echo "Waiting for database to be ready..." &&
-      /home/nodejs/wait-for-it.sh db-test:27017 -t 60 &&
-      echo "Database is ready. Running E2E tests..." &&
+      /bin/sh -c '
+      echo "E2E test runner starting..." &&
+      echo "Current directory: $$(pwd)" &&
+      echo "Directory contents:" &&
+      ls -la &&
+      echo "Node version:" &&
+      node --version &&
+      echo "Jest path:" &&
+      which jest || echo "Jest not found in PATH" &&
+      echo "Looking for test files:" &&
+      find . -name "*.e2e.spec.js" &&
+      echo "Running tests..." &&
       node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/__tests__/e2e/**/*.e2e.spec.js" --forceExit --detectOpenHandles --runInBand --verbose
       '
     profiles: ['e2e-test']
