@@ -111,17 +111,23 @@ services:
     volumes:
       - mongodb_test_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
-    command: mongod --bind_ip_all --quiet --logpath /dev/null
+    command: mongod --bind_ip_all --quiet --logpath /dev/null --auth
     networks:
       - test-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: |
+        mongosh admin --quiet --eval '
+          db.auth("root", "example");
+          print(db.runCommand("ping").ok ? "MongoDB is ready." : "MongoDB is not ready.");
+          print("Authentication successful");
+        '
       interval: 10s
       timeout: 5s
       retries: 5
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=example
+      - MONGO_INITDB_DATABASE=myapp
     deploy:
       resources:
         limits:

@@ -1,7 +1,7 @@
 # Base Stage
-# - Creates a base image with Node.js 22.9.0 on Alpine Linux.
+# - Creates a base image with Node.js 23.5.0 on Alpine Linux.
 # - Sets up a working directory at /home/nodejs/app with proper permissions.
-FROM node:22.9.0-alpine AS base
+FROM node:23.5.0-alpine AS base
 RUN apk add --no-cache curl bash
 RUN mkdir -p /home/nodejs/app && chown -R node:node /home/nodejs
 WORKDIR /home/nodejs/app
