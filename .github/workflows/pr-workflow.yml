@@ -46,9 +46,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  check-e2e-status:
+    runs-on: ubuntu-latest
+    outputs:
+      needs_e2e: ${{ steps.check.outputs.needs_e2e }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check if E2E tests have run
+        id: check
+        run: |
+          # Look for successful E2E test run in this PR
+          E2E_SUCCESS=$(gh run list --branch "${{ github.head_ref }}" --workflow "PR Workflow" --json conclusion,jobs --jq '[.[] | select(.jobs[].name == "e2e-test" and .conclusion == "success")] | length')
+
+          if [ "$E2E_SUCCESS" -eq "0" ]; then
+            echo "No successful E2E test runs found, E2E tests needed"
+            echo "needs_e2e=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Found successful E2E test run"
+            echo "needs_e2e=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build:
-    needs: check-changes
-    if: needs.check-changes.outputs.should_test == 'true'
+    needs: [check-changes, check-e2e-status]
+    if: needs.check-changes.outputs.should_test == 'true' || needs.check-e2e-status.outputs.needs_e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -76,8 +98,8 @@ jobs:
         run: NODE_OPTIONS=--max_old_space_size=4096 npm run test:unit
 
   e2e-test:
-    needs: [check-changes, build, test-unit]
-    if: needs.check-changes.outputs.should_test == 'true'
+    needs: [check-e2e-status, build]
+    if: needs.check-e2e-status.outputs.needs_e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
