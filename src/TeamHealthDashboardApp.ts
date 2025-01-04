@@ -130,14 +130,6 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
       ),
     );
 
-    this.expressApp.use((req, res, next) =>
-      this.authMiddleware.handle(
-        req as IEnhancedRequest,
-        res as IEnhancedResponse,
-        next as NextFunction,
-      ),
-    );
-
     this.logger.info('Basic middleware configured');
   }
 
