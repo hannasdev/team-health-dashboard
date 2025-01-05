@@ -63,6 +63,14 @@ services:
 
   # Test App
   app-test:
+    volumes:
+      - ./logs:/home/nodejs/app/logs
+      - node_modules_test:/app/node_modules
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
     build:
       context: .
       dockerfile: Dockerfile
@@ -102,8 +110,6 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
-    volumes:
-      - node_modules_test:/app/node_modules
     profiles: ['e2e-test']
 
   # Test Database
