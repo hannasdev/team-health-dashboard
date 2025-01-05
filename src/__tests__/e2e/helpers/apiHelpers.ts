@@ -76,7 +76,7 @@ export const createTestUser = async () => {
     },
   );
 
-  console.log('Register response:', registerResponse.data);
+  console.log('Register response:', registerResponse.data.success);
 
   if (registerResponse.status === 429) {
     throw new Error('Rate limit exceeded. Please try again later.');
@@ -86,7 +86,10 @@ export const createTestUser = async () => {
     !registerResponse.data?.success ||
     !registerResponse.data?.data?.user?._id
   ) {
-    console.error('Unexpected register response:', registerResponse.data);
+    console.error(
+      'Unexpected register response:',
+      registerResponse.data.success,
+    );
     throw new Error(
       `Failed to create test user: ${registerResponse.data?.error || 'Invalid response structure'}`,
     );
@@ -116,7 +119,7 @@ export const loginUser = async (
     },
   );
 
-  console.log('Login response:', loginResponse.data);
+  console.log('Login response:', loginResponse.data.success);
 
   if (loginResponse.status === 429) {
     throw new Error('Rate limit exceeded. Please try again later.');
