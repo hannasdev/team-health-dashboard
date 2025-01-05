@@ -1,8 +1,8 @@
 // src/__tests__/e2e/helpers/apiHelpers.ts
 import axios, { AxiosResponse, Method } from 'axios';
 
-import { AUTH_ENDPOINTS } from './constants.js';
 import { config } from './config.js';
+import { AUTH_ENDPOINTS } from './constants.js';
 
 import type { AuthResponse } from './types.js';
 
