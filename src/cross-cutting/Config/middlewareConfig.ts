@@ -4,8 +4,14 @@ import type {
 } from '../../interfaces/index.js';
 
 export const rateLimitConfig: IRateLimitConfig = {
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 100, // limit each IP to 100 requests per windowMs
+  windowMs:
+    process.env.NODE_ENV === 'e2e'
+      ? 1 * 1000 // 1 second for e2e tests
+      : 15 * 60 * 1000, // 15 minutes for other environments
+  maxRequests:
+    process.env.NODE_ENV === 'e2e'
+      ? 1000 // Higher limit for e2e tests
+      : 100, // Normal limit for other environments
   message: 'Too many requests from this IP, please try again later',
 };
 
