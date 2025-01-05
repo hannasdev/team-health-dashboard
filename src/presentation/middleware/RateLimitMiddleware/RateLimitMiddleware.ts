@@ -1,8 +1,12 @@
 import { NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { TYPES } from '../../../utils/types.js';
+import {
+  SecurityEventType,
+  SecurityEventSeverity,
+} from '../../../services/SecurityLogger/SecurityLogger.js';
 import { AppError } from '../../../utils/errors.js';
+import { TYPES } from '../../../utils/types.js';
 
 import type {
   ILogger,
@@ -14,11 +18,6 @@ import type {
   ISecurityResponse,
   ISecurityRequest,
 } from '../../../interfaces/index.js';
-
-import {
-  SecurityEventType,
-  SecurityEventSeverity,
-} from '../../../services/SecurityLogger/SecurityLogger.js';
 
 interface RateLimitState {
   key: string;
@@ -46,6 +45,12 @@ export class RateLimitMiddleware implements IMiddleware {
       maxRequests: config.maxRequests,
       message: config?.message ?? 'Too many requests, please try again later',
     };
+
+    this.logger.info('Initializing RateLimitMiddleware with config:', {
+      windowMs: config.windowMs,
+      maxRequests: config.maxRequests,
+      environment: process.env.NODE_ENV,
+    });
   }
 
   public async handle(
@@ -55,10 +60,25 @@ export class RateLimitMiddleware implements IMiddleware {
   ): Promise<void> {
     try {
       const state = await this.getRateLimitState(req);
-
       this.setRateLimitHeaders(res, state);
 
+      this.logger.debug('Rate limit state:', {
+        ip: req.ip,
+        path: req.path,
+        requestCount: state.requests,
+        maxRequests: this.config.maxRequests,
+        windowMs: this.config.windowMs,
+        remaining: state.remaining,
+      });
+
       if (state.requests > this.config.maxRequests) {
+        this.logger.warn('Rate limit exceeded:', {
+          ip: req.ip,
+          path: req.path,
+          requestCount: state.requests,
+          maxRequests: this.config.maxRequests,
+          windowMs: this.config.windowMs,
+        });
         await this.handleRateLimitExceeded(req, state.requests);
         throw new AppError(429, this.config.message);
       }
@@ -86,7 +106,8 @@ export class RateLimitMiddleware implements IMiddleware {
   }
 
   private getCacheKeys(ip: string) {
-    const baseKey = `rate_limit:${ip}`;
+    const baseKey = `rate_limit:${process.env.NODE_ENV}:${ip}`;
+    this.logger.debug('Generated rate limit cache key:', { baseKey });
     return {
       requestKey: baseKey,
       ttlKey: `${baseKey}:ttl`,
@@ -94,7 +115,9 @@ export class RateLimitMiddleware implements IMiddleware {
   }
 
   private async getResetTime(key: string): Promise<number> {
-    const { ttlKey } = this.getCacheKeys(key.split(':')[1]);
+    // Extract the IP from the last part of the key
+    const ip = key.split(':').pop() || 'unknown';
+    const { ttlKey } = this.getCacheKeys(ip);
     const ttl = await this.cacheService.get<number>(`${ttlKey}:ttl`);
 
     if (!ttl) {
