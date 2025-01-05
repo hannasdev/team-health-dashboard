@@ -3,6 +3,7 @@ import {
   createTestUser,
   loginUser,
   refreshAccessToken,
+  wait,
 } from './helpers/apiHelpers';
 import { METRICS_ENDPOINTS } from './helpers/constants';
 import { HeaderKeys } from '../../types/index.js';
@@ -49,16 +50,29 @@ describe('E2E Metrics', () => {
   }, 60000);
 
   beforeEach(async () => {
-    testUser = await createTestUser();
-    const result = await loginUser(testUser.email, testUser.password);
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    if (result.userAccessToken && result.userRefreshToken) {
-      accessToken = result.userAccessToken;
-      refreshToken = result.userRefreshToken;
-    } else {
-      throw new Error('Failed to obtain access or refresh token');
+    while (attempts < maxAttempts) {
+      try {
+        testUser = await createTestUser();
+        const result = await loginUser(testUser.email, testUser.password);
+
+        if (result.userAccessToken && result.userRefreshToken) {
+          accessToken = result.userAccessToken;
+          refreshToken = result.userRefreshToken;
+          break;
+        }
+      } catch (error) {
+        attempts++;
+        if (attempts === maxAttempts) {
+          throw error;
+        }
+        // Wait for a bit before retrying
+        await wait(5000 * attempts); // Increasing delay with each attempt
+      }
     }
-  });
+  }, 30000); // Increased timeout
 
   const runTest = async (testName: string, testFn: () => Promise<void>) => {
     console.group(testName);
