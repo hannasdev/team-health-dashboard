@@ -1,5 +1,4 @@
 import { RateLimitMiddleware } from './RateLimitMiddleware';
-
 import {
   createMockSecurityRequest,
   createMockResponse,
@@ -7,7 +6,6 @@ import {
   createMockCacheService,
   createMockSecurityLogger,
 } from '../../../__mocks__/index.js';
-
 import {
   SecurityEventType,
   SecurityEventSeverity,
@@ -247,8 +245,11 @@ describe('RateLimitMiddleware', () => {
   });
 
   describe('Request Tracking', () => {
+    let environment: string;
+
     beforeEach(() => {
       mockCacheService.clear();
+      environment = process.env.NODE_ENV || 'test';
     });
 
     it('should track requests accurately across multiple calls', async () => {
@@ -258,7 +259,7 @@ describe('RateLimitMiddleware', () => {
       }
 
       const setCalls = mockCacheService.set.mock.calls;
-      const requestKey = 'rate_limit:127.0.0.1';
+      const requestKey = `rate_limit:${environment}:127.0.0.1`;
 
       // Get the last set call for the request counter
       const lastSetCall = setCalls.filter(call => call[0] === requestKey).pop();
@@ -287,7 +288,7 @@ describe('RateLimitMiddleware', () => {
 
       // Verify cache sets were called with correct values
       const setCalls = mockCacheService.set.mock.calls.filter(
-        call => call[0] === 'rate_limit:1.2.3.4',
+        call => call[0] === `rate_limit:${environment}:1.2.3.4`,
       );
 
       expect(setCalls).toHaveLength(3);
