@@ -1,8 +1,9 @@
 // src/TeamHealthDashboardApp.ts
-import express, { Express, Request, Response, RequestHandler } from 'express';
-import { inject, injectable } from 'inversify';
-import { NextFunction } from 'express-serve-static-core';
 import { IncomingMessage, ServerResponse } from 'http';
+
+import express, { Express, Request, Response, RequestHandler } from 'express';
+import { NextFunction } from 'express-serve-static-core';
+import { inject, injectable } from 'inversify';
 
 import authRouter from './presentation/routes/auth.js';
 import healthCheckRouter from './presentation/routes/healthCheck.js';

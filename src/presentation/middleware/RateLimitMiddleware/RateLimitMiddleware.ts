@@ -46,10 +46,11 @@ export class RateLimitMiddleware implements IMiddleware {
       message: config?.message ?? 'Too many requests, please try again later',
     };
 
-    this.logger.info('Initializing RateLimitMiddleware with config:', {
-      windowMs: config.windowMs,
-      maxRequests: config.maxRequests,
+    this.logger.info('Rate limit configuration:', {
+      windowMs: this.config.windowMs,
+      maxRequests: this.config.maxRequests,
       environment: process.env.NODE_ENV,
+      isE2E: process.env.NODE_ENV === 'e2e',
     });
   }
 
