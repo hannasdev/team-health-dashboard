@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Check test requirements
         id: check
         run: |
@@ -35,7 +36,12 @@ jobs:
             echo "needs_unit_test=false" >> "$GITHUB_OUTPUT"
           fi
 
-          PR_SUCCESS=$(gh run list --branch "${{ github.head_ref }}" --workflow "PR Workflow" --json jobs,headSha --jq ".[] | select(.headSha == \"$CURRENT_SHA\") | .jobs[] | select(.name == \"e2e-test\" and .conclusion == \"success\") | .conclusion")
+          RUN_ID=$(gh run list --branch "${{ github.head_ref }}" --workflow "PR Workflow" --json databaseId,headSha,status --jq ".[] | select(.headSha == \"$CURRENT_SHA\" and .status == \"completed\") | .databaseId" | head -n 1)
+
+          PR_SUCCESS=""
+          if [ -n "$RUN_ID" ]; then
+            # Now check if the e2e-test job was successful in this run
+            PR_SUCCESS=$(gh run view "$RUN_ID" --json jobs --jq '.jobs[] | select(.name == "e2e-test" and .conclusion == "success") | .conclusion')
 
           if [ -n "$PR_SUCCESS" ]; then
             echo "Found successful E2E test run for current commit"
