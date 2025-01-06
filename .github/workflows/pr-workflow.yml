@@ -40,7 +40,6 @@ jobs:
 
           PR_SUCCESS=""
           if [ -n "$RUN_ID" ]; then
-            # Now check if the e2e-test job was successful in this run
             PR_SUCCESS=$(gh run view "$RUN_ID" --json jobs --jq '.jobs[] | select(.name == "e2e-test" and .conclusion == "success") | .conclusion')
 
           if [ -n "$PR_SUCCESS" ]; then
