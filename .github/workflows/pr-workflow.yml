@@ -28,6 +28,7 @@ jobs:
           echo "needs_e2e=true" >> "$GITHUB_OUTPUT"
 
           CURRENT_SHA="${{ github.event.pull_request.head.sha }}"
+          echo "Checking tests for commit: $CURRENT_SHA"
 
           BRANCH_SUCCESS=$(gh run list --branch "${{ github.head_ref }}" --workflow "Branch Workflow" --status success --json headSha --jq ".[] | select(.headSha == \"$CURRENT_SHA\") | .headSha")
 
@@ -36,11 +37,13 @@ jobs:
             echo "needs_unit_test=false" >> "$GITHUB_OUTPUT"
           fi
 
+          PR_SUCCESS=""
           RUN_ID=$(gh run list --branch "${{ github.head_ref }}" --workflow "PR Workflow" --json databaseId,headSha,status --jq ".[] | select(.headSha == \"$CURRENT_SHA\" and .status == \"completed\") | .databaseId" | head -n 1)
 
-          PR_SUCCESS=""
           if [ -n "$RUN_ID" ]; then
+            echo "Found workflow run for current commit: $RUN_ID"
             PR_SUCCESS=$(gh run view "$RUN_ID" --json jobs --jq '.jobs[] | select(.name == "e2e-test" and .conclusion == "success") | .conclusion')
+          fi
 
           if [ -n "$PR_SUCCESS" ]; then
             echo "Found successful E2E test run for current commit"
@@ -160,16 +163,28 @@ jobs:
     steps:
       - name: Verify test status
         run: |
-          if [[ "${{ needs.test-unit.result }}" != "success" && "${{ needs.check-test-status.outputs.needs_unit_test }}" == "true" ]]; then
-            echo "Unit tests failed or were skipped when required"
-            exit 1
+          echo "Verifying test results..."
+          echo "Unit tests - Result: ${{ needs.test-unit.result }}, Required: ${{ needs.check-test-status.outputs.needs_unit_test }}"
+          echo "E2E tests - Result: ${{ needs.e2e-test.result }}, Required: ${{ needs.check-test-status.outputs.needs_e2e }}"
+
+
+          if [[ "${{ needs.check-test-status.outputs.needs_unit_test }}" == "true" ]]; then
+            if [[ "${{ needs.test-unit.result }}" == "skipped" || "${{ needs.test-unit.result }}" != "success" ]]; then
+              echo "Unit tests were required but did not complete successfully"
+              exit 1
+            fi
+          else
+            echo "Unit tests were not required (already passed in branch workflow)"
           fi
 
-          if [[ "${{ needs.e2e-test.result }}" != "success" && "${{ needs.check-test-status.outputs.needs_e2e }}" == "true" ]]; then
-            echo "E2E tests failed or were skipped when required"
-            exit 1
+
+          if [[ "${{ needs.check-test-status.outputs.needs_e2e }}" == "true" ]]; then
+            if [[ "${{ needs.e2e-test.result }}" == "skipped" || "${{ needs.e2e-test.result }}" != "success" ]]; then
+              echo "E2E tests were required but did not complete successfully"
+              exit 1
+            fi
+          else
+            echo "E2E tests were not required (already passed in previous run)"
           fi
 
-          if [[ "${{ needs.check-test-status.outputs.needs_unit_test }}" == "false" && "${{ needs.check-test-status.outputs.needs_e2e }}" == "false" ]]; then
-            echo "All required tests have already passed for this commit"
-          fi
+          echo "All required tests have passed or were verified from previous runs"
