@@ -4,6 +4,7 @@ import {
   loginUser,
   refreshAccessToken,
   wait,
+  ensureMetricsExist,
 } from './helpers/apiHelpers';
 import { METRICS_ENDPOINTS } from './helpers/constants';
 import { HeaderKeys } from '../../types/index.js';
@@ -115,6 +116,9 @@ describe('E2E Metrics', () => {
 
     it('should return well-formed metric objects', () =>
       runTest('Well-formed metrics', async () => {
+        // First ensure we have metrics
+        await ensureMetricsExist(accessToken);
+
         const response = await retryRequest(
           'get',
           METRICS_ENDPOINTS.GET_METRICS,
@@ -263,6 +267,9 @@ describe('E2E Metrics', () => {
 
     it('should handle concurrent requests', () =>
       runTest('Concurrent Requests', async () => {
+        // First ensure we have metrics
+        await ensureMetricsExist(accessToken);
+
         const concurrentRequests = 5;
         const requests = Array(concurrentRequests)
           .fill(null)

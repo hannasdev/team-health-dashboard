@@ -2,9 +2,9 @@
 import axios, { AxiosResponse, Method } from 'axios';
 
 import { config } from './config.js';
-import { AUTH_ENDPOINTS } from './constants.js';
+import { AUTH_ENDPOINTS, METRICS_ENDPOINTS } from './constants.js';
 
-import type { AuthResponse } from './types.js';
+import type { AuthResponse, MetricsResponse } from './types.js';
 
 export const axiosInstance = axios.create({
   baseURL: config.apiEndpoint,
@@ -209,4 +209,43 @@ export const refreshAccessToken = async (
     console.error('Error refreshing token:', error);
     throw new Error('Failed to refresh token');
   }
+};
+
+export const ensureMetricsExist = async (
+  accessToken: string,
+): Promise<void> => {
+  console.log('Ensuring metrics exist...');
+
+  // First check if metrics already exist
+  const checkResponse = await retryRequest<MetricsResponse>(
+    'get',
+    METRICS_ENDPOINTS.GET_METRICS,
+    null,
+    { Authorization: `Bearer ${accessToken}` },
+  );
+
+  if (checkResponse.data?.data?.totalMetrics === 0) {
+    console.log('No metrics found, triggering sync...');
+    // If no metrics exist, trigger a sync
+    await retryRequest('post', METRICS_ENDPOINTS.SYNC_METRICS, null, {
+      Authorization: `Bearer ${accessToken}`,
+    });
+
+    // Wait a bit for sync to complete
+    await wait(2000);
+
+    // Verify metrics were created
+    const verifyResponse = await retryRequest<MetricsResponse>(
+      'get',
+      METRICS_ENDPOINTS.GET_METRICS,
+      null,
+      { Authorization: `Bearer ${accessToken}` },
+    );
+
+    if (verifyResponse.data?.data?.totalMetrics === 0) {
+      throw new Error('Failed to create metrics after sync');
+    }
+  }
+
+  console.log('Metrics existence verified');
 };
