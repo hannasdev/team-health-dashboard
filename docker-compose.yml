@@ -63,13 +63,22 @@ services:
 
   # Test App
   app-test:
+    volumes:
+      - ./logs:/home/nodejs/app/logs
+      - node_modules_test:/app/node_modules
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
     build:
       context: .
       dockerfile: Dockerfile
     environment:
-      - NODE_ENV="e2e"
-      - CORS_ORIGIN=http://localhost:5173,http://localhost:3000,http://localhost:8080,http://127.0.0.1:8080
-      - DATABASE_URL=${DATABASE_URL}
+      - NODE_ENV=e2e
+      - HOST=0.0.0.0
+      - CORS_ORIGIN=${CORS_ORIGIN}
+      - DATABASE_URL=mongodb://root:example@db-test:27017/myapp?authSource=admin
       - GOOGLE_SHEETS_CLIENT_EMAIL=${GOOGLE_SHEETS_CLIENT_EMAIL}
       - GOOGLE_SHEETS_ID=${GOOGLE_SHEETS_ID}
       - GOOGLE_SHEETS_PRIVATE_KEY=${GOOGLE_SHEETS_PRIVATE_KEY}
@@ -96,13 +105,11 @@ services:
     networks:
       - test-network
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      test: ['CMD', '/usr/local/bin/docker-healthcheck.sh']
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 40s
-    volumes:
-      - node_modules_test:/app/node_modules
     profiles: ['e2e-test']
 
   # Test Database
@@ -111,17 +118,23 @@ services:
     volumes:
       - mongodb_test_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
-    command: mongod --bind_ip_all --quiet --logpath /dev/null
+    command: mongod --bind_ip_all --quiet --logpath /dev/null --auth
     networks:
       - test-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: |
+        mongosh admin --quiet --eval '
+          db.auth("root", "example");
+          print(db.runCommand("ping").ok ? "MongoDB is ready." : "MongoDB is not ready.");
+          print("Authentication successful");
+        '
       interval: 10s
       timeout: 5s
       retries: 5
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=example
+      - MONGO_INITDB_DATABASE=myapp
     deploy:
       resources:
         limits:
@@ -184,14 +197,18 @@ services:
         limits:
           memory: 3G
     command: >
-      /bin/bash -c '
-      echo "Starting E2E test runner..." &&
-      echo "Waiting for app-test to be ready..." &&
-      /home/nodejs/wait-for-it.sh app-test:3000 -t 120 &&
-      echo "App-test is ready." &&
-      echo "Waiting for database to be ready..." &&
-      /home/nodejs/wait-for-it.sh db-test:27017 -t 60 &&
-      echo "Database is ready. Running E2E tests..." &&
+      /bin/sh -c '
+      echo "E2E test runner starting..." &&
+      echo "Current directory: $$(pwd)" &&
+      echo "Directory contents:" &&
+      ls -la &&
+      echo "Node version:" &&
+      node --version &&
+      echo "Jest path:" &&
+      which jest || echo "Jest not found in PATH" &&
+      echo "Looking for test files:" &&
+      find . -name "*.e2e.spec.js" &&
+      echo "Running tests..." &&
       node --experimental-vm-modules node_modules/.bin/jest --config jest.config.docker.js --testMatch "**/dist/__tests__/e2e/**/*.e2e.spec.js" --forceExit --detectOpenHandles --runInBand --verbose
       '
     profiles: ['e2e-test']

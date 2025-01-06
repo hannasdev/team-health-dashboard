@@ -1,4 +1,9 @@
-import { retryRequest, createTestUser, loginUser } from './helpers/apiHelpers';
+import {
+  retryRequest,
+  createTestUser,
+  loginUser,
+  wait,
+} from './helpers/apiHelpers';
 import { AUTH_ENDPOINTS } from './helpers/constants';
 import { HeaderKeys } from '../../types/index.js';
 
@@ -16,31 +21,29 @@ describe('E2E Auth', () => {
   }, 60000);
 
   beforeEach(async () => {
-    // Log out any existing user
-    if (accessToken && refreshToken) {
-      await retryRequest(
-        'post',
-        AUTH_ENDPOINTS.LOGOUT,
-        { refreshToken },
-        {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      );
-    }
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    // Create a new user and log in
-    testUser = await createTestUser();
-    const result = await loginUser(testUser.email, testUser.password);
+    while (attempts < maxAttempts) {
+      try {
+        testUser = await createTestUser();
+        const result = await loginUser(testUser.email, testUser.password);
 
-    if (result.userAccessToken && result.userRefreshToken) {
-      accessToken = result.userAccessToken;
-      refreshToken = result.userRefreshToken;
-      console.log('New access token:', accessToken);
-      console.log('New refresh token:', refreshToken);
-    } else {
-      throw new Error('Failed to obtain access or refresh token');
+        if (result.userAccessToken && result.userRefreshToken) {
+          accessToken = result.userAccessToken;
+          refreshToken = result.userRefreshToken;
+          break;
+        }
+      } catch (error) {
+        attempts++;
+        if (attempts === maxAttempts) {
+          throw error;
+        }
+        // Wait for a bit before retrying
+        await wait(5000 * attempts); // Increasing delay with each attempt
+      }
     }
-  });
+  }, 30000); // Increased timeout
 
   describe('POST /api/auth/register', () => {
     it('should register a new user', async () => {

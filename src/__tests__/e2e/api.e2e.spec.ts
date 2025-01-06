@@ -3,6 +3,8 @@ import {
   createTestUser,
   loginUser,
   refreshAccessToken,
+  wait,
+  ensureMetricsExist,
 } from './helpers/apiHelpers';
 import { METRICS_ENDPOINTS } from './helpers/constants';
 import { HeaderKeys } from '../../types/index.js';
@@ -49,16 +51,29 @@ describe('E2E Metrics', () => {
   }, 60000);
 
   beforeEach(async () => {
-    testUser = await createTestUser();
-    const result = await loginUser(testUser.email, testUser.password);
+    let attempts = 0;
+    const maxAttempts = 3;
 
-    if (result.userAccessToken && result.userRefreshToken) {
-      accessToken = result.userAccessToken;
-      refreshToken = result.userRefreshToken;
-    } else {
-      throw new Error('Failed to obtain access or refresh token');
+    while (attempts < maxAttempts) {
+      try {
+        testUser = await createTestUser();
+        const result = await loginUser(testUser.email, testUser.password);
+
+        if (result.userAccessToken && result.userRefreshToken) {
+          accessToken = result.userAccessToken;
+          refreshToken = result.userRefreshToken;
+          break;
+        }
+      } catch (error) {
+        attempts++;
+        if (attempts === maxAttempts) {
+          throw error;
+        }
+        // Wait for a bit before retrying
+        await wait(5000 * attempts); // Increasing delay with each attempt
+      }
     }
-  });
+  }, 30000); // Increased timeout
 
   const runTest = async (testName: string, testFn: () => Promise<void>) => {
     console.group(testName);
@@ -101,6 +116,9 @@ describe('E2E Metrics', () => {
 
     it('should return well-formed metric objects', () =>
       runTest('Well-formed metrics', async () => {
+        // First ensure we have metrics
+        await ensureMetricsExist(accessToken);
+
         const response = await retryRequest(
           'get',
           METRICS_ENDPOINTS.GET_METRICS,
@@ -249,6 +267,9 @@ describe('E2E Metrics', () => {
 
     it('should handle concurrent requests', () =>
       runTest('Concurrent Requests', async () => {
+        // First ensure we have metrics
+        await ensureMetricsExist(accessToken);
+
         const concurrentRequests = 5;
         const requests = Array(concurrentRequests)
           .fill(null)

@@ -6,7 +6,8 @@ import { container } from './container.js';
 import { ILogger, IApplication } from './interfaces/index.js';
 import { TYPES } from './utils/types.js';
 
-const port = process.env.PORT || 3000;
+const port = parseInt(process.env.PORT || '3000', 10);
+const host = process.env.HOST || 'localhost';
 
 async function startServer() {
   const logger = container.get<ILogger>(TYPES.Logger);
@@ -14,8 +15,8 @@ async function startServer() {
 
   try {
     await app.initialize();
-    app.expressApp.listen(port, () => {
-      logger.info(`[server]: Server is running at http://localhost:${port}`);
+    app.expressApp.listen(port, host, () => {
+      logger.info(`[server]: Server is running at http://${host}:${port}`);
     });
   } catch (error) {
     logger.error('Failed to start server:', error as Error);

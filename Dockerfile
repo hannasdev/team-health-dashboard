@@ -1,10 +1,13 @@
 # Base Stage
-# - Creates a base image with Node.js 22.9.0 on Alpine Linux.
+# - Creates a base image with Node.js 23.5.0 on Alpine Linux.
 # - Sets up a working directory at /home/nodejs/app with proper permissions.
-FROM node:22.9.0-alpine AS base
-RUN apk add --no-cache curl bash
+FROM node:23.5.0-alpine AS base
+RUN apk add --no-cache curl bash netcat-openbsd
 RUN mkdir -p /home/nodejs/app && chown -R node:node /home/nodejs
 WORKDIR /home/nodejs/app
+
+COPY docker-healthcheck.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-healthcheck.sh
 
 # Add wait-for-it script (as root) and modify it to use sh
 ADD https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh /usr/local/bin/wait-for-it.sh
@@ -46,6 +49,7 @@ FROM test AS unit-test
 # - Similar to the unit test stage, but set up for E2E tests.
 FROM test AS e2e-test 
 # Copy wait-for-it script from base stage and ensure it has correct permissions
+COPY --from=base --chown=node:node /usr/local/bin/docker-healthcheck.sh /usr/local/bin/docker-healthcheck.sh
 COPY --from=base --chown=node:node /usr/local/bin/wait-for-it.sh /home/nodejs/wait-for-it.sh
 CMD ["node", "--experimental-vm-modules", "node_modules/.bin/jest", "--config", "jest.config.docker.js", "--testMatch", "**/dist/__tests__/e2e/**/*.e2e.spec.js", "--detectOpenHandles", "--runInBand", "--verbose"]
 
@@ -56,6 +60,7 @@ CMD ["node", "--experimental-vm-modules", "node_modules/.bin/jest", "--config", 
 # - Sets up logging directory.
 # - Exposes port 3000 and sets up command to run the application.
 FROM base AS production 
+COPY --from=base --chown=node:node /usr/local/bin/docker-healthcheck.sh /usr/local/bin/docker-healthcheck.sh
 ENV NODE_ENV=production
 USER node
 COPY --chown=node:node package*.json ./
