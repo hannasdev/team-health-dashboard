@@ -11,73 +11,42 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  check-changes:
+  check-test-status:
     runs-on: ubuntu-latest
     outputs:
-      should_test: ${{ steps.check.outputs.should_test }}
+      needs_unit_test: ${{ steps.check.outputs.needs_unit_test }}
+      needs_e2e: ${{ steps.check.outputs.needs_e2e }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Check for changes requiring tests
+      - name: Check test requirements
         id: check
         run: |
-          echo "should_test=true" >> "$GITHUB_OUTPUT"
+          echo "needs_unit_test=true" >> "$GITHUB_OUTPUT"
+          echo "needs_e2e=true" >> "$GITHUB_OUTPUT"
 
-          LAST_SUCCESS_SHA=$(gh run list --branch "${{ github.head_ref }}" --workflow "Branch Workflow" --status success --json headSha --jq '.[0].headSha // empty' || echo "")
+          CURRENT_SHA="${{ github.event.pull_request.head.sha }}"
 
-          if [ -n "$LAST_SUCCESS_SHA" ]; then
-            echo "Found last successful run SHA: $LAST_SUCCESS_SHA"
-            
-            CHANGES=$(git diff --name-only $LAST_SUCCESS_SHA HEAD | grep -E '^(src/|test/|package\.json|package-lock\.json)' || true)
-            
-            if [ -z "$CHANGES" ]; then
-              echo "No relevant changes since last successful test run"
-              echo "should_test=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "Detected changes requiring tests:"
-              echo "$CHANGES"
-              echo "should_test=true" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "No previous successful run found, running tests"
+          BRANCH_SUCCESS=$(gh run list --branch "${{ github.head_ref }}" --workflow "Branch Workflow" --status success --json headSha --jq ".[] | select(.headSha == \"$CURRENT_SHA\") | .headSha")
+
+          if [ -n "$BRANCH_SUCCESS" ]; then
+            echo "Found successful branch workflow run for current commit"
+            echo "needs_unit_test=false" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  check-e2e-status:
-    runs-on: ubuntu-latest
-    outputs:
-      needs_e2e: ${{ steps.check.outputs.needs_e2e }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Check if E2E tests have run
-        id: check
-        run: |
-          RUN_IDS=$(gh run list --branch "${{ github.head_ref }}" --workflow "PR Workflow" --json databaseId --jq '.[].databaseId')
+          PR_SUCCESS=$(gh run list --branch "${{ github.head_ref }}" --workflow "PR Workflow" --json jobs,headSha --jq ".[] | select(.headSha == \"$CURRENT_SHA\") | .jobs[] | select(.name == \"e2e-test\" and .conclusion == \"success\") | .conclusion")
 
-          E2E_SUCCESS=false
-          for RUN_ID in $RUN_IDS; do
-            if gh run view $RUN_ID --json jobs --jq '.jobs[] | select(.name == "e2e-test" and .conclusion == "success")' | grep -q .; then
-              E2E_SUCCESS=true
-              break
-            fi
-          done
-
-          if [ "$E2E_SUCCESS" = true ]; then
-            echo "Found successful E2E test run"
+          if [ -n "$PR_SUCCESS" ]; then
+            echo "Found successful E2E test run for current commit"
             echo "needs_e2e=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "No successful E2E test runs found, E2E tests needed"
-            echo "needs_e2e=true" >> "$GITHUB_OUTPUT"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build:
-    needs: [check-changes, check-e2e-status]
-    if: needs.check-changes.outputs.should_test == 'true' || needs.check-e2e-status.outputs.needs_e2e == 'true'
+    needs: [check-test-status]
+    if: needs.check-test-status.outputs.needs_unit_test == 'true' || needs.check-test-status.outputs.needs_e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -87,8 +56,8 @@ jobs:
           cache-key-prefix: pr-${{ github.event.pull_request.number }}
 
   test-unit:
-    needs: [check-changes, build]
-    if: needs.check-changes.outputs.should_test == 'true'
+    needs: [check-test-status, build]
+    if: needs.check-test-status.outputs.needs_unit_test == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -105,8 +74,8 @@ jobs:
         run: NODE_OPTIONS=--max_old_space_size=4096 npm run test:unit
 
   e2e-test:
-    needs: [check-e2e-status, build]
-    if: needs.check-e2e-status.outputs.needs_e2e == 'true'
+    needs: [check-test-status, build]
+    if: needs.check-test-status.outputs.needs_e2e == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -115,15 +84,6 @@ jobs:
         with:
           docker-username: ${{ secrets.DOCKER_USERNAME }}
           docker-password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Debug environment variables
-        run: |
-          echo "DATABASE_URL is set: ${{ secrets.DATABASE_URL != '' }}"
-          echo "GOOGLE_SHEETS_ID is set: ${{ secrets.GOOGLE_SHEETS_ID != '' }}"
-          echo "GOOGLE_SHEETS_CLIENT_EMAIL is set: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL != '' }}"
-          echo "GOOGLE_SHEETS_PRIVATE_KEY is set: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY != '' }}"
-          echo "REPO_TOKEN is set: ${{ secrets.REPO_TOKEN != '' }}"
-          echo "REPO_OWNER is set: ${{ secrets.REPO_OWNER != '' }}"
-          echo "REPO_REPO is set: ${{ secrets.REPO_REPO != '' }}"
       - name: Build and run E2E tests with Docker Compose
         env:
           API_URL: http://app-test:${{ secrets.PORT }}
@@ -148,12 +108,22 @@ jobs:
         run: |
           docker compose --profile e2e-test build
           docker compose --profile e2e-test up --abort-on-container-exit --exit-code-from e2e-test-runner
+      - name: Debug environment variables
+        run: |
+          echo "DATABASE_URL is set: ${{ secrets.DATABASE_URL != '' }}"
+          echo "GOOGLE_SHEETS_ID is set: ${{ secrets.GOOGLE_SHEETS_ID != '' }}"
+          echo "GOOGLE_SHEETS_CLIENT_EMAIL is set: ${{ secrets.GOOGLE_SHEETS_CLIENT_EMAIL != '' }}"
+          echo "GOOGLE_SHEETS_PRIVATE_KEY is set: ${{ secrets.GOOGLE_SHEETS_PRIVATE_KEY != '' }}"
+          echo "REPO_TOKEN is set: ${{ secrets.REPO_TOKEN != '' }}"
+          echo "REPO_OWNER is set: ${{ secrets.REPO_OWNER != '' }}"
+          echo "REPO_REPO is set: ${{ secrets.REPO_REPO != '' }}"
+          echo "MONGO_SERVER_SELECTION_TIMEOUT_MS is set: ${{ secrets.MONGO_SERVER_SELECTION_TIMEOUT_MS != '' }}"
+          echo "CORS_ORIGIN is set: ${{ secrets.CORS_ORIGIN != '' }}"
       - name: Display logs and cleanup
         if: always()
         run: |
           echo "Displaying Docker logs..."
           docker compose --profile e2e-test logs app-test
-
           echo "Cleaning up Docker resources..."
           docker compose --profile e2e-test down -v
           docker system prune -f
@@ -164,18 +134,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Fetch all history for all branches and tags
-
+          fetch-depth: 0
       - name: Get base and head SHAs
         id: get_shas
         run: |
           echo "base_sha=${{ github.event.pull_request.base.sha }}" >> $GITHUB_OUTPUT
           echo "head_sha=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-
       - name: Check for breaking changes
         run: |
           if git log --format=%B ${{ steps.get_shas.outputs.base_sha }}..${{ steps.get_shas.outputs.head_sha }} | grep -q "BREAKING CHANGE"; then
             echo "::warning ::This PR contains breaking changes. Please review carefully."
           else
             echo "No breaking changes detected."
+          fi
+
+  verify-tests:
+    needs: [test-unit, e2e-test, check-test-status]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify test status
+        run: |
+          if [[ "${{ needs.test-unit.result }}" != "success" && "${{ needs.check-test-status.outputs.needs_unit_test }}" == "true" ]]; then
+            echo "Unit tests failed or were skipped when required"
+            exit 1
+          fi
+
+          if [[ "${{ needs.e2e-test.result }}" != "success" && "${{ needs.check-test-status.outputs.needs_e2e }}" == "true" ]]; then
+            echo "E2E tests failed or were skipped when required"
+            exit 1
+          fi
+
+          if [[ "${{ needs.check-test-status.outputs.needs_unit_test }}" == "false" && "${{ needs.check-test-status.outputs.needs_e2e }}" == "false" ]]; then
+            echo "All required tests have already passed for this commit"
           fi
