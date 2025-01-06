@@ -7,11 +7,10 @@ import { TYPES } from '../../utils/types.js';
 import { MetricsController } from '../controllers/MetricsController/MetricsController.js';
 
 import type {
-  IAuthMiddleware,
+  IMiddleware,
   ILogger,
   IAuthenticatedRequest,
   IEnhancedResponse,
-  IAuthRequest,
 } from '../../interfaces/index.js';
 
 const router = Router();
@@ -20,7 +19,7 @@ const getMetricsController = () =>
   container.get<MetricsController>(TYPES.MetricsController);
 
 const getAuthMiddleware = () =>
-  container.get<IAuthMiddleware>(TYPES.AuthMiddleware);
+  container.get<IMiddleware>(TYPES.AuthMiddleware);
 
 const getLogger = () => container.get<ILogger>(TYPES.Logger);
 

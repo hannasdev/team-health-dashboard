@@ -26,6 +26,7 @@ import { MongoAdapter } from './data/adapters/MongoAdapter/MongoAdapter.js';
 import { GitHubMetricModel } from './data/models/GitHubMetric.js';
 import { GitHubPullRequest } from './data/models/GitHubPullRequest.js';
 import { GoogleSheetsMetric } from './data/models/GoogleSheetsMetric.js';
+import { Repository } from './data/models/Repository.js';
 import { User } from './data/models/User.js';
 import { GitHubRepository } from './data/repositories/GitHubRepository/GitHubRepository.js';
 import { GoogleSheetsRepository } from './data/repositories/GoogleSheetsRepository/GoogleSheetsRepository.js';
@@ -60,7 +61,7 @@ import type {
   IApiResponse,
   IApplication,
   IAuthController,
-  IAuthMiddleware,
+  IMiddleware,
   IAuthenticationService,
   IBcryptService,
   ICacheService,
@@ -87,6 +88,7 @@ import type {
   IMongoDbClient,
   IProcessingService,
   IProgressTracker,
+  IRepository,
   ITeamHealthDashboardApp,
   ITokenBlacklistService,
   ITokenService,
@@ -175,6 +177,9 @@ export function setupContainer(
   container
     .bind<IGitHubRepository>(TYPES.GitHubRepository)
     .to(GitHubRepository);
+  container
+    .bind<mongoose.Model<IRepository>>(TYPES.RepositoryModel)
+    .toConstantValue(Repository);
 
   /**
    * !5. Metric Calculation (Can depend on repositories and other services)
@@ -225,7 +230,7 @@ export function setupContainer(
     .to(ErrorHandler)
     .inSingletonScope();
   container
-    .bind<IAuthMiddleware>(TYPES.AuthMiddleware)
+    .bind<IMiddleware>(TYPES.AuthMiddleware)
     .to(AuthMiddleware)
     .inSingletonScope();
   container
