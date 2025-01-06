@@ -2,6 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.0.2](https://github.com/hannasdev/team-health-dashboard/compare/v3.0.1...v3.0.2) (2025-01-06)
+
+
+### Bug Fixes
+
+* add logging and correct cache key ([3459ec2](https://github.com/hannasdev/team-health-dashboard/commit/3459ec2f91b6a832f6fd882db295804eea532753))
+* remove the auth middleware covering all endpoints ([67d107b](https://github.com/hannasdev/team-health-dashboard/commit/67d107bfe25ef2f464fd1f465e57cb878a32b7ab))
+* use correct ratelimit config ([28313df](https://github.com/hannasdev/team-health-dashboard/commit/28313df314da21dab7168dc3c413a521c52485dd))
+* use host env variable ([9564977](https://github.com/hannasdev/team-health-dashboard/commit/9564977346ba1a59d55c0414055d2ea026bbe414))
+* use http types for req and res ([bded4a9](https://github.com/hannasdev/team-health-dashboard/commit/bded4a90e31f70c1290044fccbf2914f6fb6bc96))
+
+
+### Maintenance
+
+* fix authentication issue ([f4a3957](https://github.com/hannasdev/team-health-dashboard/commit/f4a395779731a0015ad76d69330fda4942f8dd3a))
+* fix issue with running health check ([891d506](https://github.com/hannasdev/team-health-dashboard/commit/891d50601a510b4e33e80336924ba993e414618e))
+* fix lint error ([3baea48](https://github.com/hannasdev/team-health-dashboard/commit/3baea488d8149dcad0111b2c1a2e239e40f4ffe2))
+* fix pr workflow ([9de30e1](https://github.com/hannasdev/team-health-dashboard/commit/9de30e108d1a697a907789cc70fab80856683a66))
+* fix pr workflow again ([c91691f](https://github.com/hannasdev/team-health-dashboard/commit/c91691f4c9cdfc477d28d7a327bab1057aa6dd45))
+* fix scenario where e2e never runs for PRs ([07d3eeb](https://github.com/hannasdev/team-health-dashboard/commit/07d3eeb170785ec14872f541995e5afc88e013b3))
+* improve check for e2e status ([c44c44b](https://github.com/hannasdev/team-health-dashboard/commit/c44c44b6ba0fb5cf6254cfb3597ec879205eb057))
+* log app-test to file from e2e ([4b3da29](https://github.com/hannasdev/team-health-dashboard/commit/4b3da2914afb62f0355216e461474680fc0f2187))
+* optimize pr workflow ([78e9011](https://github.com/hannasdev/team-health-dashboard/commit/78e90111d7d5383f58b5f6334062a2ac9832689f))
+* remove comment from command ([43afebc](https://github.com/hannasdev/team-health-dashboard/commit/43afebcddae17e7dee02d89b1e250167096e43be))
+* remove comments from command ([eda74a9](https://github.com/hannasdev/team-health-dashboard/commit/eda74a9b3433dc8572236a6f1a3e76a20bc7329e))
+* replace app-test DATABASE_URL to hardcoded value ([5629932](https://github.com/hannasdev/team-health-dashboard/commit/5629932e486f35456650968b9e1d41eba660d771))
+* use variable for DATABASE_URL in app-test ([1d77252](https://github.com/hannasdev/team-health-dashboard/commit/1d77252b2893eca00b372566267cee5e9436eeba))
+
 ### [3.0.1](https://github.com/hannasdev/team-health-dashboard/compare/v3.0.0...v3.0.1) (2024-12-30)
 
 
