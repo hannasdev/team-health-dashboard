@@ -1,7 +1,7 @@
 // src/data/models/Repository.ts
 import mongoose, { Schema } from 'mongoose';
 
-import { IRepository, RepositoryStatus } from '../../interfaces/IRepository';
+import { IRepository, RepositoryStatus } from '../../interfaces/index.js';
 
 const RepositorySchema = new Schema<IRepository>({
   owner: { type: String, required: true },
