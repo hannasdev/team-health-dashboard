@@ -10,6 +10,11 @@ const router = Router();
 const getHealthCheckController = () =>
   container.get<HealthCheckController>(TYPES.HealthCheckController);
 
-router.get('/', (req, res) => getHealthCheckController().getHealth(req, res));
+router.get('/', (req, res, next) => {
+  if (!next) {
+    throw new Error('Next function is required');
+  }
+  getHealthCheckController().getHealth(req, res, next);
+});
 
 export default router;
