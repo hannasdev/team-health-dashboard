@@ -124,7 +124,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
   }
 
   private configureMiddleware(): void {
-    this.expressApp.use((req, res, next) =>
+    this.expressApp.use('/api', (req, res, next) =>
       this.rateLimitMiddleware.handle(
         req as IEnhancedRequest,
         res as IEnhancedResponse,
