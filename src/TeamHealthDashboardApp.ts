@@ -8,6 +8,7 @@ import { inject, injectable } from 'inversify';
 import authRouter from './presentation/routes/auth.js';
 import healthCheckRouter from './presentation/routes/healthCheck.js';
 import metricsRouter from './presentation/routes/metrics.js';
+import repositoryRouter from './presentation/routes/repository.js';
 import { TYPES } from './utils/types.js';
 
 import type {
@@ -183,6 +184,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
       ),
     );
     this.expressApp.use('/api', metricsRouter);
+    this.expressApp.use('/api/repositories', repositoryRouter);
 
     // 404 handler
     this.expressApp.use((req: IEnhancedRequest, res: IEnhancedResponse) => {

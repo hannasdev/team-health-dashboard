@@ -13,7 +13,7 @@ export interface IRepositoryManagementService {
   listRepositories(
     filters?: IRepositoryFilters,
   ): Promise<IRepositoryPaginatedResponse>;
-  validateRepository(details: IRepositoryDetails): Promise<boolean>;
+  validateRepository(details: IRepositoryDetails): Promise<IRepositoryDetails>;
   updateRepositoryStatus(
     repoId: string,
     status: RepositoryStatus,

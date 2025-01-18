@@ -1,4 +1,6 @@
 // src/interfaces/IRepositoryDetails.ts
+
+import { RepositoryStatus } from './IRepository';
 export interface IRepositoryDetails {
   owner: string;
   name: string;
@@ -6,7 +8,7 @@ export interface IRepositoryDetails {
     type: 'token' | 'oauth';
     value: string;
   };
-  status: 'active' | 'inactive' | 'archived';
+  status: RepositoryStatus;
   createdAt: Date;
   lastSyncAt?: Date;
   metadata?: {

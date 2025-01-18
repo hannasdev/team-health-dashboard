@@ -1,12 +1,13 @@
 import { inject, injectable } from 'inversify';
 
-import { TYPES } from 'utils/types.js';
+import { RepositoryStatus } from '../../interfaces/index.js';
+import { ValidationError, NotFoundError } from '../../utils/errors.js';
+import { TYPES } from '../../utils/types.js';
 
-import {
+import type {
   IRepository,
   IRepositoryDetails,
   IRepositoryFilters,
-  RepositoryStatus,
   IBcryptService,
   ILogger,
   IRepositoryRepository,
@@ -14,8 +15,6 @@ import {
   IRepositoryManagementService,
   IRepositoryPaginatedResponse,
 } from '../../interfaces/index.js';
-import { ValidationError, NotFoundError } from '../../utils/errors.js';
-
 @injectable()
 export class RepositoryManagementService
   implements IRepositoryManagementService
@@ -37,20 +36,23 @@ export class RepositoryManagementService
       name: details.name,
     });
 
-    const isValid = await this.validateRepository(details);
-    if (!isValid) {
-      throw new ValidationError('Repository validation failed');
+    const validatedDetails = await this.validateRepository(details);
+
+    if (!validatedDetails.metadata || !validatedDetails.metadata.isPrivate) {
+      const error = new ValidationError('Repository validation failed');
+      this.logger.error('Repository validation failed', error);
+      throw error;
     }
 
-    if (details.credentials) {
+    if (validatedDetails.credentials) {
       // Hash the credentials value for secure storage
-      details.credentials.value = await this.bcryptService.hash(
-        details.credentials.value,
+      const hashedValue = await this.bcryptService.hash(
+        validatedDetails.credentials.value,
         10,
       );
+      validatedDetails.credentials.value = hashedValue;
     }
-
-    return await this.repositoryRepo.create(details);
+    return await this.repositoryRepo.create(validatedDetails);
   }
 
   async removeRepository(repoId: string): Promise<void> {
@@ -62,7 +64,7 @@ export class RepositoryManagementService
     }
 
     // Archive instead of delete to preserve historical data
-    await this.updateRepositoryStatus(repoId, RepositoryStatus.ARCHIVED);
+    await this.repositoryRepo.markAsArchived(repoId);
   }
 
   async getRepository(repoId: string): Promise<IRepository> {
@@ -104,7 +106,9 @@ export class RepositoryManagementService
     return result;
   }
 
-  async validateRepository(details: IRepositoryDetails): Promise<boolean> {
+  async validateRepository(
+    details: IRepositoryDetails,
+  ): Promise<IRepositoryDetails> {
     try {
       // Attempt to fetch repository metadata using GitHub API
       const metadata = await this.githubAdapter.getRepositoryMetadata({
@@ -115,23 +119,33 @@ export class RepositoryManagementService
 
       // Update repository with metadata if it exists
       if (metadata) {
-        details.metadata = {
-          isPrivate: metadata.isPrivate,
-          description: metadata.description,
-          defaultBranch: metadata.defaultBranch,
-          topics: metadata.topics,
-          language: metadata.primaryLanguage,
+        return {
+          // Return a new object with updated metadata
+          ...details,
+          metadata: {
+            isPrivate: metadata.isPrivate,
+            description: metadata.description,
+            defaultBranch: metadata.defaultBranch,
+            topics: metadata.topics,
+            language: metadata.primaryLanguage,
+          },
         };
-        return true;
+      } else {
+        this.logger.error('Repository metadata not found');
+        return {
+          ...details,
+          metadata: undefined,
+        };
       }
-
-      return false;
     } catch (error) {
       this.logger.error('Repository validation failed', error as Error, {
         owner: details.owner,
         name: details.name,
       });
-      return false;
+      return {
+        ...details,
+        metadata: undefined,
+      };
     }
   }
 

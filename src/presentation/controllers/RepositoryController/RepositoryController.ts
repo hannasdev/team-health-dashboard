@@ -60,7 +60,7 @@ export class RepositoryController {
               value: credentials.value,
             }
           : undefined,
-        status: 'active',
+        status: RepositoryStatus.ACTIVE,
         createdAt: new Date(),
       };
 
