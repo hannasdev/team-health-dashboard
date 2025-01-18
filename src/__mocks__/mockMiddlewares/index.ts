@@ -10,6 +10,7 @@ import type {
   IAuthRequest,
   ISecurityEvent,
   ISecurityRequest,
+  IMiddleware,
 } from '../../interfaces';
 
 export interface MockRequestOptions {
@@ -163,3 +164,7 @@ export function createDefaultSecurityConfig(): ISecurityHeadersConfig {
     },
   };
 }
+
+export const createMockMiddleware = () => ({
+  handle: jest.fn().mockImplementation((req, res, next) => next()),
+});
