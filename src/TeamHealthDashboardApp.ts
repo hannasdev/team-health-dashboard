@@ -45,7 +45,6 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     this.configureJson();
     this.configureSecurityMiddleware();
     this.configureCors();
-    this.configureMiddleware();
     this.configureRoutes();
     this.configureErrorHandling();
 
@@ -121,18 +120,6 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     this.logger.info('CORS configured', {
       corsOrigin: this.config.CORS_ORIGIN,
     });
-  }
-
-  private configureMiddleware(): void {
-    this.expressApp.use('/api', (req, res, next) =>
-      this.rateLimitMiddleware.handle(
-        req as IEnhancedRequest,
-        res as IEnhancedResponse,
-        next as NextFunction,
-      ),
-    );
-
-    this.logger.info('Basic middleware configured');
   }
 
   private configureSecurityMiddleware(): void {
