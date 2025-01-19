@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.1.0](https://github.com/hannasdev/team-health-dashboard/compare/v3.0.2...v3.1.0) (2025-01-19)
+
+
+### Features
+
+* add missing repository config ([9a4ae46](https://github.com/hannasdev/team-health-dashboard/commit/9a4ae46778a2b96722f4eb6c8e1fc63f9e36712f))
+* add Repository, Controller and Service for new Repository entity ([bb8873f](https://github.com/hannasdev/team-health-dashboard/commit/bb8873fab098479f7b5fb1b4908a77522debda99))
+
+
+### Bug Fixes
+
+* add missing repository controller interface ([4d572b6](https://github.com/hannasdev/team-health-dashboard/commit/4d572b61d35df3ba010a9b3109ea5c636232165b))
+* apply ratelimit only to /api ([99cdcfd](https://github.com/hannasdev/team-health-dashboard/commit/99cdcfdf06b866bb86b4baa9e275b4775abc18ed))
+* import ([5312478](https://github.com/hannasdev/team-health-dashboard/commit/53124784de23ea678de70bd89f7a7808c8ab2971))
+* solve nested routes ([da83bfe](https://github.com/hannasdev/team-health-dashboard/commit/da83bfe7effd594375635f01164e6cb26fc7530b))
+
+
+### Maintenance
+
+* remove codebase.md from tracking ([f3e36c6](https://github.com/hannasdev/team-health-dashboard/commit/f3e36c62c96b46b960e033cd7de873913e1ca3ce))
+
 ### [3.0.2](https://github.com/hannasdev/team-health-dashboard/compare/v3.0.1...v3.0.2) (2025-01-06)
 
 
