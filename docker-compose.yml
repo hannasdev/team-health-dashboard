@@ -43,7 +43,7 @@ services:
     volumes:
       - mongodb_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
-    command: mongod --bind_ip_all --quiet
+    command: mongod --bind_ip_all --verbose DEBUG_1
     networks:
       - app-network
     healthcheck:
@@ -124,7 +124,7 @@ services:
       - test-network
     healthcheck:
       test: |
-        mongosh admin --quiet --eval '
+        mongosh admin --verbose DEBUG_1 --eval '
           db.auth("root", "example");
           print(db.runCommand("ping").ok ? "MongoDB is ready." : "MongoDB is not ready.");
           print("Authentication successful");
