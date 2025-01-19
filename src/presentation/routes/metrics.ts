@@ -25,7 +25,7 @@ const getLogger = () => container.get<ILogger>(TYPES.Logger);
 
 // GET /metrics endpoint
 router.get(
-  '/metrics',
+  '/',
   (req, res, next?: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics endpoint');
@@ -69,7 +69,7 @@ router.get(
 
 // POST /metrics/sync endpoint
 router.post(
-  '/metrics/sync',
+  '/sync',
   (req, res, next?: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics/sync endpoint');
@@ -107,7 +107,7 @@ router.post(
 );
 
 router.post(
-  '/metrics/reset-database',
+  '/reset-database',
   (req, res, next?: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics/reset-database endpoint');
