@@ -135,42 +135,67 @@ export class RepositoryManagementService
     details: IRepositoryDetails,
   ): Promise<IRepositoryDetails> {
     try {
-      // Attempt to fetch repository metadata using GitHub API
-      const metadata = await this.githubAdapter.getRepositoryMetadata({
+      this.logger.info('Validating repository', {
         owner: details.owner,
         name: details.name,
-        token: details.credentials?.value,
       });
 
-      // Update repository with metadata if it exists
-      if (metadata) {
-        return {
-          // Return a new object with updated metadata
-          ...details,
-          metadata: {
-            isPrivate: metadata.isPrivate,
-            description: metadata.description,
-            defaultBranch: metadata.defaultBranch,
-            topics: metadata.topics,
-            language: metadata.primaryLanguage,
-          },
-        };
-      } else {
-        this.logger.error('Repository metadata not found');
-        return {
-          ...details,
-          metadata: undefined,
-        };
+      // Validate required fields
+      if (!details.owner?.trim() || !details.name?.trim()) {
+        throw new ValidationError(
+          'Owner and name are required and cannot be empty',
+        );
       }
-    } catch (error) {
-      this.logger.error('Repository validation failed', error as Error, {
-        owner: details.owner,
-        name: details.name,
-      });
+
+      // Set default metadata
+      const defaultMetadata = {
+        isPrivate: true,
+        defaultBranch: 'main',
+        description: '',
+        topics: [] as string[],
+        language: 'unknown',
+      };
+
+      // Try to fetch metadata but don't fail if unavailable
+      let metadata = defaultMetadata;
+
+      try {
+        const githubMetadata = await this.githubAdapter.getRepositoryMetadata({
+          owner: details.owner,
+          name: details.name,
+          token: details.credentials?.value,
+        });
+
+        if (githubMetadata) {
+          metadata = {
+            isPrivate: githubMetadata.isPrivate,
+            defaultBranch: githubMetadata.defaultBranch,
+            description: githubMetadata.description || '',
+            topics: githubMetadata.topics || [],
+            language: githubMetadata.primaryLanguage || 'unknown',
+          };
+        } else {
+          this.logger.warn('GitHub returned null metadata, using defaults', {
+            owner: details.owner,
+            name: details.name,
+          });
+        }
+      } catch (error) {
+        this.logger.warn('Failed to fetch GitHub metadata, using defaults', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+
+      // Always return a valid repository with either GitHub or default metadata
       return {
         ...details,
-        metadata: undefined,
+        createdAt: details.createdAt || new Date(),
+        status: details.status || RepositoryStatus.ACTIVE,
+        metadata,
       };
+    } catch (error) {
+      this.logger.error('Repository validation failed:', error as Error);
+      throw error;
     }
   }
 

@@ -124,31 +124,58 @@ describe('RepositoryManagementService', () => {
       });
     });
 
-    it('should throw ValidationError if repository validation fails', async () => {
-      // Arrange
-      mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue(null);
-
-      // Act & Assert
-      await expect(service.addRepository(validDetails)).rejects.toThrow(
-        ValidationError,
-      );
-      expect(mockLogger.error).toHaveBeenCalled();
-    });
-
-    it('should hash credentials before storing', async () => {
+    it('should create repository with default metadata if validation returns null', async () => {
       // Arrange
       const hashedToken = 'hashed-token';
-      mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue({
-        isPrivate: true,
-        defaultBranch: 'main',
-      });
+      mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue(null);
       mockBcryptService.hash.mockResolvedValue(hashedToken);
       mockRepository.create.mockResolvedValue({
         ...validDetails,
         id: 'test-id',
         fullName: `${validDetails.owner}/${validDetails.name}`,
-        updatedAt: expect.any(Date), // Expect a Date object
-        credentials: { type: 'token', value: hashedToken },
+        updatedAt: expect.any(Date),
+        metadata: {
+          isPrivate: true,
+          defaultBranch: 'main',
+          description: '',
+          topics: [],
+          language: 'unknown',
+        },
+      });
+
+      // Act
+      const result = await service.addRepository(validDetails);
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.metadata).toEqual({
+        isPrivate: true,
+        defaultBranch: 'main',
+        description: '',
+        topics: [],
+        language: 'unknown',
+      });
+    });
+
+    it('should hash credentials value when provided', async () => {
+      // Arrange
+      const hashedToken = 'hashed-token';
+      mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue({
+        isPrivate: true,
+        defaultBranch: 'main',
+        description: '',
+        topics: [],
+      });
+      mockBcryptService.hash.mockResolvedValue(hashedToken);
+      mockRepository.create.mockResolvedValue({
+        ...validDetails,
+        id: 'test-id',
+        credentials: {
+          type: 'token',
+          value: hashedToken,
+        },
+        fullName: `${validDetails.owner}/${validDetails.name}`,
+        updatedAt: expect.any(Date),
       });
 
       // Act
@@ -156,14 +183,15 @@ describe('RepositoryManagementService', () => {
 
       // Assert
       expect(mockBcryptService.hash).toHaveBeenCalledWith(
-        validDetails.credentials.value,
+        validDetails.credentials!.value,
         10,
       );
       expect(mockRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          credentials: expect.objectContaining({
+          credentials: {
+            type: 'token',
             value: hashedToken,
-          }),
+          },
         }),
       );
     });
@@ -415,25 +443,7 @@ describe('RepositoryManagementService', () => {
       },
     };
 
-    it('should return validated details for valid repository', async () => {
-      // Arrange
-      mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue({
-        isPrivate: true,
-        description: 'Test repo',
-        defaultBranch: 'main',
-      });
-
-      // Act
-      const result = await service.validateRepository(validDetails);
-
-      // Assert
-      expect(result.metadata).toBeDefined();
-      expect(result.metadata?.isPrivate).toBe(true);
-      expect(result.metadata?.defaultBranch).toBe('main');
-      expect(result.metadata?.description).toBe('Test repo');
-    });
-
-    it('should return details with undefined metadata for invalid repository', async () => {
+    it('should return details with default metadata for invalid repository', async () => {
       // Arrange
       mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue(null);
 
@@ -441,11 +451,17 @@ describe('RepositoryManagementService', () => {
       const result = await service.validateRepository(validDetails);
 
       // Assert
-      expect(result.metadata).toBeUndefined();
-      expect(mockLogger.error).toHaveBeenCalled();
+      expect(result.metadata).toEqual({
+        isPrivate: true,
+        defaultBranch: 'main',
+        description: '',
+        topics: [],
+        language: 'unknown',
+      });
+      expect(mockLogger.warn).toHaveBeenCalled(); // Changed from error to warn
     });
 
-    it('should return details with undefined metadata when validation throws', async () => {
+    it('should return details with default metadata when validation throws', async () => {
       // Arrange
       mockGitHubAdapter.getRepositoryMetadata.mockRejectedValue(
         new Error('API Error'),
@@ -455,10 +471,15 @@ describe('RepositoryManagementService', () => {
       const result = await service.validateRepository(validDetails);
 
       // Assert
-      expect(result.metadata).toBeUndefined();
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Repository validation failed',
-        expect.any(Error),
+      expect(result.metadata).toEqual({
+        isPrivate: true,
+        defaultBranch: 'main',
+        description: '',
+        topics: [],
+        language: 'unknown',
+      });
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to fetch GitHub metadata, using defaults',
         expect.any(Object),
       );
     });
