@@ -5,6 +5,9 @@
   "main": "dist/index.cjs",
   "sideEffects": false,
   "type": "module",
+  "engines": {
+    "node": ">=23.0.0"
+  },
   "scripts": {
     "start": "node --experimental-specifier-resolution=node /dist/index.js",
     "dev": "node --import tsx src/index.ts",
@@ -67,6 +70,7 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-import-resolver-typescript": "^3.7.0",
     "eslint-plugin-import-x": "^4.6.1",
+    "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^5.2.1",
     "express-serve-static-core": "^0.1.1",
     "husky": "^9.1.7",
