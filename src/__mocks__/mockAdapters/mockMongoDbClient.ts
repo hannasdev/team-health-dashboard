@@ -5,9 +5,9 @@ import type { IMongoDbClient } from '../../interfaces/index.js';
 
 @injectable()
 export class MockMongoDbClient implements IMongoDbClient {
-  connect: jest.Mock;
-  getDb: jest.Mock;
-  close: jest.Mock;
+  public connect: jest.Mock;
+  public getDb: jest.Mock;
+  public close: jest.Mock;
 
   constructor() {
     const connection = mongoose.createConnection();

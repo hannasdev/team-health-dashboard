@@ -2,6 +2,7 @@
 import { expect } from '@jest/globals';
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace jest {
     interface Matchers<R> {
       toBeValidMetric(): R;

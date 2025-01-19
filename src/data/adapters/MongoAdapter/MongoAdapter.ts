@@ -15,11 +15,11 @@ export class MongoAdapter implements IMongoAdapter {
     @inject(TYPES.MongoDbClient) private mongoDbClient: IMongoDbClient,
   ) {}
 
-  getCollection(name: string): mongoose.Model<any> {
+  public getCollection(name: string): mongoose.Model<any> {
     return mongoose.model(name);
   }
 
-  getDb(): mongoose.Connection {
+  public getDb(): mongoose.Connection {
     return this.mongoDbClient.getDb();
   }
 }

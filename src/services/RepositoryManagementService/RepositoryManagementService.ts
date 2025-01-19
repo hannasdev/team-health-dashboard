@@ -34,7 +34,9 @@ export class RepositoryManagementService
     private readonly bcryptService: IBcryptService,
   ) {}
 
-  async addRepository(details: IRepositoryDetails): Promise<IRepository> {
+  public async addRepository(
+    details: IRepositoryDetails,
+  ): Promise<IRepository> {
     try {
       this.logger.info('Adding new repository', {
         owner: details.owner,
@@ -72,7 +74,7 @@ export class RepositoryManagementService
     }
   }
 
-  async removeRepository(repoId: string): Promise<void> {
+  public async removeRepository(repoId: string): Promise<void> {
     this.logger.info('Removing repository', { repoId });
 
     const repository = await this.repositoryRepo.findById(repoId);
@@ -84,7 +86,7 @@ export class RepositoryManagementService
     await this.repositoryRepo.markAsArchived(repoId);
   }
 
-  async getRepository(repoId: string): Promise<IRepository> {
+  public async getRepository(repoId: string): Promise<IRepository> {
     try {
       const repository = await this.repositoryRepo.findById(repoId);
       if (!repository) {
@@ -109,7 +111,7 @@ export class RepositoryManagementService
     }
   }
 
-  async listRepositories(
+  public async listRepositories(
     filters?: IRepositoryFilters,
   ): Promise<IRepositoryPaginatedResponse> {
     const result = await this.repositoryRepo.findAll(filters);
@@ -131,7 +133,7 @@ export class RepositoryManagementService
     return result;
   }
 
-  async validateRepository(
+  public async validateRepository(
     details: IRepositoryDetails,
   ): Promise<IRepositoryDetails> {
     try {
@@ -199,7 +201,7 @@ export class RepositoryManagementService
     }
   }
 
-  async updateRepositoryStatus(
+  public async updateRepositoryStatus(
     repoId: string,
     status: RepositoryStatus,
   ): Promise<IRepository> {
@@ -229,7 +231,7 @@ export class RepositoryManagementService
     }
   }
 
-  async updateRepositorySettings(
+  public async updateRepositorySettings(
     repoId: string,
     settings: Partial<IRepository['settings']>,
   ): Promise<IRepository> {

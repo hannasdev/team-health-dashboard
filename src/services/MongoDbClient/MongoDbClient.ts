@@ -20,7 +20,7 @@ export class MongoDbClient implements IMongoDbClient {
     @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
-  async connect(): Promise<void> {
+  public async connect(): Promise<void> {
     if (this.connection) {
       return; // Already connected
     }
@@ -83,14 +83,14 @@ export class MongoDbClient implements IMongoDbClient {
     }
   }
 
-  getDb(): mongoose.Connection {
+  public getDb(): mongoose.Connection {
     if (!this.connection) {
       throw new AppError(500, 'Database not connected. Call connect() first.');
     }
     return this.connection;
   }
 
-  async close(): Promise<void> {
+  public async close(): Promise<void> {
     if (this.connection) {
       await mongoose.disconnect();
       this.connection = null;

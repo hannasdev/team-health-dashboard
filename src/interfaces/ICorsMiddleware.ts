@@ -1,7 +1,8 @@
 import { NextFunction } from 'express';
-import { IMiddleware } from './IMiddleware';
-import { IEnhancedRequest } from './IEnhancedRequest';
-import { IEnhancedResponse } from './IEnhancedResponse';
+
+import type { IEnhancedRequest } from './IEnhancedRequest';
+import type { IEnhancedResponse } from './IEnhancedResponse';
+import type { IMiddleware } from './IMiddleware';
 
 export interface ICorsMiddleware extends IMiddleware {
   handle(

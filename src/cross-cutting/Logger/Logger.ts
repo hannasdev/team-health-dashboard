@@ -87,7 +87,7 @@ export class Logger implements ILogger {
     }
   }
 
-  info(message: string, meta?: Record<string, unknown>): void {
+  public info(message: string, meta?: Record<string, unknown>): void {
     if (process.env.NODE_ENV === 'test') {
       try {
         console.log(
@@ -107,7 +107,11 @@ export class Logger implements ILogger {
     }
   }
 
-  error(message: string, error?: Error, meta?: Record<string, unknown>): void {
+  public error(
+    message: string,
+    error?: Error,
+    meta?: Record<string, unknown>,
+  ): void {
     const serializedError = error ? serializeError(error) : undefined;
     if (process.env.NODE_ENV === 'test') {
       try {
@@ -137,7 +141,7 @@ export class Logger implements ILogger {
     }
   }
 
-  warn(message: string, meta?: Record<string, unknown>): void {
+  public warn(message: string, meta?: Record<string, unknown>): void {
     if (process.env.NODE_ENV === 'test') {
       try {
         console.log(
@@ -157,7 +161,7 @@ export class Logger implements ILogger {
     }
   }
 
-  debug(message: string, meta?: Record<string, unknown>): void {
+  public debug(message: string, meta?: Record<string, unknown>): void {
     if (process.env.NODE_ENV === 'test') {
       try {
         console.log(

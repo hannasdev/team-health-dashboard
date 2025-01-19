@@ -2,15 +2,15 @@ import { ParsedQs } from 'qs';
 
 export { createMockSecurityLogger } from './mockSecurityLogger';
 
-import type {
-  IEnhancedRequest,
-  IEnhancedResponse,
-  ISecurityHeadersConfig,
-  IAuthenticatedRequest,
-  IAuthRequest,
-  ISecurityEvent,
-  ISecurityRequest,
-  IMiddleware,
+import {
+  type IEnhancedRequest,
+  type IEnhancedResponse,
+  type ISecurityHeadersConfig,
+  type IAuthenticatedRequest,
+  type IAuthRequest,
+  type ISecurityEvent,
+  type ISecurityRequest,
+  RepositoryStatus,
 } from '../../interfaces';
 
 export interface MockRequestOptions {
@@ -36,7 +36,7 @@ export interface MockRequestOptions {
 export function createMockRequest(
   options: MockRequestOptions = {},
 ): jest.Mocked<IEnhancedRequest> {
-  return {
+  const response = {
     method: options.method ?? 'GET',
     path: options.path ?? '/test',
     ip: options.ip ?? '127.0.0.1',
@@ -60,7 +60,8 @@ export function createMockRequest(
       }
     }),
     user: options.user ?? undefined,
-  } as jest.Mocked<IEnhancedRequest>;
+  };
+  return response as jest.Mocked<IEnhancedRequest>;
 }
 
 export interface MockSecurityRequestOptions extends MockRequestOptions {
@@ -73,7 +74,7 @@ export function createMockSecurityRequest(
 ): jest.Mocked<ISecurityRequest> {
   const baseRequest = createMockRequest(options);
 
-  return {
+  const mockSecurityRequest: ISecurityRequest = {
     ...baseRequest,
     'user-agent': options['user-agent'] ?? 'test-user-agent',
     securityEvent: options.securityEvent,
@@ -83,25 +84,54 @@ export function createMockSecurityRequest(
       }
       return baseRequest.get(name);
     }),
-  } as jest.Mocked<ISecurityRequest>;
-}
+  };
 
+  return mockSecurityRequest as jest.Mocked<ISecurityRequest>;
+}
 /**
  * Creates a mock authenticated request with user information
  */
 export function createMockAuthenticatedRequest(
   options: MockRequestOptions = {},
 ): jest.Mocked<IAuthenticatedRequest> {
-  const defaultUser = {
-    id: '123',
-    email: 'test@example.com',
-    exp: Math.floor(Date.now() / 1000) + 3600,
+  const mockRequest: jest.Mocked<IAuthenticatedRequest> = {
+    user: {
+      id: '123',
+      email: 'test@example.com',
+      exp: 1234567,
+    },
+    query: {},
+    authorization: 'Bearer token',
+    params: {
+      id: '123',
+    },
+    body: {
+      owner: '123',
+      name: 'test',
+      credentials: {
+        token: '',
+        type: 'token',
+        value: 'test',
+      },
+      status: RepositoryStatus.ACTIVE,
+    },
+    path: '/test',
+    method: 'GET',
+    ip: '127.0.0.1',
+    get: jest.fn((name: string) => {
+      // Case-insensitive header lookup
+      const normalizedName = name.toLowerCase();
+      switch (normalizedName) {
+        case 'authorization':
+          // Return undefined if authorization was explicitly set to undefined
+          return 'authorization' in options ? options.authorization : undefined;
+        default:
+          return undefined;
+      }
+    }),
+    // Add other required properties
   };
-
-  return {
-    ...createMockRequest(options),
-    user: options.user ?? defaultUser,
-  } as jest.Mocked<IAuthenticatedRequest>;
+  return mockRequest;
 }
 
 export const createMockMetricsRequest = createMockAuthenticatedRequest;
@@ -113,7 +143,7 @@ export function createMockAuthRequest(
   options: MockRequestOptions = {},
 ): jest.Mocked<IAuthRequest> {
   const request = createMockRequest(options);
-  return {
+  const response = {
     ...request,
     body: options.body ?? {
       email: undefined,
@@ -121,19 +151,21 @@ export function createMockAuthRequest(
       refreshToken: undefined,
       shortLived: undefined,
     },
-  } as jest.Mocked<IAuthRequest>;
+  };
+  return response as jest.Mocked<IAuthRequest>;
 }
 
-export function createMockResponse(): jest.Mocked<IEnhancedResponse> {
-  return {
+export const createMockResponse = (): jest.Mocked<IEnhancedResponse> => {
+  const response = {
     setHeader: jest.fn().mockReturnThis(),
     status: jest.fn().mockReturnThis(),
     end: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
     send: jest.fn().mockReturnThis(),
     cookie: jest.fn().mockReturnThis(),
-  } as jest.Mocked<IEnhancedResponse>;
-}
+  };
+  return response as jest.Mocked<IEnhancedResponse>;
+};
 
 export function createDefaultSecurityConfig(): ISecurityHeadersConfig {
   return {
@@ -165,6 +197,6 @@ export function createDefaultSecurityConfig(): ISecurityHeadersConfig {
   };
 }
 
-export const createMockMiddleware = () => ({
+export const createMockMiddleware = (): { handle: jest.Mock } => ({
   handle: jest.fn().mockImplementation((req, res, next) => next()),
 });

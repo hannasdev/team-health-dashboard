@@ -14,7 +14,7 @@ export class CacheService implements ICacheService {
     setInterval(() => this.cleanup(), 60000); // Cleanup every minute
   }
 
-  async get<T>(key: string): Promise<T | null> {
+  public async get<T>(key: string): Promise<T | null> {
     const item = this.cache.get(key);
     if (!item) return null;
     if (item.expiry < Date.now()) {
@@ -24,7 +24,7 @@ export class CacheService implements ICacheService {
     return item.value as T;
   }
 
-  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+  public async set<T>(key: string, value: T, ttl?: number): Promise<void> {
     if (this.cache.size >= this.maxSize) {
       throw new AppError(507, 'Cache capacity exceeded');
     }
@@ -32,11 +32,11 @@ export class CacheService implements ICacheService {
     this.cache.set(key, { value, expiry });
   }
 
-  delete(key: string): void {
+  public delete(key: string): void {
     this.cache.delete(key);
   }
 
-  clear(): void {
+  public clear(): void {
     this.cache.clear();
   }
 

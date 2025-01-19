@@ -4,7 +4,7 @@ import type { IGoogleSheetsClient } from '../../interfaces/index.js';
 
 @injectable()
 export class MockGoogleSheetsAdapter implements IGoogleSheetsClient {
-  getValues = jest.fn().mockResolvedValue({
+  public getValues = jest.fn().mockResolvedValue({
     data: {
       values: [
         [

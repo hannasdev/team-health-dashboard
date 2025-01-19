@@ -12,7 +12,7 @@ export class ProgressTracker implements IProgressTracker {
 
   constructor(@inject(TYPES.Logger) private logger: ILogger) {}
 
-  trackProgress(current: number, total: number, message: string): void {
+  public trackProgress(current: number, total: number, message: string): void {
     const now = Date.now();
     if (now - this.lastReportTime >= this.reportInterval || current === total) {
       const progress = Math.min((current / total) * 100, 100);
@@ -23,7 +23,7 @@ export class ProgressTracker implements IProgressTracker {
     }
   }
 
-  setReportInterval(interval: number): void {
+  public setReportInterval(interval: number): void {
     this.reportInterval = interval;
   }
 }
