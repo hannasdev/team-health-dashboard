@@ -30,10 +30,12 @@ import { Repository } from './data/models/Repository.js';
 import { User } from './data/models/User.js';
 import { GitHubRepository } from './data/repositories/GitHubRepository/GitHubRepository.js';
 import { GoogleSheetsRepository } from './data/repositories/GoogleSheetsRepository/GoogleSheetsRepository.js';
+import { RepositoryRepository } from './data/repositories/RepositoryRepository/RepositoryRepository.js';
 import { UserRepository } from './data/repositories/UserRepository/UserRepository.js';
 import { AuthController } from './presentation/controllers/AuthController/AuthController.js';
 import { HealthCheckController } from './presentation/controllers/HealthCheckController/HealthCheckController.js';
 import { MetricsController } from './presentation/controllers/MetricsController/MetricsController.js';
+import { RepositoryController } from './presentation/controllers/RepositoryController/RepositoryController.js';
 import { AuthMiddleware } from './presentation/middleware/AuthMiddleware/AuthMiddleware.js';
 import { CorsMiddleware } from './presentation/middleware/CorsMiddleware/CorsMiddleware.js';
 import { ErrorHandler } from './presentation/middleware/ErrorHandler/ErrorHandler.js';
@@ -50,6 +52,7 @@ import { MetricsService } from './services/MetricsService/MetricsService.js';
 import { MongoDbClient } from './services/MongoDbClient/MongoDbClient.js';
 import { ProcessingService } from './services/ProcessingService/ProcessingService.js';
 import { ProgressTracker } from './services/ProgressTracker/ProgressTracker.js';
+import { RepositoryManagementService } from './services/RepositoryManagementService/RepositoryManagementService.js';
 import { SecurityLogger } from './services/SecurityLogger/SecurityLogger.js';
 import TokenBlacklistService from './services/TokenBlacklistService/index.js';
 import { TokenService } from './services/TokenService/index.js';
@@ -100,6 +103,9 @@ import type {
   IRateLimitConfig,
   ISecurityHeadersConfig,
   ISecurityLogger,
+  IRepositoryManagementService,
+  IRepositoryController,
+  IRepositoryRepository,
 } from './interfaces/index.js';
 
 const config = Config.getInstance();
@@ -180,6 +186,9 @@ export function setupContainer(
   container
     .bind<mongoose.Model<IRepository>>(TYPES.RepositoryModel)
     .toConstantValue(Repository);
+  container
+    .bind<IRepositoryRepository>(TYPES.RepositoryRepository)
+    .to(RepositoryRepository);
 
   /**
    * !5. Metric Calculation (Can depend on repositories and other services)
@@ -197,7 +206,9 @@ export function setupContainer(
     .bind<IGoogleSheetsService>(TYPES.GoogleSheetsService)
     .to(GoogleSheetsService);
   container.bind<IGitHubService>(TYPES.GitHubService).to(GitHubService);
-
+  container
+    .bind<IRepositoryManagementService>(TYPES.RepositoryManagementService)
+    .to(RepositoryManagementService);
   /**
    * !7.  Controllers (Depend on services)
    */
@@ -208,6 +219,9 @@ export function setupContainer(
   container
     .bind<IMetricsController>(TYPES.MetricsController)
     .to(MetricsController);
+  container
+    .bind<IRepositoryController>(TYPES.RepositoryController)
+    .to(RepositoryController);
 
   /**
    * !8.  Middleware Configuration Bindings

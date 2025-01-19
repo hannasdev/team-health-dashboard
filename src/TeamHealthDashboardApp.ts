@@ -162,7 +162,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     // API routes with rate limiting
     this.expressApp.use('/api/auth', authRouter);
 
-    // Protected routes
+    // Authenticated routes - Apply auth middleware to all routes under /api
     this.expressApp.use('/api', (req, res, next) =>
       this.authMiddleware.handle(
         req as unknown as ISecurityRequest,
@@ -170,7 +170,8 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
         next as NextFunction,
       ),
     );
-    this.expressApp.use('/api', metricsRouter);
+    // Protected routes
+    this.expressApp.use('/api/metrics', metricsRouter);
     this.expressApp.use('/api/repositories', repositoryRouter);
 
     // 404 handler

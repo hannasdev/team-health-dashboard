@@ -14,10 +14,11 @@ import type {
   IAuthenticatedRequest,
   IEnhancedResponse,
   IRepository,
+  IRepositoryController,
 } from '../../../interfaces/index.js';
 
 @injectable()
-export class RepositoryController {
+export class RepositoryController implements IRepositoryController {
   constructor(
     @inject(TYPES.RepositoryManagementService)
     private readonly repositoryService: IRepositoryManagementService,
