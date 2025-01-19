@@ -48,6 +48,7 @@ export type { IRepositoryFilters } from './IRepositoryFilters.js';
 export type { IRepositoryManagementService } from './IRepositoryManagementService';
 export type { IRepositoryPaginatedResponse } from './IRepositoryPaginatedResponse.js';
 export type { IRepositoryRepository } from './IRepositoryRepository.js';
+export type { IRepositoryController } from './IRepositoryController.js';
 export type { ISecurityEvent } from './ISecurityEvent.js';
 export type { ISecurityHeadersConfig } from './ISecurityHeadersConfig.js';
 export type { ISecurityHeadersMiddleware } from './ISecurityHeadersMiddleware.js';
