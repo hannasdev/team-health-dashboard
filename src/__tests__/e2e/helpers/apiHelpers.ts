@@ -65,7 +65,7 @@ export const retryRequest = async <T = any>(
 export const createTestUser = async () => {
   const email = `testuser_${Date.now()}@example.com`;
 
-  console.log(`Creating test user with email: ${email}`);
+  // console.log(`Creating test user with email: ${email}`);
 
   const registerResponse = await retryRequest<AuthResponse>(
     'post',
@@ -76,7 +76,7 @@ export const createTestUser = async () => {
     },
   );
 
-  console.log('Register response:', registerResponse.data.success);
+  // console.log('Register response:', registerResponse.data.success);
 
   if (registerResponse.status === 429) {
     throw new Error('Rate limit exceeded. Please try again later.');
@@ -107,7 +107,7 @@ export const loginUser = async (
   password: string,
   shortLived: boolean = false,
 ) => {
-  console.log(`Attempting to login user: ${email}`);
+  // console.log(`Attempting to login user: ${email}`);
 
   const loginResponse = await retryRequest<AuthResponse>(
     'post',
@@ -119,7 +119,7 @@ export const loginUser = async (
     },
   );
 
-  console.log('Login response:', loginResponse.data.success);
+  // console.log('Login response:', loginResponse.data.success);
 
   if (loginResponse.status === 429) {
     throw new Error('Rate limit exceeded. Please try again later.');
@@ -172,7 +172,7 @@ export const getShortLivedToken = async (
     },
   );
 
-  console.log('Short-lived token response status:', response.status);
+  // console.log('Short-lived token response status:', response.status);
 
   if (!response.data?.data?.accessToken) {
     console.error('Unexpected short-lived token response:', response.data);
@@ -188,7 +188,7 @@ export const refreshAccessToken = async (
   refreshToken: string,
 ): Promise<string> => {
   try {
-    console.log('Attempting to refresh access token');
+    // console.log('Attempting to refresh access token');
 
     const response = await axiosInstance.post<AuthResponse>(
       AUTH_ENDPOINTS.REFRESH,
@@ -197,7 +197,7 @@ export const refreshAccessToken = async (
       },
     );
 
-    console.log('Refresh token response status:', response.status);
+    // console.log('Refresh token response status:', response.status);
 
     if (!response.data?.data?.accessToken) {
       console.error('Unexpected refresh token response:', response.data);
