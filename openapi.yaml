@@ -1,8 +1,8 @@
 openapi: '3.1.0'
 info:
   title: Team Health Dashboard API
-  version: 1.0.0
-  description: API for managing team health metrics and authentication
+  version: 3.0.2
+  description: API for managing team health metrics, repositories, and authentication
 
 servers:
   - url: http://localhost:3000/api
@@ -33,19 +33,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      user:
-                        $ref: '#/components/schemas/User'
-                      accessToken:
-                        type: string
-                      refreshToken:
-                        type: string
+                $ref: '#/components/schemas/AuthResponse'
         '409':
           description: User already exists
           content:
@@ -71,25 +59,17 @@ paths:
                 password:
                   type: string
                   format: password
+                shortLived:
+                  type: boolean
+                  description: Whether to generate a short-lived access token
+                  default: false
       responses:
         '200':
           description: User successfully logged in
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      user:
-                        $ref: '#/components/schemas/User'
-                      accessToken:
-                        type: string
-                      refreshToken:
-                        type: string
+                $ref: '#/components/schemas/AuthResponse'
         '401':
           description: Invalid credentials
           content:
@@ -117,17 +97,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      accessToken:
-                        type: string
-                      refreshToken:
-                        type: string
+                $ref: '#/components/schemas/TokenResponse'
         '401':
           description: Invalid refresh token
           content:
@@ -174,37 +144,20 @@ paths:
           schema:
             type: integer
             default: 1
+          description: Page number for pagination
         - in: query
           name: pageSize
           schema:
             type: integer
             default: 20
+          description: Number of items per page
       responses:
         '200':
           description: Successfully retrieved metrics
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  data:
-                    type: object
-                    properties:
-                      metrics:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Metric'
-                      githubStats:
-                        type: object
-                        properties:
-                          totalPRs:
-                            type: integer
-                          fetchedPRs:
-                            type: integer
-                          timePeriod:
-                            type: integer
+                $ref: '#/components/schemas/MetricsResponse'
         '401':
           description: Unauthorized
           content:
@@ -225,20 +178,229 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  message:
-                    type: string
+                $ref: '#/components/schemas/SuccessMessage'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
+
+  /metrics/reset-database:
+    post:
+      summary: Reset metrics database
+      tags:
+        - Metrics
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Database reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /repositories:
+    post:
+      summary: Create a new repository
+      tags:
+        - Repositories
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepositoryInput'
+      responses:
+        '201':
+          description: Repository created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryResponse'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: List repositories
+      tags:
+        - Repositories
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            default: 10
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum:
+              [
+                active,
+                inactive,
+                archived,
+                validation_pending,
+                validation_failed,
+              ]
+        - in: query
+          name: owner
+          schema:
+            type: string
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: syncEnabled
+          schema:
+            type: boolean
+        - in: query
+          name: sort
+          schema:
+            type: string
+        - in: query
+          name: sortField
+          schema:
+            type: string
+        - in: query
+          name: sortOrder
+          schema:
+            type: string
+            enum: [asc, desc]
+      responses:
+        '200':
+          description: Successfully retrieved repositories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryListResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /repositories/{id}:
+    get:
+      summary: Get repository by ID
+      tags:
+        - Repositories
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successfully retrieved repository
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryResponse'
+        '404':
+          description: Repository not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Archive repository
+      tags:
+        - Repositories
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Repository archived successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '404':
+          description: Repository not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /repositories/{id}/status:
+    patch:
+      summary: Update repository status
+      tags:
+        - Repositories
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    [
+                      active,
+                      inactive,
+                      archived,
+                      validation_pending,
+                      validation_failed,
+                    ]
+      responses:
+        '200':
+          description: Repository status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryResponse'
+        '404':
+          description: Repository not found
           content:
             application/json:
               schema:
@@ -249,11 +411,39 @@ components:
     User:
       type: object
       properties:
-        id:
+        _id:
           type: string
         email:
           type: string
           format: email
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+            accessToken:
+              type: string
+            refreshToken:
+              type: string
+
+    TokenResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            accessToken:
+              type: string
+            refreshToken:
+              type: string
 
     Metric:
       type: object
@@ -274,6 +464,175 @@ components:
         additional_info:
           type: string
         source:
+          type: string
+
+    MetricsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            metrics:
+              type: array
+              items:
+                $ref: '#/components/schemas/Metric'
+            githubStats:
+              type: object
+              properties:
+                totalPRs:
+                  type: integer
+                fetchedPRs:
+                  type: integer
+                timePeriod:
+                  type: integer
+            totalMetrics:
+              type: integer
+
+    RepositoryInput:
+      type: object
+      required:
+        - owner
+        - name
+      properties:
+        owner:
+          type: string
+        name:
+          type: string
+        credentials:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [token, oauth]
+            value:
+              type: string
+        status:
+          type: string
+          enum:
+            [active, inactive, archived, validation_pending, validation_failed]
+          default: active
+        metadata:
+          type: object
+          properties:
+            isPrivate:
+              type: boolean
+            description:
+              type: string
+            defaultBranch:
+              type: string
+            topics:
+              type: array
+              items:
+                type: string
+            language:
+              type: string
+
+    Repository:
+      type: object
+      properties:
+        _id:
+          type: string
+        owner:
+          type: string
+        name:
+          type: string
+        fullName:
+          type: string
+        credentials:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [token, oauth]
+            value:
+              type: string
+            lastValidated:
+              type: string
+              format: date-time
+        status:
+          type: string
+          enum:
+            [active, inactive, archived, validation_pending, validation_failed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        lastSyncAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          properties:
+            isPrivate:
+              type: boolean
+            description:
+              type: string
+            defaultBranch:
+              type: string
+            topics:
+              type: array
+              items:
+                type: string
+            language:
+              type: string
+        settings:
+          type: object
+          properties:
+            syncEnabled:
+              type: boolean
+            syncInterval:
+              type: integer
+            branchPatterns:
+              type: array
+              items:
+                type: string
+            labelPatterns:
+              type: array
+              items:
+                type: string
+
+    RepositoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            repository:
+              $ref: '#/components/schemas/Repository'
+
+    RepositoryListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Repository'
+            total:
+              type: integer
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            hasMore:
+              type: boolean
+
+    SuccessMessage:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
           type: string
 
     Error:
