@@ -124,7 +124,7 @@ services:
       - test-network
     healthcheck:
       test: |
-        mongosh admin --verbose DEBUG_1 --eval '
+        mongosh admin --quiet --eval '
           db.auth("root", "example");
           print(db.runCommand("ping").ok ? "MongoDB is ready." : "MongoDB is not ready.");
           print("Authentication successful");
