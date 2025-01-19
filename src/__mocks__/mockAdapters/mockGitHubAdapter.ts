@@ -12,4 +12,11 @@ export class MockGitHubAdapter implements IGitHubClient {
       },
     },
   });
+  getRepositoryMetadata = jest.fn().mockResolvedValue({
+    isPrivate: true,
+    description: 'Test repo',
+    defaultBranch: 'main',
+    topics: ['test'],
+    primaryLanguage: 'TypeScript',
+  });
 }

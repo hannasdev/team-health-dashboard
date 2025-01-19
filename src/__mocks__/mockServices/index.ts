@@ -20,3 +20,4 @@ export { createMockTokenBlacklistService } from './mockTokenBlacklistService';
 export { createMockTokenService } from './mockTokenService';
 export { createMockUserService } from './mockUserService';
 export { createMockJobQueueService } from './mockJobQueueService';
+export { createMockRepositoryManagementService } from './mockRepositoryManagementService';

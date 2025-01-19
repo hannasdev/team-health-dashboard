@@ -19,6 +19,7 @@ export {
   createMockSecurityLogger,
   createMockAuthenticatedRequest,
   createMockAuthRequest,
+  createMockMiddleware,
 } from './mockMiddlewares';
 export type { MockRequestOptions } from './mockMiddlewares';
 
@@ -34,6 +35,7 @@ export {
   createMockPullRequest,
   createMockGoogleSheetsRepository,
   createMockGitHubPullRequest,
+  createMockRepositoryRepository,
 } from './mockRepositories';
 
 export {
@@ -51,6 +53,7 @@ export {
   createMockTokenBlacklistService,
   createMockTokenService,
   createMockUserService,
+  createMockRepositoryManagementService,
 } from './mockServices';
 
 export { createMockLogger, createMockApiResponse } from './mockUtils';

@@ -13,3 +13,12 @@ export const AUTH_ENDPOINTS = {
   REFRESH: '/api/auth/refresh',
   LOGOUT: '/api/auth/logout',
 };
+
+export const REPOSITORY_ENDPOINTS = {
+  LIST_REPOSITORIES: '/api/repositories',
+  GET_REPOSITORY: (id: string) => `/api/repositories/${id}`,
+  CREATE_REPOSITORY: '/api/repositories',
+  UPDATE_REPOSITORY: '/api/repositories/:repositoryId',
+  DELETE_REPOSITORY: (id: string) => `/api/repositories/${id}`,
+  UPDATE_STATUS: (id: string) => `/api/repositories/${id}/status`,
+};

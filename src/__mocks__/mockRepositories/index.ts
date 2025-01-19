@@ -5,3 +5,4 @@ export {
 } from './mockGitHubRepository';
 export { createMockGoogleSheetsRepository } from './mockGoogleSheetsRepository';
 export { createMockUserRepository } from './mockUserRepository';
+export { createMockRepositoryRepository } from './mockRepositoryRepository';

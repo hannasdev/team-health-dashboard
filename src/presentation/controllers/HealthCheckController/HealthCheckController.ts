@@ -1,6 +1,5 @@
 // src/controllers/HealthCheckController/HealthCheckController.ts
-
-import { Request, Response } from 'express';
+import { NextFunction } from 'express';
 import { injectable, inject } from 'inversify';
 import { Connection } from 'mongoose';
 
@@ -26,6 +25,7 @@ export class HealthCheckController implements IHealthCheckController {
   public async getHealth(
     req: IEnhancedRequest,
     res: IEnhancedResponse,
+    next: NextFunction,
   ): Promise<void> {
     try {
       // Check if we can get the database object
@@ -44,7 +44,8 @@ export class HealthCheckController implements IHealthCheckController {
       res.status(200).json(this.apiResponse.createSuccessResponse({ status }));
     } catch (error) {
       this.logger.error('Health check failed', error as Error);
-      throw new AppError(503, 'Health check failed');
+      const appError = new AppError(503, 'Health check failed');
+      next(appError);
     }
   }
 }

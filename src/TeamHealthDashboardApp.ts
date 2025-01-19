@@ -8,6 +8,7 @@ import { inject, injectable } from 'inversify';
 import authRouter from './presentation/routes/auth.js';
 import healthCheckRouter from './presentation/routes/healthCheck.js';
 import metricsRouter from './presentation/routes/metrics.js';
+import repositoryRouter from './presentation/routes/repository.js';
 import { TYPES } from './utils/types.js';
 
 import type {
@@ -44,7 +45,6 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     this.configureJson();
     this.configureSecurityMiddleware();
     this.configureCors();
-    this.configureMiddleware();
     this.configureRoutes();
     this.configureErrorHandling();
 
@@ -122,18 +122,6 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     });
   }
 
-  private configureMiddleware(): void {
-    this.expressApp.use((req, res, next) =>
-      this.rateLimitMiddleware.handle(
-        req as IEnhancedRequest,
-        res as IEnhancedResponse,
-        next as NextFunction,
-      ),
-    );
-
-    this.logger.info('Basic middleware configured');
-  }
-
   private configureSecurityMiddleware(): void {
     // Security headers should be applied early
     this.expressApp.use((req, res, next) =>
@@ -174,7 +162,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     // API routes with rate limiting
     this.expressApp.use('/api/auth', authRouter);
 
-    // Protected routes
+    // Authenticated routes - Apply auth middleware to all routes under /api
     this.expressApp.use('/api', (req, res, next) =>
       this.authMiddleware.handle(
         req as unknown as ISecurityRequest,
@@ -182,7 +170,9 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
         next as NextFunction,
       ),
     );
-    this.expressApp.use('/api', metricsRouter);
+    // Protected routes
+    this.expressApp.use('/api/metrics', metricsRouter);
+    this.expressApp.use('/api/repositories', repositoryRouter);
 
     // 404 handler
     this.expressApp.use((req: IEnhancedRequest, res: IEnhancedResponse) => {

@@ -9,6 +9,7 @@ export enum ErrorCode {
   INVALID_RESET_TOKEN = 'ERR_INVALID_RESET_TOKEN',
   INVALID_INPUT = 'ERR_INVALID_INPUT',
   INTERNAL_SERVER_ERROR = 'ERR_INTERNAL_SERVER_ERROR',
+  NOT_FOUND = 'ERR_NOT_FOUND',
 }
 
 export class AppError extends Error {
@@ -74,5 +75,17 @@ export class InvalidInputError extends AppError {
 export class InternalServerError extends AppError {
   constructor(message = 'Internal server error') {
     super(500, message, ErrorCode.INTERNAL_SERVER_ERROR);
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(message = 'Validation failed', details?: any) {
+    super(400, message, ErrorCode.INVALID_INPUT, details);
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(message = 'Resource not found') {
+    super(404, message, ErrorCode.NOT_FOUND);
   }
 }

@@ -18,6 +18,7 @@ services:
         condition: service_healthy
     environment:
       - NODE_ENV=production
+      - HOST=0.0.0.0
     env_file:
       - .env
     deploy:
@@ -42,7 +43,7 @@ services:
     volumes:
       - mongodb_data:/data/db
       - ./scripts/init-mongodb.js:/docker-entrypoint-initdb.d/init-mongodb.js:ro
-    command: mongod --bind_ip_all --quiet
+    command: mongod --bind_ip_all --verbose DEBUG_1
     networks:
       - app-network
     healthcheck:

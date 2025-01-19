@@ -1,29 +1,52 @@
+# Ignore Node.js-related files
+node_modules/
 solar-imprint.json
 package-lock.json
+
+# Ignore Documentation-related files
 docs/
-dist/
-node_modules/
 codebase.md
-.env
-.env.test
-.github
-/dist
-/public
-package-lock.json
+*.md
+logs/
+
+# Ignore Image-related files
+*.svg
+
+# Ignore Test-related files
+src/__tests__/
+src/__mocks__/
 **/*.test.ts
 **/*.test.tsx
-*.tsbuildinfo
-*.md
-*.svg
-.aidigestignore
-logs/error.log
-logs/combined.log
-.gitignore
-.dockerignore
-.vscode/
-src/__tests__/
+coverage/
+.env
+.env.e2e
+.env.test
+jest.config.docker.js
+jest.config.js
+
+# Ignore Build-related files
+.npmcheckrc
 .npmignore
 .npmrc
-/coverage
+.github
 run-e2e-tests.sh
-logs/
+dist/
+public/
+*.tsbuildinfo
+docker-healthcheck.sh
+docker-compose.yml
+Dockerfile
+tsconfig.json
+tsconfig.build.json
+
+# Ignore Configuration-related files
+.vscode/
+.eslintrc.js
+.prettierrc
+.versionrc
+jsconfig.json
+
+# Ignore Miscellaneous-related files
+.gitignore
+.dockerignore
+.aidigestignore

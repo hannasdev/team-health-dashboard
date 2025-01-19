@@ -7,11 +7,10 @@ import { TYPES } from '../../utils/types.js';
 import { MetricsController } from '../controllers/MetricsController/MetricsController.js';
 
 import type {
-  IAuthMiddleware,
+  IMiddleware,
   ILogger,
   IAuthenticatedRequest,
   IEnhancedResponse,
-  IAuthRequest,
 } from '../../interfaces/index.js';
 
 const router = Router();
@@ -20,13 +19,13 @@ const getMetricsController = () =>
   container.get<MetricsController>(TYPES.MetricsController);
 
 const getAuthMiddleware = () =>
-  container.get<IAuthMiddleware>(TYPES.AuthMiddleware);
+  container.get<IMiddleware>(TYPES.AuthMiddleware);
 
 const getLogger = () => container.get<ILogger>(TYPES.Logger);
 
 // GET /metrics endpoint
 router.get(
-  '/metrics',
+  '/',
   (req, res, next?: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics endpoint');
@@ -70,7 +69,7 @@ router.get(
 
 // POST /metrics/sync endpoint
 router.post(
-  '/metrics/sync',
+  '/sync',
   (req, res, next?: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics/sync endpoint');
@@ -108,7 +107,7 @@ router.post(
 );
 
 router.post(
-  '/metrics/reset-database',
+  '/reset-database',
   (req, res, next?: NextFunction) => {
     const logger = getLogger();
     logger.debug('Accessing /metrics/reset-database endpoint');
