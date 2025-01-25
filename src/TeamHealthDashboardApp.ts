@@ -47,9 +47,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     @inject(TYPES.AuthMiddleware) private authMiddleware: IMiddleware,
   ) {
     this.expressApp = express();
-    this.configureJson();
-    this.configureSecurityMiddleware();
-    this.configureCors();
+    this.configureMiddlewares();
     this.configureRoutes();
     this.configureErrorHandling();
 
@@ -80,6 +78,23 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
         'Skipping database connection as per initialization options',
       );
     }
+  }
+
+  private configureMiddlewares(): void {
+    // IP middleware should be one of the first
+    this.expressApp.use((req: Request, res: Response, next: NextFunction) => {
+      Object.defineProperty(req, 'ip', {
+        value: req.ip || req.socket.remoteAddress || '0.0.0.0',
+        writable: true,
+        configurable: true,
+      });
+      next();
+    });
+
+    // Rest of middleware configuration
+    this.configureJson();
+    this.configureSecurityMiddleware();
+    this.configureCors();
   }
 
   private configureJson(): void {
@@ -155,12 +170,9 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
 
   private configureRoutes(): void {
     // Public routes
-    this.expressApp.get(
-      '/',
-      (req: IEnhancedRequest, res: IEnhancedResponse) => {
-        res.send('Team Health Dashboard API');
-      },
-    );
+    this.expressApp.get('/', (req, res, next) => {
+      res.send('Team Health Dashboard API');
+    });
 
     this.expressApp.use('/health', healthCheckRouter);
 
@@ -180,7 +192,7 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
     this.expressApp.use('/api/repositories', repositoryRouter);
 
     // 404 handler
-    this.expressApp.use((req: IEnhancedRequest, res: IEnhancedResponse) => {
+    this.expressApp.use((req, res, next) => {
       res.status(404).json({
         success: false,
         error: 'Not Found',
@@ -193,16 +205,10 @@ export class TeamHealthDashboardApp implements ITeamHealthDashboardApp {
 
   private configureErrorHandling(): void {
     this.expressApp.use(
-      (
-        err: Error,
-        req: IEnhancedRequest,
-        res: IEnhancedResponse,
-        next: NextFunction,
-      ) => {
+      (err: Error, req: Request, res: Response, next: NextFunction) => {
         this.errorHandler.handle(err, req, res, next);
       },
     );
-
     this.logger.info('Error handling configured');
   }
 

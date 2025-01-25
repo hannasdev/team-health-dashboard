@@ -1,7 +1,7 @@
 import { SecurityHeadersMiddleware } from './SecurityHeadersMiddleware';
 import {
   createMockSecurityRequest,
-  createMockResponse,
+  createMockSecurityResponse,
   createDefaultSecurityConfig,
   createMockLogger,
   createMockSecurityLogger,
@@ -29,7 +29,7 @@ describe('SecurityHeadersMiddleware', () => {
 
   beforeEach(() => {
     req = createMockSecurityRequest();
-    res = createMockResponse();
+    res = createMockSecurityResponse();
     next = jest.fn();
     mockLogger = createMockLogger();
     mockSecurityLogger = createMockSecurityLogger();
@@ -307,8 +307,8 @@ describe('SecurityHeadersMiddleware', () => {
           method: 'GET',
           path: '/test',
           ip: '127.0.0.1',
-          'user-agent': req.get('user-agent'), // Use the value from request
-          userId: undefined,
+          'user-agent': req.get('user-agent'),
+          userId: '123',
         },
         timestamp: expect.any(Date),
         details: {
@@ -412,7 +412,7 @@ describe('SecurityHeadersMiddleware', () => {
           path: `/test${i}`,
           'user-agent': `test-browser/${i}`,
         }),
-        res: createMockResponse(),
+        res: createMockSecurityResponse(),
         next: jest.fn(),
       }));
 
@@ -423,7 +423,7 @@ describe('SecurityHeadersMiddleware', () => {
             // Wrap in Promise to ensure we catch any async errors
             new Promise<void>((resolve, reject) => {
               try {
-                middleware.handle(req, res, (...args) => {
+                middleware.handle(req as ISecurityRequest, res, (...args) => {
                   next(...args);
                   resolve();
                 });

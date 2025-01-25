@@ -1,7 +1,7 @@
 import { RateLimitMiddleware } from './RateLimitMiddleware';
 import {
   createMockSecurityRequest,
-  createMockResponse,
+  createMockSecurityResponse,
   createMockLogger,
   createMockCacheService,
   createMockSecurityLogger,
@@ -32,7 +32,7 @@ describe('RateLimitMiddleware', () => {
 
   beforeEach(() => {
     req = createMockSecurityRequest();
-    res = createMockResponse();
+    res = createMockSecurityResponse();
     next = jest.fn();
     mockLogger = createMockLogger();
     mockCacheService = createMockCacheService();
@@ -160,18 +160,37 @@ describe('RateLimitMiddleware', () => {
       expect(mockSecurityLogger.createSecurityEvent).toHaveBeenCalledWith(
         SecurityEventType.RATE_LIMIT_EXCEEDED,
         {
+          accepted: [],
+          accepts: expect.any(Function),
+          acceptsCharsets: expect.any(Function),
+          acceptsEncodings: expect.any(Function),
+          acceptsLanguages: expect.any(Function),
+          app: {},
           authorization: undefined,
-          body: {},
+          baseUrl: '',
+          cookie: undefined,
+          fresh: false,
           get: expect.any(Function),
+          header: expect.any(Function),
+          hostname: 'localhost',
           ip: '1.2.3.4',
+          ips: [],
+          is: expect.any(Function),
           method: 'GET',
-          origin: undefined,
-          originalUrl: '/test',
+          param: expect.any(Function),
+          params: {},
           path: '/test',
-          query: {},
+          protocol: 'http',
+          range: expect.any(Function),
+          secure: false,
           securityEvent: undefined,
-          user: undefined,
+          subdomains: [],
+          user: {
+            id: '123',
+            email: 'test@example.com',
+          },
           'user-agent': 'test-user-agent',
+          'x-api-key': undefined,
         },
         expect.objectContaining({
           limit: defaultConfig.maxRequests,
@@ -282,7 +301,7 @@ describe('RateLimitMiddleware', () => {
 
       await Promise.all(
         concurrentRequests.map(req =>
-          middleware.handle(req, createMockResponse(), jest.fn()),
+          middleware.handle(req, createMockSecurityResponse(), jest.fn()),
         ),
       );
 

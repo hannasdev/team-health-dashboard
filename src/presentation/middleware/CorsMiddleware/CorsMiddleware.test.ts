@@ -23,6 +23,7 @@ describe('CorsMiddleware', () => {
   beforeEach(() => {
     req = createMockRequest();
     res = createMockResponse();
+
     next = jest.fn();
     mockLogger = createMockLogger();
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
@@ -51,7 +52,7 @@ describe('CorsMiddleware', () => {
   describe('Origin Handling', () => {
     it('should allow requests from configured origins', () => {
       req = createMockRequest({
-        origin: 'http://localhost:3000',
+        headers: { origin: 'http://localhost:3000' },
       });
       middleware.handle(req, res, next);
       expect(res.setHeader).toHaveBeenCalledWith(
@@ -62,7 +63,7 @@ describe('CorsMiddleware', () => {
 
     it('should handle multiple configured origins', () => {
       req = createMockRequest({
-        origin: 'http://localhost:3000',
+        headers: { origin: 'http://localhost:3000' },
       });
       middleware.handle(req, res, next);
       expect(res.setHeader).toHaveBeenCalledWith(
@@ -76,7 +77,7 @@ describe('CorsMiddleware', () => {
       middleware = new CorsMiddleware(mockConfig, mockLogger);
 
       req = createMockRequest({
-        origin: 'http://unknown-domain.com',
+        headers: { origin: 'http://unknown-domain.com' },
       });
       middleware.handle(req, res, next);
       expect(res.setHeader).toHaveBeenCalledWith(
@@ -88,7 +89,10 @@ describe('CorsMiddleware', () => {
     it('should handle requests without origin header when wildcard is allowed', () => {
       mockConfig.CORS_ORIGIN = '*';
       middleware = new CorsMiddleware(mockConfig, mockLogger);
-      req = createMockRequest({ origin: undefined });
+      req = createMockRequest({
+        headers: { origin: undefined },
+      });
+
       middleware.handle(req, res, next);
       expect(res.setHeader).toHaveBeenCalledWith(
         'Access-Control-Allow-Origin',
@@ -112,7 +116,9 @@ describe('CorsMiddleware', () => {
   describe('CORS Headers', () => {
     beforeEach(() => {
       req = createMockRequest({
-        origin: 'http://localhost:3000',
+        headers: {
+          origin: 'http://localhost:3000',
+        },
       });
     });
 
@@ -154,7 +160,9 @@ describe('CorsMiddleware', () => {
       mockConfig.CORS_ORIGIN = '';
       middleware = new CorsMiddleware(mockConfig, mockLogger);
       req = createMockRequest({
-        origin: 'http://localhost:3000',
+        headers: {
+          origin: 'http://localhost:3000',
+        },
       });
 
       middleware.handle(req, res, next);
@@ -169,7 +177,9 @@ describe('CorsMiddleware', () => {
       middleware = new CorsMiddleware(mockConfig, mockLogger);
 
       req = createMockRequest({
-        origin: 'http://localhost:3000',
+        headers: {
+          origin: 'http://localhost:3000',
+        },
       });
       middleware.handle(req, res, next);
       expect(res.setHeader).not.toHaveBeenCalledWith(
@@ -183,7 +193,9 @@ describe('CorsMiddleware', () => {
     it('should pass errors to next middleware', () => {
       // Arrange
       req = createMockRequest({
-        origin: 'http://localhost:3000',
+        headers: {
+          origin: 'http://localhost:3000',
+        },
       });
       const errorMessage = 'Test error';
 
@@ -242,7 +254,9 @@ describe('CorsMiddleware', () => {
     it('should handle rapid successive calls', async () => {
       const requests = Array.from({ length: 3 }, (_, i) => {
         req = createMockRequest({
-          origin: 'http://localhost:3000',
+          headers: {
+            origin: 'http://localhost:3000',
+          },
         });
         return {
           req,
@@ -278,7 +292,9 @@ describe('CorsMiddleware', () => {
     it('should preserve response modifications from previous middleware', () => {
       res.setHeader('X-Previous-Middleware', 'test');
       req = createMockRequest({
-        origin: 'http://localhost:3000',
+        headers: {
+          origin: 'http://localhost:3000',
+        },
       });
       middleware.handle(req, res, next);
 

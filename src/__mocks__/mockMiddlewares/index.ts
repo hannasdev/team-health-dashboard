@@ -10,8 +10,21 @@ import {
   type IAuthRequest,
   type ISecurityEvent,
   type ISecurityRequest,
+  type ISecurityResponse,
   RepositoryStatus,
 } from '../../interfaces';
+
+export const createBaseMockExpressRequest = () => ({
+  accepts: jest.fn(),
+  acceptsCharsets: jest.fn(),
+  acceptsEncodings: jest.fn(),
+  acceptsLanguages: jest.fn(),
+  range: jest.fn(),
+  param: jest.fn(),
+  is: jest.fn(),
+  header: jest.fn(),
+  // Add other Express.Request methods
+});
 
 export interface MockRequestOptions {
   path?: string;
@@ -31,107 +44,200 @@ export interface MockRequestOptions {
     email: string;
     exp: number;
   };
+  get?: jest.Mock;
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 export function createMockRequest(
   options: MockRequestOptions = {},
 ): jest.Mocked<IEnhancedRequest> {
-  const response = {
+  const headers = options.headers ?? {};
+
+  const request: Partial<IEnhancedRequest> = {
     method: options.method ?? 'GET',
     path: options.path ?? '/test',
     ip: options.ip ?? '127.0.0.1',
     originalUrl: '/test',
     query: options.query ?? {},
     body: options.body ?? {},
-    origin: options.origin,
-    authorization: options.authorization,
-    get: jest.fn((name: string) => {
-      // Case-insensitive header lookup
-      const normalizedName = name.toLowerCase();
-      switch (normalizedName) {
-        case 'origin':
-          // Return undefined if origin was explicitly set to undefined
-          return 'origin' in options ? options.origin : undefined;
-        case 'authorization':
-          // Return undefined if authorization was explicitly set to undefined
-          return 'authorization' in options ? options.authorization : undefined;
-        default:
-          return undefined;
-      }
-    }),
+    get:
+      options.get ??
+      (jest.fn(function (
+        this: any,
+        name: string,
+      ): string | string[] | undefined {
+        if (name.toLowerCase() === 'set-cookie') {
+          return [] as string[];
+        }
+        return headers[name.toLowerCase()];
+      }) as unknown as {
+        (name: 'set-cookie'): string[] | undefined;
+        (name: string): string | undefined;
+      }),
     user: options.user ?? undefined,
+    accepts: jest.fn(),
+    acceptsCharsets: jest.fn(),
+    acceptsEncodings: jest.fn(),
+    acceptsLanguages: jest.fn(),
+    header: jest.fn(),
+    params: {},
+    is: jest.fn(),
+    range: jest.fn(),
+    protocol: 'http',
+    secure: false,
+    ips: [],
+    accepted: [],
+    app: {} as any,
+    baseUrl: '',
+    fresh: false,
+    hostname: 'localhost',
+    subdomains: [],
+    ...options,
   };
-  return response as jest.Mocked<IEnhancedRequest>;
+
+  return request as unknown as jest.Mocked<IEnhancedRequest>;
 }
 
 export interface MockSecurityRequestOptions extends MockRequestOptions {
   'user-agent'?: string;
   securityEvent?: ISecurityEvent;
+  cookie?: string;
+  'x-api-key'?: string;
+  authorization?: string;
 }
 
-export function createMockSecurityRequest(
+export const createMockSecurityRequest = (
   options: MockSecurityRequestOptions = {},
-): jest.Mocked<ISecurityRequest> {
-  const baseRequest = createMockRequest(options);
-
-  const mockSecurityRequest: ISecurityRequest = {
-    ...baseRequest,
+): jest.Mocked<ISecurityRequest> => {
+  const request: Partial<ISecurityRequest> = {
+    ...createBaseMockExpressRequest(),
+    method: options.method ?? 'GET',
+    path: options.path ?? '/test',
+    ip: options.ip ?? '127.0.0.1',
     'user-agent': options['user-agent'] ?? 'test-user-agent',
     securityEvent: options.securityEvent,
-    get: jest.fn((name: string) => {
+    cookie: options.cookie,
+    'x-api-key': options['x-api-key'],
+    authorization: options.authorization,
+    get: jest.fn(function (
+      this: any,
+      name: string,
+    ): string | string[] | undefined {
+      if (name.toLowerCase() === 'set-cookie') {
+        return [] as string[];
+      }
       if (name.toLowerCase() === 'user-agent') {
         return options['user-agent'] ?? 'test-user-agent';
       }
-      return baseRequest.get(name);
-    }),
+      if (name.toLowerCase() === 'authorization') {
+        return options.authorization;
+      }
+      return '';
+    }) as unknown as {
+      (name: 'set-cookie'): string[] | undefined;
+      (name: string): string | undefined;
+    },
+    user: options.user ?? { id: '123', email: 'test@example.com' },
+    ...options,
+    // Express.Request properties
+    accepts: jest.fn(),
+    acceptsCharsets: jest.fn(),
+    acceptsEncodings: jest.fn(),
+    acceptsLanguages: jest.fn(),
+    header: jest.fn(),
+    params: {},
+    is: jest.fn(),
+    range: jest.fn(),
+    protocol: 'http',
+    secure: false,
+    ips: [],
+    accepted: [],
+    app: {} as any,
+    baseUrl: '',
+    fresh: false,
+    hostname: 'localhost',
+    subdomains: [],
   };
 
-  return mockSecurityRequest as jest.Mocked<ISecurityRequest>;
+  return request as unknown as jest.Mocked<ISecurityRequest>;
+};
+
+type AuthenticatedRequestBody = {
+  owner: string;
+  name: string;
+  credentials: {
+    token: string;
+    type: string;
+    value: string;
+  };
+  status: RepositoryStatus;
+};
+interface MockAuthRequestBody extends AuthenticatedRequestBody {
+  email?: string;
+  password?: string;
+  refreshToken?: string;
+  shortLived?: boolean;
 }
+
 /**
  * Creates a mock authenticated request with user information
  */
 export function createMockAuthenticatedRequest(
-  options: MockRequestOptions = {},
+  options: MockRequestOptions & { body?: MockAuthRequestBody } = {},
 ): jest.Mocked<IAuthenticatedRequest> {
-  const mockRequest: jest.Mocked<IAuthenticatedRequest> = {
-    user: {
-      id: '123',
-      email: 'test@example.com',
-      exp: 1234567,
+  const defaultBody: AuthenticatedRequestBody = {
+    owner: '123',
+    name: 'test',
+    credentials: {
+      token: '',
+      type: 'token',
+      value: 'test',
     },
-    query: {},
-    authorization: 'Bearer token',
-    params: {
-      id: '123',
-    },
-    body: {
-      owner: '123',
-      name: 'test',
-      credentials: {
-        token: '',
-        type: 'token',
-        value: 'test',
-      },
-      status: RepositoryStatus.ACTIVE,
-    },
+    status: RepositoryStatus.ACTIVE,
+  };
+  const request: Partial<IAuthenticatedRequest> = {
+    body: options.body ?? defaultBody,
     path: '/test',
     method: 'GET',
     ip: '127.0.0.1',
-    get: jest.fn((name: string) => {
-      // Case-insensitive header lookup
-      const normalizedName = name.toLowerCase();
-      switch (normalizedName) {
-        case 'authorization':
-          // Return undefined if authorization was explicitly set to undefined
-          return 'authorization' in options ? options.authorization : undefined;
-        default:
-          return undefined;
+    get: jest.fn(function (
+      this: any,
+      name: string,
+    ): string | string[] | undefined {
+      if (name.toLowerCase() === 'set-cookie') {
+        return [] as string[];
       }
-    }),
-    // Add other required properties
+      if (name.toLowerCase() === 'authorization') {
+        return 'authorization' in options
+          ? options.authorization
+          : 'Bearer token';
+      }
+      return undefined;
+    }) as unknown as {
+      (name: 'set-cookie'): string[] | undefined;
+      (name: string): string | undefined;
+    },
+    // Required Express.Request properties
+    accepts: jest.fn(),
+    acceptsCharsets: jest.fn(),
+    acceptsEncodings: jest.fn(),
+    acceptsLanguages: jest.fn(),
+    header: jest.fn(),
+    is: jest.fn(),
+    range: jest.fn(),
+    protocol: 'http',
+    secure: false,
+    ips: [],
+    accepted: [],
+    app: {} as any,
+    baseUrl: '',
+    fresh: false,
+    hostname: 'localhost',
+    subdomains: [],
+    ...options,
   };
-  return mockRequest;
+
+  return request as unknown as jest.Mocked<IAuthenticatedRequest>;
 }
 
 export const createMockMetricsRequest = createMockAuthenticatedRequest;
@@ -156,16 +262,89 @@ export function createMockAuthRequest(
 }
 
 export const createMockResponse = (): jest.Mocked<IEnhancedResponse> => {
-  const response = {
+  const response: Partial<IEnhancedResponse> = {
     setHeader: jest.fn().mockReturnThis(),
     status: jest.fn().mockReturnThis(),
     end: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
     send: jest.fn().mockReturnThis(),
     cookie: jest.fn().mockReturnThis(),
+    header: jest.fn(),
+    append: jest.fn(),
+    attachment: jest.fn(),
+    download: jest.fn(),
+    format: jest.fn(),
+    get: jest.fn(),
+    links: jest.fn(),
+    location: jest.fn(),
+    redirect: jest.fn(),
+    render: jest.fn(),
+    sendFile: jest.fn(),
+    sendStatus: jest.fn(),
+    set: jest.fn(),
+    type: jest.fn(),
+    vary: jest.fn(),
+    contentType: jest.fn(),
+    clearCookie: jest.fn(),
+    jsonp: jest.fn(),
+    locals: {},
+    charset: '',
+    app: {} as any,
+    headersSent: false,
+    statusCode: 200,
+    req: {} as any,
+    statusMessage: '',
+    assignSocket: jest.fn(),
+    detachSocket: jest.fn(),
+    writeContinue: jest.fn(),
+    writeHead: jest.fn(),
   };
-  return response as jest.Mocked<IEnhancedResponse>;
+
+  return response as unknown as jest.Mocked<IEnhancedResponse>;
 };
+
+export const createMockSecurityResponse =
+  (): jest.Mocked<ISecurityResponse> => {
+    const response: Partial<ISecurityResponse> = {
+      setHeader: jest.fn().mockReturnThis(),
+      status: jest.fn().mockReturnThis(),
+      end: jest.fn().mockReturnThis(),
+      json: jest.fn().mockReturnThis(),
+      send: jest.fn().mockReturnThis(),
+      cookie: jest.fn().mockReturnThis(),
+      header: jest.fn(),
+      append: jest.fn(),
+      attachment: jest.fn(),
+      download: jest.fn(),
+      format: jest.fn(),
+      get: jest.fn(),
+      links: jest.fn(),
+      location: jest.fn(),
+      redirect: jest.fn(),
+      render: jest.fn(),
+      sendFile: jest.fn(),
+      sendStatus: jest.fn(),
+      set: jest.fn(),
+      type: jest.fn(),
+      vary: jest.fn(),
+      contentType: jest.fn(),
+      clearCookie: jest.fn(),
+      jsonp: jest.fn(),
+      locals: {},
+      charset: '',
+      app: {} as any,
+      headersSent: false,
+      statusCode: 200,
+      req: {} as any,
+      statusMessage: '',
+      assignSocket: jest.fn(),
+      detachSocket: jest.fn(),
+      writeContinue: jest.fn(),
+      writeHead: jest.fn(),
+    };
+
+    return response as unknown as jest.Mocked<ISecurityResponse>;
+  };
 
 export function createDefaultSecurityConfig(): ISecurityHeadersConfig {
   return {
