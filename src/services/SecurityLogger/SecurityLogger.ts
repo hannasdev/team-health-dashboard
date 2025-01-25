@@ -36,7 +36,7 @@ export class SecurityLogger implements ISecurityLogger {
 
   constructor(@inject(TYPES.Logger) private logger: ILogger) {}
 
-  public logSecurityEvent(event: ISecurityEvent): void {
+  public async logSecurityEvent(event: ISecurityEvent): Promise<void> {
     const logMessage = this.formatSecurityEvent(event);
 
     switch (event.severity) {
@@ -56,7 +56,11 @@ export class SecurityLogger implements ISecurityLogger {
 
     // Optionally trigger alerts for high-severity events
     if (event.severity === SecurityEventSeverity.CRITICAL) {
-      this.triggerSecurityAlert(event);
+      try {
+        await this.triggerSecurityAlert(event);
+      } catch (error) {
+        this.logger.error('Failed to trigger security alert:', error as Error);
+      }
     }
   }
 

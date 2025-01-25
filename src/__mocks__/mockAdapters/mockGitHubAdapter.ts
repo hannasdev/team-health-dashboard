@@ -4,7 +4,7 @@ import type { IGitHubClient } from '../../interfaces/index.js';
 
 @injectable()
 export class MockGitHubAdapter implements IGitHubClient {
-  graphql = jest.fn().mockResolvedValue({
+  public graphql = jest.fn().mockResolvedValue({
     repository: {
       pullRequests: {
         nodes: [],
@@ -12,7 +12,7 @@ export class MockGitHubAdapter implements IGitHubClient {
       },
     },
   });
-  getRepositoryMetadata = jest.fn().mockResolvedValue({
+  public getRepositoryMetadata = jest.fn().mockResolvedValue({
     isPrivate: true,
     description: 'Test repo',
     defaultBranch: 'main',
