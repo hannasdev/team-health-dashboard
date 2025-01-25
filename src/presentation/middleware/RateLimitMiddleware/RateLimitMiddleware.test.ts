@@ -1,7 +1,7 @@
 import { RateLimitMiddleware } from './RateLimitMiddleware';
 import {
   createMockSecurityRequest,
-  createMockResponse,
+  createMockSecurityResponse,
   createMockLogger,
   createMockCacheService,
   createMockSecurityLogger,
@@ -32,7 +32,7 @@ describe('RateLimitMiddleware', () => {
 
   beforeEach(() => {
     req = createMockSecurityRequest();
-    res = createMockResponse();
+    res = createMockSecurityResponse();
     next = jest.fn();
     mockLogger = createMockLogger();
     mockCacheService = createMockCacheService();
@@ -282,7 +282,7 @@ describe('RateLimitMiddleware', () => {
 
       await Promise.all(
         concurrentRequests.map(req =>
-          middleware.handle(req, createMockResponse(), jest.fn()),
+          middleware.handle(req, createMockSecurityResponse(), jest.fn()),
         ),
       );
 

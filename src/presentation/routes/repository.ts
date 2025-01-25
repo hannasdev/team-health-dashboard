@@ -13,6 +13,7 @@ import type {
   IRateLimitMiddleware,
   ILogger,
   IRepositoryManagementService,
+  IRepository,
 } from '../../interfaces/index.js';
 
 const router = Router();
@@ -107,6 +108,16 @@ router.get('/', async (req, res, next) => {
 
     logger.debug('Listing repositories with filters', { query: req.query });
 
+    const validSortFields = ['name', 'owner', 'status', 'lastSync'] as const;
+    type ValidSortField = (typeof validSortFields)[number];
+
+    const sortFieldValidated =
+      sortField &&
+      typeof sortField === 'string' &&
+      validSortFields.includes(sortField as ValidSortField)
+        ? (sortField as ValidSortField)
+        : ('name' as const);
+
     const filters = {
       page: parseInt(page as string, 10),
       pageSize: parseInt(pageSize as string, 10),
@@ -116,7 +127,7 @@ router.get('/', async (req, res, next) => {
       syncEnabled: syncEnabled === 'true',
       ...(sort && {
         sort: {
-          field: sortField as string,
+          field: sortFieldValidated,
           order: sortOrder as 'asc' | 'desc',
         },
       }),

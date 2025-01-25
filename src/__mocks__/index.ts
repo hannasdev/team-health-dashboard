@@ -15,6 +15,7 @@ export {
   createMockRequest,
   createMockResponse,
   createMockSecurityRequest,
+  createMockSecurityResponse,
   createDefaultSecurityConfig,
   createMockSecurityLogger,
   createMockAuthenticatedRequest,

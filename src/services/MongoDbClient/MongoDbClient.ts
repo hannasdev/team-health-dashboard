@@ -86,14 +86,21 @@ export class MongoDbClient implements IMongoDbClient {
     this.connection.on('disconnected', async () => {
       this.logger.warn('MongoDB disconnected. Attempting to reconnect...');
       try {
-        // Reset connection state before reconnecting
-        this.connection = null;
-        await this.connect();
+        await mongoose.connect(this.config.DATABASE_URL, {
+          connectTimeoutMS: this.config.MONGO_CONNECT_TIMEOUT_MS,
+          serverSelectionTimeoutMS:
+            this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS,
+        });
       } catch (error) {
-        this.logger.error(
-          'Error reconnecting to the database:',
-          error as Error,
-        );
+        if (error instanceof Error) {
+          this.logger.error(
+            `Max retries reached. Failed to connect to the database: ${error.message}`,
+          );
+          this.logger.error(
+            'Error reconnecting to the database:',
+            new AppError(500, `Database connection failed: ${error.message}`),
+          );
+        }
       }
     });
   }

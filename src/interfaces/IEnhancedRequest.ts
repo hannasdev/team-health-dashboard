@@ -10,5 +10,4 @@ export interface IEnhancedRequest extends Request {
   path: string;
   method: string;
   ip: string;
-  get: (key: string, defaultValue?: string | undefined) => string | undefined;
 }
