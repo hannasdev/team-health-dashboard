@@ -8,7 +8,7 @@ import type {
   ILogger,
 } from './interfaces';
 
-export async function startWorker() {
+export async function startWorker(): Promise<void> {
   const jobQueue = container.get<IJobQueueService>(TYPES.JobQueueService);
   const processingService = container.get<IProcessingService>(
     TYPES.ProcessingService,
@@ -33,10 +33,14 @@ export async function startWorker() {
     logger.error('Failed to start worker:', error as Error);
     throw error;
   }
-}
 
+  // Handle unhandled promise rejections
+  process.on('unhandledRejection', error => {
+    logger.error('Unhandled promise rejection:', error as Error);
+  });
+}
 if (require.main === module) {
-  startWorker();
+  void startWorker();
 }
 
 process.on('SIGTERM', async () => {

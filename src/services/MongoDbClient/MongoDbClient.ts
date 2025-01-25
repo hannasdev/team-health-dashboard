@@ -2,6 +2,7 @@
 import { injectable, inject } from 'inversify';
 import mongoose from 'mongoose';
 
+import { delay } from '../../utils/delay.js';
 import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
@@ -20,9 +21,13 @@ export class MongoDbClient implements IMongoDbClient {
     @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
-  async connect(): Promise<void> {
+  public async connect(): Promise<void> {
     if (this.connection) {
       return; // Already connected
+    }
+
+    if (!this.config.DATABASE_URL) {
+      throw new Error('DATABASE_URL is not defined in the configuration');
     }
 
     const maxRetries = 5;
@@ -33,29 +38,17 @@ export class MongoDbClient implements IMongoDbClient {
           `Attempting to connect with DATABASE_URL: ${this.config.DATABASE_URL}`,
         );
 
-        if (!this.config.DATABASE_URL) {
-          throw new Error('DATABASE_URL is not defined in the configuration');
-        }
-
         await mongoose.connect(this.config.DATABASE_URL, {
           connectTimeoutMS: this.config.MONGO_CONNECT_TIMEOUT_MS,
           serverSelectionTimeoutMS:
             this.config.MONGO_SERVER_SELECTION_TIMEOUT_MS,
         });
 
+        // Set up connection and handlers only after successful connection
         this.connection = mongoose.connection;
-
-        this.connection.on('error', err => {
-          this.logger.error('MongoDB connection error:', err);
-        });
-
-        this.connection.on('disconnected', () => {
-          this.logger.warn('MongoDB disconnected. Attempting to reconnect...');
-          this.connect();
-        });
+        this.setupConnectionHandlers();
 
         this.logger.info('Successfully connected to the database');
-
         return;
       } catch (error) {
         const errorMessage =
@@ -76,21 +69,43 @@ export class MongoDbClient implements IMongoDbClient {
         }
 
         // Wait before retrying
-        await new Promise(resolve =>
-          setTimeout(resolve, this.config.DATABASE_RETRY_DELAY),
-        );
+        await delay(this.config.DATABASE_RETRY_DELAY);
       }
     }
   }
 
-  getDb(): mongoose.Connection {
+  private setupConnectionHandlers(): void {
+    if (!this.connection) {
+      return;
+    }
+
+    this.connection.on('error', (err: Error) => {
+      this.logger.error('MongoDB connection error:', err);
+    });
+
+    this.connection.on('disconnected', async () => {
+      this.logger.warn('MongoDB disconnected. Attempting to reconnect...');
+      try {
+        // Reset connection state before reconnecting
+        this.connection = null;
+        await this.connect();
+      } catch (error) {
+        this.logger.error(
+          'Error reconnecting to the database:',
+          error as Error,
+        );
+      }
+    });
+  }
+
+  public getDb(): mongoose.Connection {
     if (!this.connection) {
       throw new AppError(500, 'Database not connected. Call connect() first.');
     }
     return this.connection;
   }
 
-  async close(): Promise<void> {
+  public async close(): Promise<void> {
     if (this.connection) {
       await mongoose.disconnect();
       this.connection = null;

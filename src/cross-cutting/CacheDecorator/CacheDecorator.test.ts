@@ -8,7 +8,7 @@ import type { ICacheService } from '../../interfaces';
 @injectable()
 class TestClass extends CacheableClass {
   @Cacheable('test-key', 3600)
-  async testMethod(param: string) {
+  public async testMethod(param: string): Promise<string> {
     return `Result for ${param}`;
   }
 }
@@ -80,7 +80,7 @@ describe('CacheDecorator', () => {
         @injectable()
         class TestClassWithoutCache {
           @Cacheable('test-key', 3600)
-          async testMethod(param: string) {
+          public async testMethod(param: string): Promise<string> {
             return `Result for ${param}`;
           }
         }
@@ -106,10 +106,10 @@ describe('CacheDecorator', () => {
       @injectable()
       class TestClassWithMultipleMethods extends CacheableClass {
         @Cacheable('test-key-1', 3600)
-        async method1() {}
+        public async method1(): Promise<void> {}
 
         @Cacheable('test-key-2', 7200)
-        async method2() {}
+        public async method2(): Promise<void> {}
       }
 
       const metadata = TestClassWithMultipleMethods.getCacheableMetadata();

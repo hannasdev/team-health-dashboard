@@ -87,7 +87,7 @@ export class TokenBlacklistService implements ITokenBlacklistService {
     }
   }
 
-  _testOnly_triggerCleanup(): Promise<number> {
+  public _testOnly_triggerCleanup(): Promise<number> {
     return this.cleanup();
   }
 }

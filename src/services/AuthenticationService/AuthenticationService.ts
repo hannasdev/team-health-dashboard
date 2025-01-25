@@ -28,7 +28,7 @@ export class AuthenticationService implements IAuthenticationService {
     @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
-  async login(
+  public async login(
     email: string,
     password: string,
     shortLived: boolean = false,
@@ -92,7 +92,7 @@ export class AuthenticationService implements IAuthenticationService {
     }
   }
 
-  async logout(refreshToken: string): Promise<void> {
+  public async logout(refreshToken: string): Promise<void> {
     try {
       const decodedToken = this.tokenService.decodeToken(refreshToken);
       await this.tokenBlacklistService.blacklistToken(

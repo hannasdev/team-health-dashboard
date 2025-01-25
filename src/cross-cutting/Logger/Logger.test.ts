@@ -1,5 +1,4 @@
 import fs from 'fs';
-import path from 'path';
 
 import { Container } from 'inversify';
 import winston from 'winston';
@@ -26,8 +25,6 @@ jest.mock('winston', () => {
     simple: jest.fn().mockReturnThis(),
     combine: jest.fn().mockImplementation((...args) => args[args.length - 1]),
   };
-
-  const mockLogger = createMockWinstonLogger();
 
   return {
     createLogger: jest.fn().mockReturnValue({

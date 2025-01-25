@@ -7,15 +7,19 @@ import type { IJwtService } from '../../interfaces/index.js';
 
 @injectable()
 export class JwtService implements IJwtService {
-  sign(payload: object, secretOrPrivateKey: string, options?: object): string {
+  public sign(
+    payload: object,
+    secretOrPrivateKey: string,
+    options?: object,
+  ): string {
     return jwt.sign(payload, secretOrPrivateKey, options);
   }
 
-  verify(token: string, secretOrPublicKey: string): object | string {
+  public verify(token: string, secretOrPublicKey: string): object | string {
     return jwt.verify(token, secretOrPublicKey);
   }
 
-  decode(token: string): any {
+  public decode(token: string): any {
     return jwt.decode(token);
   }
 }

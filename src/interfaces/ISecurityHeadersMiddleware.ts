@@ -1,7 +1,8 @@
 import { NextFunction, Application } from 'express';
+
+import { IEnhancedResponse } from './IEnhancedResponse';
 import { IMiddleware } from './IMiddleware';
 import { ISecurityRequest } from './ISecurityRequest';
-import { IEnhancedResponse } from './IEnhancedResponse';
 
 export interface ISecurityHeadersMiddleware extends IMiddleware {
   handle(

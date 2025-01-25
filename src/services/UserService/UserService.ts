@@ -23,7 +23,7 @@ export class UserService implements IUserService {
     @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
-  async registerUser(email: string, password: string): Promise<IUser> {
+  public async registerUser(email: string, password: string): Promise<IUser> {
     const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) {
       this.logger.warn(`Registration attempt with existing email: ${email}`);
@@ -35,7 +35,7 @@ export class UserService implements IUserService {
     return newUser;
   }
 
-  async getUserById(id: string): Promise<IUser> {
+  public async getUserById(id: string): Promise<IUser> {
     const user = await this.userRepository.findById(id);
     if (!user) {
       throw new UserNotFoundError(`User not found for id: ${id}`);
@@ -43,7 +43,10 @@ export class UserService implements IUserService {
     return user;
   }
 
-  async updateUserProfile(id: string, data: Partial<IUser>): Promise<IUser> {
+  public async updateUserProfile(
+    id: string,
+    data: Partial<IUser>,
+  ): Promise<IUser> {
     const user = await this.getUserById(id);
     // Implement update logic here
     // For now, we'll just return the user as is

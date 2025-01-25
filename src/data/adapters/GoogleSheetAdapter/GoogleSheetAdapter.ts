@@ -30,7 +30,7 @@ export class GoogleSheetsAdapter implements IGoogleSheetsClient {
     });
   }
 
-  async getValues(spreadsheetId: string, range: string): Promise<any> {
+  public async getValues(spreadsheetId: string, range: string): Promise<any> {
     try {
       return await this.sheets.spreadsheets.values.get({
         spreadsheetId,

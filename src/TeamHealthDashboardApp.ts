@@ -1,8 +1,13 @@
 // src/TeamHealthDashboardApp.ts
 import { IncomingMessage, ServerResponse } from 'http';
 
-import express, { Express, Request, Response, RequestHandler } from 'express';
-import { NextFunction } from 'express-serve-static-core';
+import express, {
+  Express,
+  Request,
+  Response,
+  RequestHandler,
+  NextFunction,
+} from 'express';
 import { inject, injectable } from 'inversify';
 
 import authRouter from './presentation/routes/auth.js';

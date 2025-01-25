@@ -6,11 +6,11 @@ import type { IApiResponse } from '../../interfaces';
 
 @injectable()
 export class ApiResponse implements IApiResponse {
-  createSuccessResponse<T>(data: T): { success: true; data: T } {
+  public createSuccessResponse<T>(data: T): { success: true; data: T } {
     return { success: true, data };
   }
 
-  createErrorResponse(
+  public createErrorResponse(
     message: string,
     details?: any,
     statusCode: number = 500,

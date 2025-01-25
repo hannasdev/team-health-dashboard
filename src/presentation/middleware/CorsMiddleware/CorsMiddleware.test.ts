@@ -25,6 +25,7 @@ describe('CorsMiddleware', () => {
     res = createMockResponse();
     next = jest.fn();
     mockLogger = createMockLogger();
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     mockConfig = {
       CORS_ORIGIN: 'http://localhost:3000,http://example.com',
     } as jest.Mocked<IConfig>;

@@ -5,7 +5,6 @@ import mongoose from 'mongoose';
 
 import { UserNotFoundError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
-import { User } from '../../models/User.js';
 
 import type {
   IUser,
@@ -20,7 +19,7 @@ export class UserRepository implements IUserRepository {
     @inject(TYPES.UserModel) private UserModel: mongoose.Model<IUser>,
   ) {}
 
-  async findByEmail(email: string): Promise<IUser | undefined> {
+  public async findByEmail(email: string): Promise<IUser | undefined> {
     const user = await this.UserModel.findOne({ email });
 
     if (!user) {
@@ -32,7 +31,7 @@ export class UserRepository implements IUserRepository {
     return user;
   }
 
-  async findById(id: string): Promise<IUser | undefined> {
+  public async findById(id: string): Promise<IUser | undefined> {
     try {
       const user = await this.UserModel.findById(id);
 
@@ -52,14 +51,14 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  async create(email: string, password: string): Promise<IUser> {
+  public async create(email: string, password: string): Promise<IUser> {
     const user = await this.UserModel.create({ email, password });
 
     this.logger.info(`New user created with email: ${email}`);
     return user;
   }
 
-  async updatePassword(id: string, newPassword: string): Promise<void> {
+  public async updatePassword(id: string, newPassword: string): Promise<void> {
     const result = await this.UserModel.updateOne(
       { _id: id },
       { $set: { password: newPassword } },

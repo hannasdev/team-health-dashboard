@@ -36,123 +36,6 @@ export class Config implements IConfig {
     this.validate();
   }
 
-  public static getInstance(
-    env?: Partial<IConfig>,
-    customEnvLoader?: () => NodeJS.ProcessEnv,
-  ): Config {
-    if (!Config.instance) {
-      Config.instance = new Config(env, customEnvLoader);
-    }
-    return Config.instance;
-  }
-
-  private loadDefaults(): Omit<IConfig, 'getAllConfig'> {
-    return {
-      ACCESS_TOKEN_EXPIRY: '15m',
-      BCRYPT_ROUNDS: 10,
-      CORS_ORIGIN: '*',
-      DATABASE_URL: 'mongodb://localhost:27017/myapp',
-      DATABASE_RETRY_DELAY: 5000,
-      GOOGLE_SHEETS_CLIENT_EMAIL: 'insert-client-email-here',
-      GOOGLE_SHEETS_ID: 'insert-google-sheets-id-here',
-      GOOGLE_SHEETS_PRIVATE_KEY: 'insert-private-key-here',
-      JWT_SECRET: 'insert-jwt-secret-here',
-      LOG_FILE_PATH: './logs',
-      LOG_FORMAT: 'json',
-      LOG_LEVEL: 'info',
-      MONGO_CONNECT_TIMEOUT_MS: 30000,
-      MONGO_SERVER_SELECTION_TIMEOUT_MS: 30000,
-      PORT: 3000,
-      REFRESH_TOKEN_EXPIRY: '7d',
-      REFRESH_TOKEN_SECRET: 'insert-refresh-token-secret-here',
-      REPO_OWNER: 'insert-repo-owner-here',
-      REPO_REPO: 'insert-repo-repo-here',
-      REPO_TOKEN: 'insert-repo-token-here',
-    };
-  }
-
-  private loadFromEnv(
-    customEnvLoader?: () => NodeJS.ProcessEnv,
-  ): Partial<IConfig> {
-    const envVars = customEnvLoader ? customEnvLoader() : process.env;
-
-    return {
-      ACCESS_TOKEN_EXPIRY: envVars.ACCESS_TOKEN_EXPIRY,
-      BCRYPT_ROUNDS: envVars.BCRYPT_ROUNDS
-        ? parseInt(envVars.BCRYPT_ROUNDS, 10)
-        : undefined,
-      CORS_ORIGIN: envVars.CORS_ORIGIN,
-      DATABASE_URL: envVars.DATABASE_URL,
-      DATABASE_RETRY_DELAY: envVars.DATABASE_RETRY_DELAY
-        ? parseInt(envVars.DATABASE_RETRY_DELAY, 10)
-        : undefined,
-      GOOGLE_SHEETS_CLIENT_EMAIL: envVars.GOOGLE_SHEETS_CLIENT_EMAIL,
-      GOOGLE_SHEETS_ID: envVars.GOOGLE_SHEETS_ID,
-      GOOGLE_SHEETS_PRIVATE_KEY: envVars.GOOGLE_SHEETS_PRIVATE_KEY,
-      JWT_SECRET: envVars.JWT_SECRET,
-      LOG_FILE_PATH: envVars.LOG_FILE_PATH,
-      LOG_FORMAT: envVars.LOG_FORMAT,
-      LOG_LEVEL: envVars.LOG_LEVEL,
-      MONGO_CONNECT_TIMEOUT_MS: envVars.MONGO_CONNECT_TIMEOUT_MS
-        ? parseInt(envVars.MONGO_CONNECT_TIMEOUT_MS, 10)
-        : undefined,
-      MONGO_SERVER_SELECTION_TIMEOUT_MS:
-        envVars.MONGO_SERVER_SELECTION_TIMEOUT_MS
-          ? parseInt(envVars.MONGO_SERVER_SELECTION_TIMEOUT_MS, 10)
-          : undefined,
-      PORT: envVars.PORT ? parseInt(envVars.PORT, 10) : undefined,
-      REFRESH_TOKEN_EXPIRY: envVars.REFRESH_TOKEN_EXPIRY,
-      REFRESH_TOKEN_SECRET: envVars.REFRESH_TOKEN_SECRET,
-      REPO_OWNER: envVars.REPO_OWNER,
-      REPO_REPO: envVars.REPO_REPO,
-      REPO_TOKEN: envVars.REPO_TOKEN,
-    };
-  }
-
-  private loadEnvFile(envFile: string = '.env'): void {
-    // console.log(`Attempting to load ${envFile} file`);
-    const envFilePath = path.resolve(process.cwd(), envFile);
-    if (fs.existsSync(envFilePath)) {
-      // console.log(`${envFile} file exists, calling dotenv.config`);
-      dotenv.config({ path: envFilePath });
-    } else {
-      // console.log(`${envFile} file does not exist`);
-    }
-  }
-
-  private validate(): void {
-    const requiredEnvVars: (keyof Omit<IConfig, 'getAllConfig'>)[] = [
-      'DATABASE_URL',
-      'GOOGLE_SHEETS_CLIENT_EMAIL',
-      'GOOGLE_SHEETS_ID',
-      'GOOGLE_SHEETS_PRIVATE_KEY',
-      'JWT_SECRET',
-      'REFRESH_TOKEN_SECRET',
-      'REPO_OWNER',
-      'REPO_REPO',
-      'REPO_TOKEN',
-    ];
-
-    const missingVars = requiredEnvVars.filter(
-      varName => !this.config[varName as keyof typeof this.config],
-    );
-
-    if (missingVars.length > 0) {
-      throw new AppError(
-        500,
-        `Missing required environment variables: ${missingVars.join(', ')}`,
-      );
-    }
-  }
-
-  public static resetInstance(): void {
-    Config.instance = null;
-  }
-
-  public getAllConfig(): Omit<IConfig, 'getAllConfig'> {
-    return { ...this.config };
-  }
-
   public static generateEnvTemplate(
     outputPath: string = '.env.template',
   ): void {
@@ -256,6 +139,123 @@ export class Config implements IConfig {
 
     const fullPath = path.resolve(process.cwd(), outputPath);
     fs.writeFileSync(fullPath, template);
+  }
+
+  public static getInstance(
+    env?: Partial<IConfig>,
+    customEnvLoader?: () => NodeJS.ProcessEnv,
+  ): Config {
+    if (!Config.instance) {
+      Config.instance = new Config(env, customEnvLoader);
+    }
+    return Config.instance;
+  }
+
+  public static resetInstance(): void {
+    Config.instance = null;
+  }
+
+  private loadDefaults(): Omit<IConfig, 'getAllConfig'> {
+    return {
+      ACCESS_TOKEN_EXPIRY: '15m',
+      BCRYPT_ROUNDS: 10,
+      CORS_ORIGIN: '*',
+      DATABASE_URL: 'mongodb://localhost:27017/myapp',
+      DATABASE_RETRY_DELAY: 5000,
+      GOOGLE_SHEETS_CLIENT_EMAIL: 'insert-client-email-here',
+      GOOGLE_SHEETS_ID: 'insert-google-sheets-id-here',
+      GOOGLE_SHEETS_PRIVATE_KEY: 'insert-private-key-here',
+      JWT_SECRET: 'insert-jwt-secret-here',
+      LOG_FILE_PATH: './logs',
+      LOG_FORMAT: 'json',
+      LOG_LEVEL: 'info',
+      MONGO_CONNECT_TIMEOUT_MS: 30000,
+      MONGO_SERVER_SELECTION_TIMEOUT_MS: 30000,
+      PORT: 3000,
+      REFRESH_TOKEN_EXPIRY: '7d',
+      REFRESH_TOKEN_SECRET: 'insert-refresh-token-secret-here',
+      REPO_OWNER: 'insert-repo-owner-here',
+      REPO_REPO: 'insert-repo-repo-here',
+      REPO_TOKEN: 'insert-repo-token-here',
+    };
+  }
+
+  private loadFromEnv(
+    customEnvLoader?: () => NodeJS.ProcessEnv,
+  ): Partial<IConfig> {
+    const envVars = customEnvLoader ? customEnvLoader() : process.env;
+
+    return {
+      ACCESS_TOKEN_EXPIRY: envVars.ACCESS_TOKEN_EXPIRY,
+      BCRYPT_ROUNDS: envVars.BCRYPT_ROUNDS
+        ? parseInt(envVars.BCRYPT_ROUNDS, 10)
+        : undefined,
+      CORS_ORIGIN: envVars.CORS_ORIGIN,
+      DATABASE_URL: envVars.DATABASE_URL,
+      DATABASE_RETRY_DELAY: envVars.DATABASE_RETRY_DELAY
+        ? parseInt(envVars.DATABASE_RETRY_DELAY, 10)
+        : undefined,
+      GOOGLE_SHEETS_CLIENT_EMAIL: envVars.GOOGLE_SHEETS_CLIENT_EMAIL,
+      GOOGLE_SHEETS_ID: envVars.GOOGLE_SHEETS_ID,
+      GOOGLE_SHEETS_PRIVATE_KEY: envVars.GOOGLE_SHEETS_PRIVATE_KEY,
+      JWT_SECRET: envVars.JWT_SECRET,
+      LOG_FILE_PATH: envVars.LOG_FILE_PATH,
+      LOG_FORMAT: envVars.LOG_FORMAT,
+      LOG_LEVEL: envVars.LOG_LEVEL,
+      MONGO_CONNECT_TIMEOUT_MS: envVars.MONGO_CONNECT_TIMEOUT_MS
+        ? parseInt(envVars.MONGO_CONNECT_TIMEOUT_MS, 10)
+        : undefined,
+      MONGO_SERVER_SELECTION_TIMEOUT_MS:
+        envVars.MONGO_SERVER_SELECTION_TIMEOUT_MS
+          ? parseInt(envVars.MONGO_SERVER_SELECTION_TIMEOUT_MS, 10)
+          : undefined,
+      PORT: envVars.PORT ? parseInt(envVars.PORT, 10) : undefined,
+      REFRESH_TOKEN_EXPIRY: envVars.REFRESH_TOKEN_EXPIRY,
+      REFRESH_TOKEN_SECRET: envVars.REFRESH_TOKEN_SECRET,
+      REPO_OWNER: envVars.REPO_OWNER,
+      REPO_REPO: envVars.REPO_REPO,
+      REPO_TOKEN: envVars.REPO_TOKEN,
+    };
+  }
+
+  private loadEnvFile(envFile: string = '.env'): void {
+    // console.log(`Attempting to load ${envFile} file`);
+    const envFilePath = path.resolve(process.cwd(), envFile);
+    if (fs.existsSync(envFilePath)) {
+      // console.log(`${envFile} file exists, calling dotenv.config`);
+      dotenv.config({ path: envFilePath });
+    } else {
+      // console.log(`${envFile} file does not exist`);
+    }
+  }
+
+  private validate(): void {
+    const requiredEnvVars: (keyof Omit<IConfig, 'getAllConfig'>)[] = [
+      'DATABASE_URL',
+      'GOOGLE_SHEETS_CLIENT_EMAIL',
+      'GOOGLE_SHEETS_ID',
+      'GOOGLE_SHEETS_PRIVATE_KEY',
+      'JWT_SECRET',
+      'REFRESH_TOKEN_SECRET',
+      'REPO_OWNER',
+      'REPO_REPO',
+      'REPO_TOKEN',
+    ];
+
+    const missingVars = requiredEnvVars.filter(
+      varName => !this.config[varName as keyof typeof this.config],
+    );
+
+    if (missingVars.length > 0) {
+      throw new AppError(
+        500,
+        `Missing required environment variables: ${missingVars.join(', ')}`,
+      );
+    }
+  }
+
+  public getAllConfig(): Omit<IConfig, 'getAllConfig'> {
+    return { ...this.config };
   }
 
   // Getters

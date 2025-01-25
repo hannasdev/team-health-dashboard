@@ -61,7 +61,7 @@ export class CacheableClass {
     @inject(TYPES.CacheService) protected cacheService: ICacheService,
   ) {}
 
-  static getCacheableMetadata(): Record<
+  public static getCacheableMetadata(): Record<
     string,
     { cacheKey: string; duration: number }
   > {

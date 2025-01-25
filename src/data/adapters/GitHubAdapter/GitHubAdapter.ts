@@ -23,7 +23,7 @@ export class GitHubAdapter implements IGitHubClient {
     });
   }
 
-  async graphql<T = any>(
+  public async graphql<T = any>(
     query: string,
     variables?: Record<string, any>,
   ): Promise<T> {
@@ -37,7 +37,7 @@ export class GitHubAdapter implements IGitHubClient {
     }
   }
 
-  async getRepositoryMetadata({
+  public async getRepositoryMetadata({
     owner,
     name,
     token,

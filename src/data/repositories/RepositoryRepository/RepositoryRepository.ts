@@ -28,7 +28,7 @@ export class RepositoryRepository implements IRepositoryRepository {
     private readonly logger: ILogger,
   ) {}
 
-  async create(details: IRepositoryDetails): Promise<IRepository> {
+  public async create(details: IRepositoryDetails): Promise<IRepository> {
     const repository = new this.model({
       ...details,
       fullName: `${details.owner}/${details.name}`,
@@ -45,7 +45,7 @@ export class RepositoryRepository implements IRepositoryRepository {
     return created;
   }
 
-  async findById(id: string): Promise<IRepository | null> {
+  public async findById(id: string): Promise<IRepository | null> {
     const cacheKey = `repository:${id}`;
     const cached = await this.cacheService.get<IRepository>(cacheKey);
 
@@ -62,7 +62,7 @@ export class RepositoryRepository implements IRepositoryRepository {
     return repository;
   }
 
-  async findAll(
+  public async findAll(
     filters?: IRepositoryFilters,
   ): Promise<IRepositoryPaginatedResponse> {
     const query = this.buildQuery(filters);
@@ -85,7 +85,7 @@ export class RepositoryRepository implements IRepositoryRepository {
     };
   }
 
-  async update(
+  public async update(
     id: string,
     updates: Partial<IRepository>,
   ): Promise<IRepository> {
@@ -111,14 +111,14 @@ export class RepositoryRepository implements IRepositoryRepository {
     return updated;
   }
 
-  async delete(id: string): Promise<void> {
+  public async delete(id: string): Promise<void> {
     // We implement this as required by the interface, but throw error to prevent actual deletion
     throw new Error(
       'Direct deletion is not supported. Use markAsArchived instead.',
     );
   }
 
-  async markAsArchived(id: string): Promise<IRepository> {
+  public async markAsArchived(id: string): Promise<IRepository> {
     return this.update(id, {
       status: RepositoryStatus.ARCHIVED,
       settings: { syncEnabled: false },
