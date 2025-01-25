@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.2](https://github.com/hannasdev/team-health-dashboard/compare/v3.1.1...v3.1.2) (2025-01-25)
+
+
+### Maintenance
+
+* fix type errors ([ebf30da](https://github.com/hannasdev/team-health-dashboard/commit/ebf30da7bf6d54a8f5b6b98604a485b528330d24))
+* update dependencies ([3ce4a0a](https://github.com/hannasdev/team-health-dashboard/commit/3ce4a0ae215c7a8fc397729f2cf9486f1e59fbf1))
+
 ### [3.1.1](https://github.com/hannasdev/team-health-dashboard/compare/v3.1.0...v3.1.1) (2025-01-25)
 
 
