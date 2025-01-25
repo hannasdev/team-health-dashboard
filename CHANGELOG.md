@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [3.1.1](https://github.com/hannasdev/team-health-dashboard/compare/v3.1.0...v3.1.1) (2025-01-25)
+
+
+### Maintenance
+
+* add node plugin to eslint and define engine to v23 or newer ([d099651](https://github.com/hannasdev/team-health-dashboard/commit/d099651d9c205e3e6c318864e688c3a5d6b621c1))
+* stores node version ([d30d386](https://github.com/hannasdev/team-health-dashboard/commit/d30d3863d96e6d0049d616bacee8373494b6e62d))
+
 ## [3.1.0](https://github.com/hannasdev/team-health-dashboard/compare/v3.0.2...v3.1.0) (2025-01-19)
 
 
