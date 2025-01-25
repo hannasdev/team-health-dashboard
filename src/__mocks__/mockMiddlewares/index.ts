@@ -44,11 +44,15 @@ export interface MockRequestOptions {
     email: string;
     exp: number;
   };
+  get?: jest.Mock;
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 export function createMockRequest(
   options: MockRequestOptions = {},
 ): jest.Mocked<IEnhancedRequest> {
+  const headers = options.headers ?? {};
+
   const request: Partial<IEnhancedRequest> = {
     method: options.method ?? 'GET',
     path: options.path ?? '/test',
@@ -56,18 +60,20 @@ export function createMockRequest(
     originalUrl: '/test',
     query: options.query ?? {},
     body: options.body ?? {},
-    get: jest.fn(function (
-      this: any,
-      name: string,
-    ): string | string[] | undefined {
-      if (name.toLowerCase() === 'set-cookie') {
-        return [] as string[];
-      }
-      return undefined;
-    }) as unknown as {
-      (name: 'set-cookie'): string[] | undefined;
-      (name: string): string | undefined;
-    },
+    get:
+      options.get ??
+      (jest.fn(function (
+        this: any,
+        name: string,
+      ): string | string[] | undefined {
+        if (name.toLowerCase() === 'set-cookie') {
+          return [] as string[];
+        }
+        return headers[name.toLowerCase()];
+      }) as unknown as {
+        (name: 'set-cookie'): string[] | undefined;
+        (name: string): string | undefined;
+      }),
     user: options.user ?? undefined,
     accepts: jest.fn(),
     acceptsCharsets: jest.fn(),

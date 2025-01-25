@@ -60,7 +60,9 @@ describe('AuthMiddleware', () => {
   describe('Contract', () => {
     it('should call next() on successful authentication', async () => {
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
       expect(next).toHaveBeenCalledWith();
@@ -73,7 +75,9 @@ describe('AuthMiddleware', () => {
       });
 
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
       expect(next).toHaveBeenCalledWith(error);
@@ -83,7 +87,9 @@ describe('AuthMiddleware', () => {
   describe('Token Extraction', () => {
     it('should extract token from Authorization header', async () => {
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
       expect(mockTokenService.validateAccessToken).toHaveBeenCalledWith(
@@ -106,7 +112,9 @@ describe('AuthMiddleware', () => {
   describe('Token Validation', () => {
     it('should validate the token with TokenService', async () => {
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
       expect(mockTokenService.validateAccessToken).toHaveBeenCalledWith(
@@ -116,7 +124,9 @@ describe('AuthMiddleware', () => {
 
     it('should check if token is blacklisted', async () => {
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
       expect(mockTokenBlacklistService.isTokenBlacklisted).toHaveBeenCalledWith(
@@ -127,7 +137,9 @@ describe('AuthMiddleware', () => {
     it('should reject blacklisted tokens', async () => {
       mockTokenBlacklistService.isTokenBlacklisted.mockResolvedValue(true);
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
 
       await middleware.handle(req, res, next);
@@ -142,7 +154,9 @@ describe('AuthMiddleware', () => {
 
     it('should attach decoded token data to request', async () => {
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
       expect(req.user).toEqual(validDecodedToken);
@@ -164,7 +178,9 @@ describe('AuthMiddleware', () => {
       mockAuthService.refreshToken.mockResolvedValue(newTokens);
 
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
 
@@ -181,7 +197,9 @@ describe('AuthMiddleware', () => {
 
     it('should set expiring header for tokens not requiring immediate refresh', async () => {
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
 
@@ -202,7 +220,9 @@ describe('AuthMiddleware', () => {
       );
 
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
 
@@ -222,7 +242,9 @@ describe('AuthMiddleware', () => {
       });
 
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
 
@@ -236,7 +258,9 @@ describe('AuthMiddleware', () => {
       );
 
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       await middleware.handle(req, res, next);
 
@@ -246,7 +270,9 @@ describe('AuthMiddleware', () => {
 
     it('should log authentication errors with appropriate level', async () => {
       req = createMockRequest({
-        authorization: `${HeaderValues.BEARER} invalid_token`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} invalid_token`,
+        },
       });
       mockTokenService.validateAccessToken.mockImplementation(() => {
         throw new UnauthorizedError('Invalid token');
@@ -266,7 +292,9 @@ describe('AuthMiddleware', () => {
       const requests = Array.from({ length: 3 }, (_, i) => ({
         req: createMockRequest({
           path: `/test${i}`,
-          authorization: `${HeaderValues.BEARER} ${validToken}`, // Set authorization when creating
+          headers: {
+            authorization: `${HeaderValues.BEARER} ${validToken}`, // Set authorization when creating
+          },
         }),
         res: createMockResponse(),
         next: jest.fn(),
@@ -289,10 +317,14 @@ describe('AuthMiddleware', () => {
       const invalidNext = jest.fn();
 
       const validReq = createMockRequest({
-        authorization: `${HeaderValues.BEARER} ${validToken}`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} ${validToken}`,
+        },
       });
       const invalidReq = createMockRequest({
-        authorization: `${HeaderValues.BEARER} invalid_token`,
+        headers: {
+          authorization: `${HeaderValues.BEARER} invalid_token`,
+        },
       });
 
       mockTokenService.validateAccessToken

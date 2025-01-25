@@ -307,8 +307,8 @@ describe('SecurityHeadersMiddleware', () => {
           method: 'GET',
           path: '/test',
           ip: '127.0.0.1',
-          'user-agent': req.get('user-agent'), // Use the value from request
-          userId: undefined,
+          'user-agent': req.get('user-agent'),
+          userId: '123',
         },
         timestamp: expect.any(Date),
         details: {
