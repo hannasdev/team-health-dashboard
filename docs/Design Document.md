@@ -109,7 +109,10 @@ Consistent error handling using custom error classes:
 
 ```typescript
 class AppError extends Error {
-  constructor(public statusCode: number, message: string) {
+  constructor(
+    public statusCode: number,
+    message: string,
+  ) {
     super(message);
   }
 }
@@ -182,11 +185,11 @@ We've added the following middleware for improved functionality and security:
 - Request logging middleware
 - CORS middleware
 - Body parsing middleware
-- Security headers middleware (using helmet)
+- Security headers middleware
 
 ### API Documentation
 
-We're implementing OpenAPI/Swagger documentation for all API endpoints.
+We're implementing OpenAPI documentation for all API endpoints.
 
 ### Docker Configuration
 
@@ -218,10 +221,4 @@ With the introduction of the Repository pattern, our testing strategy now includ
 
 - Unit tests for individual repository implementations (GitHubRepository, GoogleSheetsRepository)
 - Unit tests for the MetricsRepository, using mocks for the underlying repositories
-- Integration tests that verify the correct interaction between the MetricsService and the MetricsRepository
-
-## Conclusion
-
-These improvements enhance our architecture's alignment with MVC principles and best practices for a TypeScript Node.js API service running in a Docker container. The result is a more maintainable, scalable, and robust application.
-
-The introduction of the Repository pattern enhances our architecture by providing a more standardized approach to data access. This change improves the separation of concerns, making our codebase more maintainable and adaptable to future changes in data sources or business requirements.
+- Integration tests that verify the correct interaction between the Services and the Repositories
