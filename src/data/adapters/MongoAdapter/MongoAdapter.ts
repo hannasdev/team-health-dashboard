@@ -1,46 +1,16 @@
 // src/data/adapters/MongoDBAdapter.ts
 import { injectable, inject } from 'inversify';
-import { FilterQuery, Model, SortOrder, Types } from 'mongoose';
+import { FilterQuery, Model, SortOrder } from 'mongoose';
 import { TYPES } from '../../../utils/types.js';
 import { AppError } from '../../../utils/errors.js';
 import type {
   IMongoAdapter,
   IRepository,
   IRepositoryDetails,
+  IRepositoryDocument,
+  IRepositoryDocumentData,
+  ILogger,
 } from '../../../interfaces/index.js';
-import { RepositoryStatus } from '../../../interfaces/index.js';
-import type { ILogger } from '../../../interfaces/index.js';
-
-interface RepositoryMetadata {
-  isPrivate: boolean;
-  description?: string;
-  defaultBranch: string;
-  topics?: string[];
-  language?: string;
-}
-
-interface IRepositoryDocumentData {
-  _id: Types.ObjectId | string;
-  name: string;
-  owner: string;
-  fullName: string;
-  status: RepositoryStatus;
-  createdAt: Date;
-  updatedAt: Date;
-  settings: {
-    syncEnabled: boolean;
-    branchPatterns: string[];
-    labelPatterns: string[];
-  };
-  metadata: RepositoryMetadata;
-}
-
-export interface IRepositoryDocument
-  extends Document,
-    IRepositoryDocumentData {}
-// Interface for lean (plain) document
-type LeanDocument = Omit<IRepositoryDocument, keyof Document> &
-  IRepositoryDocumentData;
 
 @injectable()
 export class MongoAdapter<T extends IRepository> implements IMongoAdapter<T> {
@@ -164,22 +134,29 @@ export class MongoAdapter<T extends IRepository> implements IMongoAdapter<T> {
     }
   }
 
-  private toDomain(raw: LeanDocument): IRepository {
+  private toDomain(doc: IRepositoryDocumentData): IRepository {
     return {
-      id: raw._id.toString(),
-      name: raw.name,
-      owner: raw.owner,
-      fullName: raw.fullName,
-      status: raw.status,
-      createdAt: raw.createdAt,
-      updatedAt: raw.updatedAt,
-      settings: raw.settings,
+      id: doc._id.toString(),
+      name: doc.name,
+      owner: doc.owner,
+      fullName: doc.fullName,
+      credentials: doc.credentials,
+      status: doc.status,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt,
+      lastSyncAt: doc.lastSyncAt,
+      settings: {
+        syncEnabled: doc.settings.syncEnabled,
+        branchPatterns: doc.settings.branchPatterns,
+        labelPatterns: doc.settings.labelPatterns,
+        syncInterval: doc.settings.syncInterval,
+      },
       metadata: {
-        isPrivate: raw.metadata.isPrivate,
-        defaultBranch: raw.metadata.defaultBranch,
-        description: raw.metadata.description,
-        topics: raw.metadata.topics,
-        language: raw.metadata.language,
+        isPrivate: doc.metadata.isPrivate,
+        defaultBranch: doc.metadata.defaultBranch,
+        description: doc.metadata.description,
+        topics: doc.metadata.topics,
+        language: doc.metadata.language,
       },
     };
   }
@@ -192,15 +169,16 @@ export class MongoAdapter<T extends IRepository> implements IMongoAdapter<T> {
       fullName: `${details.owner}/${details.name}`,
       updatedAt: new Date(),
       settings: {
-        syncEnabled: true,
-        branchPatterns: ['*'],
-        labelPatterns: ['*'],
+        syncEnabled: details.settings?.syncEnabled ?? true,
+        branchPatterns: details.settings?.branchPatterns ?? ['*'],
+        labelPatterns: details.settings?.labelPatterns ?? ['*'],
+        syncInterval: details.settings?.syncInterval,
       },
       metadata: {
         isPrivate: details.metadata?.isPrivate ?? false,
         defaultBranch: details.metadata?.defaultBranch ?? 'main',
         description: details.metadata?.description,
-        topics: details.metadata?.topics,
+        topics: details.metadata?.topics ?? [],
         language: details.metadata?.language,
       },
     };

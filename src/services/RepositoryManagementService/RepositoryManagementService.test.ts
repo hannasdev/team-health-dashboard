@@ -1,11 +1,11 @@
 import { Container } from 'inversify';
-
 import { RepositoryManagementService } from './RepositoryManagementService';
 import {
   createMockLogger,
   createMockBcryptService,
   createMockGitHubClient,
   createMockRepositoryRepository,
+  createMockRepositoryItem,
 } from '../../__mocks__/index.js';
 import { RepositoryStatus } from '../../interfaces/index.js';
 import { ValidationError, NotFoundError } from '../../utils/errors';
@@ -16,6 +16,8 @@ import type {
   IGitHubClient,
   ILogger,
   IRepositoryRepository,
+  IRepositoryDetails,
+  IRepositorySettings,
   IRepository,
 } from '../../interfaces/index.js';
 
@@ -27,18 +29,41 @@ describe('RepositoryManagementService', () => {
   let mockLogger: jest.Mocked<ILogger>;
   let mockBcryptService: jest.Mocked<IBcryptService>;
 
+  const createMockDetails = (
+    overrides: Partial<IRepositoryDetails> = {},
+  ): IRepositoryDetails => ({
+    owner: 'testorg',
+    name: 'testrepo',
+    credentials: {
+      type: 'token' as const,
+      value: 'test-token',
+    },
+    status: RepositoryStatus.ACTIVE,
+    metadata: {
+      isPrivate: true,
+      defaultBranch: 'main',
+      description: 'Test repository',
+      topics: ['test'],
+      language: 'TypeScript',
+    },
+    settings: {
+      syncEnabled: true,
+      branchPatterns: ['*'],
+      labelPatterns: ['*'],
+      syncInterval: 3600,
+    },
+    ...overrides,
+  });
+
   beforeEach(() => {
-    // Reset all mocks
     jest.clearAllMocks();
 
-    // Create a new container for each test
     container = new Container();
     mockRepository = createMockRepositoryRepository();
     mockGitHubAdapter = createMockGitHubClient();
     mockLogger = createMockLogger();
     mockBcryptService = createMockBcryptService();
 
-    // Bind mock implementations
     container
       .bind<IRepositoryRepository>(TYPES.RepositoryRepository)
       .toConstantValue(mockRepository);
@@ -53,33 +78,14 @@ describe('RepositoryManagementService', () => {
       .bind<RepositoryManagementService>(RepositoryManagementService)
       .toSelf();
 
-    // Create service instance
     service = container.get<RepositoryManagementService>(
       RepositoryManagementService,
     );
   });
 
   describe('addRepository', () => {
-    const validDetails = {
-      owner: 'testorg',
-      name: 'testrepo',
-      credentials: {
-        type: 'token' as const,
-        value: 'test-token',
-      },
-      status: RepositoryStatus.ACTIVE,
-      createdAt: new Date(),
-      metadata: {
-        isPrivate: true,
-        description: 'Test repository',
-        defaultBranch: 'main',
-        topics: ['test'],
-        language: 'TypeScript',
-      },
-    };
-
-    it('should successfully add a new repository with valid details', async () => {
-      // Arrange
+    it('should successfully add a private repository with valid details', async () => {
+      const validDetails = createMockDetails();
       const hashedToken = 'hashed-token';
       const repoMetadata = {
         isPrivate: true,
@@ -91,49 +97,108 @@ describe('RepositoryManagementService', () => {
 
       mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue(repoMetadata);
       mockBcryptService.hash.mockResolvedValue(hashedToken);
-      mockRepository.create.mockResolvedValue({
-        ...validDetails,
-        id: 'test-id',
-        fullName: `${validDetails.owner}/${validDetails.name}`,
-        updatedAt: expect.any(Date),
-        credentials: {
-          ...validDetails.credentials,
-          value: hashedToken,
-        },
-      });
+      mockRepository.create.mockResolvedValue(
+        createMockRepositoryItem({
+          id: 'test-id',
+          owner: validDetails.owner,
+          name: validDetails.name,
+          fullName: `${validDetails.owner}/${validDetails.name}`,
+          status: validDetails.status,
+          credentials: { type: 'token', value: hashedToken },
+          settings: {
+            syncEnabled: true,
+            branchPatterns: ['*'],
+            labelPatterns: ['*'],
+            syncInterval: 3600,
+          },
+          metadata: {
+            isPrivate: true,
+            defaultBranch: 'main',
+            description: '',
+            topics: [],
+            language: 'TypeScript',
+          },
+        }),
+      );
 
-      // Act
       const result = await service.addRepository(validDetails);
 
-      // Assert
-      expect(result).toBeDefined();
       expect(result.id).toBe('test-id');
-      expect(result.fullName).toBe(
-        `${validDetails.owner}/${validDetails.name}`,
-      );
-      expect(result.updatedAt).toBeDefined();
+      expect(result.credentials?.value).toBe('[REDACTED]');
       expect(mockBcryptService.hash).toHaveBeenCalledWith('test-token', 10);
-      expect(mockGitHubAdapter.getRepositoryMetadata).toHaveBeenCalledWith({
-        owner: validDetails.owner,
-        name: validDetails.name,
-        token: 'test-token', // CHANGED: Expect raw token since we validate before hashing
-      });
       expect(mockLogger.info).toHaveBeenCalledWith('Adding new repository', {
         owner: validDetails.owner,
         name: validDetails.name,
       });
     });
 
-    it('should create repository with default metadata if validation returns null', async () => {
-      // Arrange
-      const hashedToken = 'hashed-token';
+    it('should reject adding a public repository', async () => {
+      const publicDetails = createMockDetails();
+      const publicMetadata = {
+        isPrivate: false,
+        description: 'Public repo',
+        defaultBranch: 'main',
+        topics: [],
+        primaryLanguage: 'TypeScript',
+      };
+
+      mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue(publicMetadata);
+
+      await expect(service.addRepository(publicDetails)).rejects.toThrow(
+        new ValidationError('Only private repositories are supported'),
+      );
+    });
+
+    it('should handle GitHub API failures gracefully', async () => {
+      const details = createMockDetails();
+      mockGitHubAdapter.getRepositoryMetadata.mockRejectedValue(
+        new Error('API Error'),
+      );
+      mockBcryptService.hash.mockResolvedValue('hashed-token');
+      mockRepository.create.mockResolvedValue(
+        createMockRepositoryItem({
+          id: 'test-id',
+          owner: details.owner,
+          name: details.name,
+          fullName: `${details.owner}/${details.name}`,
+          status: details.status,
+          settings: {
+            syncEnabled: true,
+            branchPatterns: ['*'],
+            labelPatterns: ['*'],
+            syncInterval: 3600,
+          },
+          metadata: {
+            isPrivate: true,
+            defaultBranch: 'main',
+            description: '',
+            topics: [],
+            language: 'unknown',
+          },
+        }),
+      );
+
+      const result = await service.addRepository(details);
+
+      expect(result.id).toBe('test-id');
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to fetch GitHub metadata, using defaults',
+        expect.any(Object),
+      );
+    });
+
+    it('should use default metadata when GitHub API returns null', async () => {
+      const details = createMockDetails();
       mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue(null);
-      mockBcryptService.hash.mockResolvedValue(hashedToken);
-      mockRepository.create.mockResolvedValue({
-        ...validDetails,
+      mockBcryptService.hash.mockResolvedValue('hashed-token');
+
+      const expectedRepo = createMockRepositoryItem({
         id: 'test-id',
-        fullName: `${validDetails.owner}/${validDetails.name}`,
-        updatedAt: expect.any(Date),
+        owner: details.owner,
+        name: details.name,
+        fullName: `${details.owner}/${details.name}`,
+        status: details.status,
+        credentials: { type: 'token', value: 'hashed-token' },
         metadata: {
           isPrivate: true,
           defaultBranch: 'main',
@@ -141,13 +206,17 @@ describe('RepositoryManagementService', () => {
           topics: [],
           language: 'unknown',
         },
+        settings: {
+          syncEnabled: true,
+          branchPatterns: ['*'],
+          labelPatterns: ['*'],
+          syncInterval: 3600,
+        },
       });
+      mockRepository.create.mockResolvedValue(expectedRepo);
 
-      // Act
-      const result = await service.addRepository(validDetails);
+      const result = await service.addRepository(details);
 
-      // Assert
-      expect(result).toBeDefined();
       expect(result.metadata).toEqual({
         isPrivate: true,
         defaultBranch: 'main',
@@ -155,322 +224,47 @@ describe('RepositoryManagementService', () => {
         topics: [],
         language: 'unknown',
       });
-    });
-
-    it('should hash credentials value when provided', async () => {
-      // Arrange
-      const hashedToken = 'hashed-token';
-      mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue({
-        isPrivate: true,
-        defaultBranch: 'main',
-        description: '',
-        topics: [],
-      });
-      mockBcryptService.hash.mockResolvedValue(hashedToken);
-      mockRepository.create.mockResolvedValue({
-        ...validDetails,
-        id: 'test-id',
-        credentials: {
-          type: 'token',
-          value: hashedToken,
-        },
-        fullName: `${validDetails.owner}/${validDetails.name}`,
-        updatedAt: expect.any(Date),
-      });
-
-      // Act
-      await service.addRepository(validDetails);
-
-      // Assert
-      expect(mockBcryptService.hash).toHaveBeenCalledWith(
-        validDetails.credentials!.value,
-        10,
-      );
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          credentials: {
-            type: 'token',
-            value: hashedToken,
-          },
-        }),
-      );
-    });
-  });
-
-  describe('removeRepository', () => {
-    it('should archive a repository instead of deleting it', async () => {
-      // Arrange
-      const repoId = 'test-id';
-      const mockRepo: IRepository = {
-        id: repoId,
-        owner: 'testorg',
-        name: 'testrepo',
-        fullName: 'testorg/testrepo',
-        status: RepositoryStatus.ACTIVE,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const archivedRepo: IRepository = {
-        ...mockRepo,
-        status: RepositoryStatus.ARCHIVED,
-        updatedAt: new Date(), // Update the timestamp for the archive action
-      };
-
-      mockRepository.findById.mockResolvedValue(mockRepo);
-      mockRepository.markAsArchived.mockResolvedValue(archivedRepo);
-
-      // Act
-      await service.removeRepository(repoId);
-
-      // Assert
-      expect(mockRepository.markAsArchived).toHaveBeenCalledWith(repoId);
-      expect(mockLogger.info).toHaveBeenCalledWith('Removing repository', {
-        repoId,
-      });
-    });
-
-    it('should throw NotFoundError if repository does not exist', async () => {
-      // Arrange
-      mockRepository.findById.mockResolvedValue(null);
-
-      // Act & Assert
-      await expect(service.removeRepository('non-existent')).rejects.toThrow(
-        NotFoundError,
-      );
-    });
-  });
-
-  describe('getRepository', () => {
-    it('should return repository details with redacted credentials', async () => {
-      // Arrange
-      const repoId = 'test-id';
-      const repo: IRepository = {
-        id: repoId,
-        owner: 'testorg',
-        name: 'testrepo',
-        fullName: 'testorg/testrepo',
-        status: RepositoryStatus.ACTIVE,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        credentials: {
-          type: 'token',
-          value: 'secret-token',
-        },
-      };
-      mockRepository.findById.mockResolvedValue(repo);
-
-      // Act
-      const result = await service.getRepository(repoId);
-
-      // Assert
-      expect(result).toBeDefined();
-      expect(result.credentials).toBeDefined();
-      if (result.credentials) {
-        // Type guard
-        expect(result.credentials.value).toBe('[REDACTED]');
-      } else {
-        fail('Expected credentials to be defined');
-      }
-    });
-
-    it('should handle repository without credentials', async () => {
-      // Arrange
-      const repoId = 'test-id';
-      const repo: IRepository = {
-        id: repoId,
-        owner: 'testorg',
-        name: 'testrepo',
-        fullName: 'testorg/testrepo',
-        status: RepositoryStatus.ACTIVE,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      mockRepository.findById.mockResolvedValue(repo);
-
-      // Act
-      const result = await service.getRepository(repoId);
-
-      // Assert
-      expect(result).toBeDefined();
-      expect(result.credentials).toBeUndefined();
-    });
-
-    it('should throw NotFoundError for non-existent repository', async () => {
-      // Arrange
-      mockRepository.findById.mockResolvedValue(null);
-
-      // Act & Assert
-      await expect(service.getRepository('non-existent')).rejects.toThrow(
-        NotFoundError,
-      );
-    });
-  });
-
-  describe('listRepositories', () => {
-    it('should return paginated list of repositories with redacted credentials', async () => {
-      // Arrange
-      const repositories = {
-        items: [
-          {
-            id: '1',
-            owner: 'testorg',
-            name: 'repo1',
-            fullName: 'testorg/repo1',
-            status: RepositoryStatus.ACTIVE,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            credentials: { type: 'token' as const, value: 'secret1' },
-          },
-          {
-            id: '2',
-            owner: 'testorg',
-            name: 'repo2',
-            fullName: 'testorg/repo2',
-            status: RepositoryStatus.ACTIVE,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            credentials: { type: 'token' as const, value: 'secret2' },
-          },
-        ],
-        total: 2,
-        page: 0,
-        pageSize: 10,
-        hasMore: false,
-      };
-      mockRepository.findAll.mockResolvedValue(repositories);
-
-      // Act
-      const result = await service.listRepositories();
-
-      // Assert
-      expect(result.items).toHaveLength(2);
-      result.items.forEach((item, index) => {
-        expect(item.credentials).toBeDefined();
-        if (item.credentials) {
-          expect(item.credentials.value).toBe('[REDACTED]');
-        } else {
-          fail(`Expected credentials to be defined for item ${index}`);
-        }
-      });
-    });
-
-    it('should apply filters correctly', async () => {
-      // Arrange
-      const filters = {
-        items: [],
-        status: RepositoryStatus.ACTIVE,
-        owner: 'testorg',
-        page: 0,
-        pageSize: 10,
-        hasMore: false,
-      };
-
-      // Act
-      await service.listRepositories(filters);
-
-      // Assert
-      expect(mockRepository.findAll).toHaveBeenCalledWith(filters);
-    });
-  });
-
-  describe('updateRepositoryStatus', () => {
-    it('should update repository status', async () => {
-      // Arrange
-      const repoId = 'test-id';
-      const repo: IRepository = {
-        id: repoId,
-        owner: 'testorg',
-        name: 'testrepo',
-        fullName: 'testorg/testrepo',
-        status: RepositoryStatus.ACTIVE,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      mockRepository.findById.mockResolvedValue(repo);
-      mockRepository.update.mockResolvedValue({
-        ...repo,
-        status: RepositoryStatus.INACTIVE,
-      });
-
-      // Act
-      const result = await service.updateRepositoryStatus(
-        repoId,
-        RepositoryStatus.INACTIVE,
-      );
-
-      // Assert
-      expect(result.status).toBe(RepositoryStatus.INACTIVE);
-      expect(mockRepository.update).toHaveBeenCalledWith(
-        repoId,
-        expect.objectContaining({
-          status: RepositoryStatus.INACTIVE,
-          updatedAt: expect.any(Date),
-        }),
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'GitHub returned null metadata, using defaults',
+        expect.any(Object),
       );
     });
 
-    it('should throw NotFoundError for non-existent repository', async () => {
-      // Arrange
-      mockRepository.findById.mockResolvedValue(null);
-
-      // Act & Assert
-      await expect(
-        service.updateRepositoryStatus(
-          'non-existent',
-          RepositoryStatus.INACTIVE,
-        ),
-      ).rejects.toThrow(NotFoundError);
-    });
-  });
-
-  describe('validateRepository', () => {
-    const validDetails = {
-      owner: 'testorg',
-      name: 'testrepo',
-      credentials: {
-        type: 'token' as const,
-        value: 'test-token',
-      },
-      status: RepositoryStatus.ACTIVE,
-      createdAt: new Date(),
-      metadata: {
-        isPrivate: true,
-        description: 'Test repository',
-        defaultBranch: 'main',
-        topics: ['test'],
-        language: 'TypeScript',
-      },
-    };
-
-    it('should return details with default metadata for invalid repository', async () => {
-      // Arrange
-      mockGitHubAdapter.getRepositoryMetadata.mockResolvedValue(null);
-
-      // Act
-      const result = await service.validateRepository(validDetails);
-
-      // Assert
-      expect(result.metadata).toEqual({
-        isPrivate: true,
-        defaultBranch: 'main',
-        description: '',
-        topics: [],
-        language: 'unknown',
-      });
-      expect(mockLogger.warn).toHaveBeenCalled(); // Changed from error to warn
-    });
-
-    it('should return details with default metadata when validation throws', async () => {
-      // Arrange
+    it('should use default metadata when GitHub API fails', async () => {
+      const details = createMockDetails();
       mockGitHubAdapter.getRepositoryMetadata.mockRejectedValue(
         new Error('API Error'),
       );
+      mockBcryptService.hash.mockResolvedValue('hashed-token');
 
-      // Act
-      const result = await service.validateRepository(validDetails);
+      const now = new Date();
+      const expectedRepo = createMockRepositoryItem({
+        id: 'test-id',
+        owner: details.owner,
+        name: details.name,
+        fullName: `${details.owner}/${details.name}`,
+        status: details.status,
+        createdAt: now,
+        updatedAt: now,
+        credentials: { type: 'token', value: 'hashed-token' },
+        metadata: {
+          isPrivate: true,
+          defaultBranch: 'main',
+          description: '',
+          topics: [],
+          language: 'unknown',
+        },
+        settings: {
+          syncEnabled: true,
+          branchPatterns: ['*'],
+          labelPatterns: ['*'],
+          syncInterval: 3600,
+        },
+      });
+      mockRepository.create.mockResolvedValue(expectedRepo);
 
-      // Assert
+      const result = await service.addRepository(details);
+
       expect(result.metadata).toEqual({
         isPrivate: true,
         defaultBranch: 'main',
@@ -482,6 +276,246 @@ describe('RepositoryManagementService', () => {
         'Failed to fetch GitHub metadata, using defaults',
         expect.any(Object),
       );
+    });
+
+    it('should validate required fields', async () => {
+      const invalidDetails = createMockDetails({
+        owner: '', // Invalid empty owner
+        name: '  ', // Invalid empty name
+      });
+
+      await expect(service.addRepository(invalidDetails)).rejects.toThrow(
+        'Owner and name are required and cannot be empty',
+      );
+    });
+  });
+
+  describe('removeRepository', () => {
+    it('should archive repository and update settings', async () => {
+      const repoId = 'test-id';
+      const mockRepo = createMockRepositoryItem({
+        id: repoId,
+        settings: {
+          syncEnabled: true,
+          branchPatterns: ['develop'],
+          labelPatterns: ['bug'],
+          syncInterval: 3600,
+        },
+      });
+
+      mockRepository.findById.mockResolvedValue(mockRepo);
+      mockRepository.markAsArchived.mockResolvedValue({
+        ...mockRepo,
+        status: RepositoryStatus.ARCHIVED,
+      });
+
+      await service.removeRepository(repoId);
+
+      expect(mockRepository.markAsArchived).toHaveBeenCalledWith(repoId);
+      expect(mockLogger.info).toHaveBeenCalledWith('Archiving repository', {
+        repoId,
+      });
+    });
+
+    it('should handle repository not found error', async () => {
+      mockRepository.findById.mockResolvedValue(null);
+
+      await expect(service.removeRepository('non-existent')).rejects.toThrow(
+        NotFoundError,
+      );
+      expect(mockRepository.markAsArchived).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getRepository', () => {
+    it('should return repository with redacted credentials', async () => {
+      const repoId = 'test-id';
+      const repo = createMockRepositoryItem({
+        id: repoId,
+        credentials: { type: 'token', value: 'secret-token' },
+      });
+
+      mockRepository.findById.mockResolvedValue(repo);
+
+      const result = await service.getRepository(repoId);
+
+      expect(result.credentials?.value).toBe('[REDACTED]');
+      expect(result.id).toBe(repoId);
+    });
+
+    it('should properly redact credentials when getting repository', async () => {
+      const repoId = 'test-id';
+      const now = new Date();
+      const repo = {
+        id: repoId,
+        owner: 'testorg',
+        name: 'testrepo',
+        fullName: 'testorg/testrepo',
+        status: RepositoryStatus.ACTIVE,
+        createdAt: now,
+        updatedAt: now,
+        credentials: {
+          type: 'token',
+          value: 'secret-token',
+          lastValidated: now,
+        },
+        settings: {
+          syncEnabled: true,
+          branchPatterns: ['*'],
+          labelPatterns: ['*'],
+          syncInterval: 3600,
+        },
+        metadata: {
+          isPrivate: true,
+          defaultBranch: 'main',
+          description: '',
+          topics: [],
+          language: 'TypeScript',
+        },
+      } as IRepository;
+
+      mockRepository.findById.mockResolvedValue(repo);
+
+      const result = await service.getRepository(repoId);
+
+      expect(result.credentials.value).toBe('[REDACTED]');
+      expect(result.credentials.type).toBe('token');
+      expect(result.credentials.lastValidated).toBe(now);
+    });
+  });
+
+  describe('listRepositories', () => {
+    it('should return paginated list with redacted credentials', async () => {
+      const repos = {
+        items: [
+          createMockRepositoryItem({
+            id: '1',
+            credentials: { type: 'token', value: 'secret1' },
+          }),
+          createMockRepositoryItem({
+            id: '2',
+            credentials: { type: 'token', value: 'secret2' },
+          }),
+        ],
+        total: 2,
+        page: 0,
+        pageSize: 10,
+        hasMore: false,
+      };
+
+      mockRepository.findAll.mockResolvedValue(repos);
+
+      const result = await service.listRepositories();
+
+      expect(result.items).toHaveLength(2);
+      result.items.forEach(item => {
+        expect(item.credentials?.value).toBe('[REDACTED]');
+      });
+    });
+
+    it('should apply complex filters correctly', async () => {
+      const filters = {
+        status: [RepositoryStatus.ACTIVE, RepositoryStatus.INACTIVE],
+        owner: 'testorg',
+        search: 'test',
+        syncEnabled: true,
+        page: 1,
+        pageSize: 20,
+      };
+
+      await service.listRepositories(filters);
+
+      expect(mockRepository.findAll).toHaveBeenCalledWith(filters);
+    });
+  });
+
+  describe('updateRepositoryStatus', () => {
+    it('should update status and preserve other fields', async () => {
+      const repoId = 'test-id';
+      const repo = createMockRepositoryItem({
+        id: repoId,
+        status: RepositoryStatus.ACTIVE,
+      });
+
+      mockRepository.findById.mockResolvedValue(repo);
+      mockRepository.update.mockResolvedValue({
+        ...repo,
+        status: RepositoryStatus.INACTIVE,
+      });
+
+      const result = await service.updateRepositoryStatus(
+        repoId,
+        RepositoryStatus.INACTIVE,
+      );
+
+      expect(result.status).toBe(RepositoryStatus.INACTIVE);
+      expect(mockRepository.update).toHaveBeenCalledWith(
+        repoId,
+        expect.objectContaining({
+          status: RepositoryStatus.INACTIVE,
+          updatedAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it('should validate status value', async () => {
+      await expect(
+        service.updateRepositoryStatus(
+          'test-id',
+          'invalid-status' as RepositoryStatus,
+        ),
+      ).rejects.toThrow(ValidationError);
+    });
+  });
+
+  describe('updateRepositorySettings', () => {
+    it('should merge new settings with existing ones', async () => {
+      const repoId = 'test-id';
+      const existingRepo = createMockRepositoryItem({
+        id: repoId,
+        settings: {
+          syncEnabled: true,
+          branchPatterns: ['main'],
+          labelPatterns: ['bug'],
+          syncInterval: 3600,
+        },
+      });
+
+      const newSettings: Partial<IRepositorySettings> = {
+        syncEnabled: false,
+        branchPatterns: ['develop'],
+      };
+
+      mockRepository.findById.mockResolvedValue(existingRepo);
+      mockRepository.update.mockResolvedValue({
+        ...existingRepo,
+        settings: {
+          ...existingRepo.settings,
+          ...newSettings,
+        },
+      });
+
+      const result = await service.updateRepositorySettings(
+        repoId,
+        newSettings,
+      );
+
+      expect(result.settings).toEqual({
+        syncEnabled: false,
+        branchPatterns: ['develop'],
+        labelPatterns: ['bug'],
+        syncInterval: 3600,
+      });
+    });
+
+    it('should handle missing repository error', async () => {
+      mockRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.updateRepositorySettings('non-existent', {
+          syncEnabled: false,
+        }),
+      ).rejects.toThrow(NotFoundError);
     });
   });
 });

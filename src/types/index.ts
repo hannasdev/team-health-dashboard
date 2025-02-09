@@ -2,7 +2,11 @@
 
 import { Model } from 'mongoose';
 
-import { IGoogleSheetsMetric, IGitHubPullRequest } from '../interfaces';
+import {
+  IGoogleSheetsMetric,
+  IGitHubPullRequest,
+  IRepository,
+} from '../interfaces';
 
 export type ProgressCallback = (
   current: number,
@@ -31,3 +35,4 @@ export enum HeaderValues {
 
 export type GoogleSheetsMetricModel = Model<IGoogleSheetsMetric>;
 export type GitHubPullRequestModel = Model<IGitHubPullRequest>;
+export type RepositoryModel = Model<IRepository>;

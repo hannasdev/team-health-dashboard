@@ -1,3 +1,33 @@
+export interface IRepositoryCredentials {
+  type: 'token' | 'oauth';
+  value: string;
+  lastValidated?: Date;
+}
+
+export interface IRepositorySettings {
+  syncEnabled: boolean;
+  branchPatterns: string[];
+  labelPatterns: string[];
+  syncInterval?: number;
+}
+
+export interface IRepositoryMetadata {
+  isPrivate: boolean;
+  defaultBranch: string;
+  description?: string;
+  topics?: string[];
+  language?: string;
+}
+
+export interface IRepositoryDetails {
+  owner: string;
+  name: string;
+  credentials: IRepositoryCredentials;
+  settings?: Partial<IRepositorySettings>;
+  metadata?: Partial<IRepositoryMetadata>;
+  status?: RepositoryStatus;
+}
+
 // Enum for repository status to ensure type safety
 export enum RepositoryStatus {
   ACTIVE = 'active',
@@ -7,32 +37,13 @@ export enum RepositoryStatus {
   VALIDATION_FAILED = 'validation_failed',
 }
 
-// Main repository interface
-export interface IRepository {
+// Main repository interfaceexport interface IRepository extends IRepositoryDetails {
+export interface IRepository extends IRepositoryDetails {
   id: string;
-  owner: string;
-  name: string;
-  fullName: string; // Computed as `${owner}/${name}`
-  credentials?: {
-    type: 'token' | 'oauth';
-    value: string; // Encrypted
-    lastValidated?: Date;
-  };
-  status: RepositoryStatus;
+  fullName: string;
   createdAt: Date;
   updatedAt: Date;
   lastSyncAt?: Date;
-  metadata?: {
-    isPrivate: boolean;
-    description?: string;
-    defaultBranch: string;
-    topics?: string[];
-    language?: string;
-  };
-  settings?: {
-    syncEnabled: boolean;
-    syncInterval?: number; // in minutes
-    branchPatterns?: string[]; // Patterns for branches to include/exclude
-    labelPatterns?: string[]; // Patterns for labels to include/exclude
-  };
+  settings: IRepositorySettings;
+  metadata: IRepositoryMetadata;
 }

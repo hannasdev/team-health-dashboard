@@ -6,7 +6,7 @@ export function createMockRepositoryManagementService(): jest.Mocked<IRepository
     removeRepository: jest.fn(),
     getRepository: jest.fn(),
     listRepositories: jest.fn(),
-    validateRepository: jest.fn(),
     updateRepositoryStatus: jest.fn(),
+    updateRepositorySettings: jest.fn(),
   };
 }

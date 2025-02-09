@@ -9,7 +9,7 @@
  */
 
 import { Container } from 'inversify';
-import mongoose from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 
 import { container as appContainer } from './appContainer.js';
 import { ApiResponse } from './cross-cutting/ApiResponse/ApiResponse.js';
@@ -26,7 +26,6 @@ import { MongoAdapter } from './data/adapters/MongoAdapter/MongoAdapter.js';
 import { GitHubMetricModel } from './data/models/GitHubMetric.js';
 import { GitHubPullRequest } from './data/models/GitHubPullRequest.js';
 import { GoogleSheetsMetric } from './data/models/GoogleSheetsMetric.js';
-import { Repository } from './data/models/Repository.js';
 import { User } from './data/models/User.js';
 import { GitHubRepository } from './data/repositories/GitHubRepository/GitHubRepository.js';
 import { GoogleSheetsRepository } from './data/repositories/GoogleSheetsRepository/GoogleSheetsRepository.js';
@@ -58,6 +57,7 @@ import TokenBlacklistService from './services/TokenBlacklistService/index.js';
 import { TokenService } from './services/TokenService/index.js';
 import { UserService } from './services/UserService/UserService.js';
 import { TeamHealthDashboardApp } from './TeamHealthDashboardApp.js';
+import { Repository } from './data/models/Repository.js';
 import { TYPES } from './utils/types.js';
 
 import type {
@@ -106,6 +106,7 @@ import type {
   IRepositoryManagementService,
   IRepositoryController,
   IRepositoryRepository,
+  IRepositoryDocument,
 } from './interfaces/index.js';
 
 const config = Config.getInstance();
@@ -158,8 +159,16 @@ export function setupContainer(
    * !3. Adapters (Clients for external services)
    */
   container
+    .bind<Model<IRepositoryDocument>>(TYPES.RepositoryModel)
+    .toConstantValue(Repository);
+  container
     .bind<IMongoAdapter<IRepository>>(TYPES.MongoAdapter)
-    .to(MongoAdapter);
+    .to(MongoAdapter)
+    .inSingletonScope()
+    .onActivation((context, adapter) => {
+      adapter.setModel(context.container.get(TYPES.RepositoryModel));
+      return adapter;
+    });
   container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
   container
     .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
@@ -186,11 +195,9 @@ export function setupContainer(
     .bind<IGitHubRepository>(TYPES.GitHubRepository)
     .to(GitHubRepository);
   container
-    .bind<mongoose.Model<IRepository>>(TYPES.RepositoryModel)
-    .toConstantValue(Repository);
-  container
     .bind<IRepositoryRepository>(TYPES.RepositoryRepository)
-    .to(RepositoryRepository);
+    .to(RepositoryRepository)
+    .inSingletonScope();
 
   /**
    * !5. Metric Calculation (Can depend on repositories and other services)

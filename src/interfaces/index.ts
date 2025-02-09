@@ -13,7 +13,7 @@ export type { IEnhancedRequest } from './IEnhancedRequest.js';
 export type { IEnhancedResponse } from './IEnhancedResponse.js';
 export type { IErrorHandler } from './IErrorHandler.js';
 export type { IFetchDataResult } from './IFetchDataResult.js';
-export type { IGitHubClient, IRepositoryMetadata } from './IGitHubClient.js';
+export type { IGitHubClient } from './IGitHubClient.js';
 export type { IGitHubMetricDocument } from './IGitHubMetricDocument.js';
 export type { IGitHubPullRequest } from './IGitHubPullRequest.js';
 export type { IGitHubRepository } from './IGitHubRepository.js';
@@ -42,13 +42,20 @@ export type { IProgressTracker } from './IProgressTracker.js';
 export type { IPullRequest } from './IPullRequest.js';
 export type { IRateLimitConfig } from './IRateLimitConfig.js';
 export type { IRateLimitMiddleware } from './IRateLimitMiddleware.js';
-export type { IRepository } from './IRepository.js';
-export type { IRepositoryDetails } from './IRepositoryDetails.js';
+export type {
+  IRepository,
+  IRepositoryCredentials,
+  IRepositorySettings,
+  IRepositoryMetadata,
+  IRepositoryDetails,
+} from './IRepository.js';
 export type { IRepositoryFilters } from './IRepositoryFilters.js';
 export type { IRepositoryManagementService } from './IRepositoryManagementService';
 export type { IRepositoryPaginatedResponse } from './IRepositoryPaginatedResponse.js';
 export type { IRepositoryRepository } from './IRepositoryRepository.js';
 export type { IRepositoryController } from './IRepositoryController.js';
+export type { IRepositoryDocument } from './IRepositoryDocument.js';
+export type { IRepositoryDocumentData } from './IRepositoryDocumentData.js';
 export type { ISecurityEvent } from './ISecurityEvent.js';
 export type { ISecurityHeadersConfig } from './ISecurityHeadersConfig.js';
 export type { ISecurityHeadersMiddleware } from './ISecurityHeadersMiddleware.js';

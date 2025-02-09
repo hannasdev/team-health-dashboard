@@ -1,7 +1,7 @@
 // src/data/repositories/RepositoryRepository/RepositoryRepository.ts
 import { injectable, inject } from 'inversify';
-import mongoose from 'mongoose';
 
+import mongoose from 'mongoose';
 import { RepositoryStatus } from '../../../interfaces/index.js';
 import { TYPES } from '../../../utils/types.js';
 
@@ -13,6 +13,7 @@ import type {
   ILogger,
   IRepositoryRepository,
   IRepositoryDetails,
+  IMongoAdapter,
 } from '../../../interfaces/index.js';
 
 @injectable()
@@ -20,8 +21,8 @@ export class RepositoryRepository implements IRepositoryRepository {
   private readonly CACHE_TTL = 300; // 5 minutes
 
   constructor(
-    @inject(TYPES.RepositoryModel)
-    private readonly model: mongoose.Model<IRepository>,
+    @inject(TYPES.MongoAdapter)
+    private readonly mongoAdapter: IMongoAdapter<IRepository>,
     @inject(TYPES.CacheService)
     private readonly cacheService: ICacheService,
     @inject(TYPES.Logger)
@@ -29,20 +30,14 @@ export class RepositoryRepository implements IRepositoryRepository {
   ) {}
 
   public async create(details: IRepositoryDetails): Promise<IRepository> {
-    const repository = new this.model({
-      ...details,
-      fullName: `${details.owner}/${details.name}`,
-      updatedAt: new Date(),
-      settings: {
-        syncEnabled: true,
-        branchPatterns: ['*'],
-        labelPatterns: ['*'],
-      },
-    });
-
-    const created = await repository.save();
-    await this.cacheService.delete('repositories:all');
-    return created;
+    try {
+      const created = await this.mongoAdapter.create(details);
+      await this.cacheService.delete('repositories:all');
+      return created;
+    } catch (error) {
+      this.logger.error('Error creating repository:', error as Error);
+      throw error;
+    }
   }
 
   public async findById(id: string): Promise<IRepository | null> {
@@ -53,13 +48,14 @@ export class RepositoryRepository implements IRepositoryRepository {
       return cached;
     }
 
-    const repository = await this.model.findById(id).lean();
+    const repository = await this.mongoAdapter.findById(id);
 
     if (repository) {
       await this.cacheService.set(cacheKey, repository, this.CACHE_TTL);
+      return repository;
     }
 
-    return repository;
+    return null;
   }
 
   public async findAll(
@@ -71,10 +67,12 @@ export class RepositoryRepository implements IRepositoryRepository {
     const skip = (filters?.page ?? 0) * (filters?.pageSize ?? 10);
     const limit = filters?.pageSize ?? 10;
 
-    const [total, items] = await Promise.all([
-      this.model.countDocuments(query),
-      this.model.find(query).sort(sort).skip(skip).limit(limit).lean(),
-    ]);
+    const { items, total } = await this.mongoAdapter.findAll(
+      query,
+      sort,
+      skip,
+      limit,
+    );
 
     return {
       items,
@@ -89,16 +87,7 @@ export class RepositoryRepository implements IRepositoryRepository {
     id: string,
     updates: Partial<IRepository>,
   ): Promise<IRepository> {
-    const updated = await this.model.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          ...updates,
-          updatedAt: new Date(),
-        },
-      },
-      { new: true, lean: true },
-    );
+    const updated = await this.mongoAdapter.update(id, updates);
 
     if (!updated) {
       throw new Error('Repository not found');
@@ -119,9 +108,18 @@ export class RepositoryRepository implements IRepositoryRepository {
   }
 
   public async markAsArchived(id: string): Promise<IRepository> {
+    // Get the current repository to preserve existing settings
+    const currentRepo = await this.findById(id);
+    if (!currentRepo) {
+      throw new Error('Repository not found');
+    }
+
     return this.update(id, {
       status: RepositoryStatus.ARCHIVED,
-      settings: { syncEnabled: false },
+      settings: {
+        ...currentRepo.settings, // Preserve existing settings
+        syncEnabled: false, // Only update what we need
+      },
     });
   }
 

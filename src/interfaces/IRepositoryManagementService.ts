@@ -4,6 +4,7 @@ import type {
   IRepositoryFilters,
   RepositoryStatus,
   IRepositoryPaginatedResponse,
+  IRepositorySettings,
 } from './index.js';
 
 export interface IRepositoryManagementService {
@@ -13,9 +14,12 @@ export interface IRepositoryManagementService {
   listRepositories(
     filters?: IRepositoryFilters,
   ): Promise<IRepositoryPaginatedResponse>;
-  validateRepository(details: IRepositoryDetails): Promise<IRepositoryDetails>;
   updateRepositoryStatus(
     repoId: string,
     status: RepositoryStatus,
+  ): Promise<IRepository>;
+  updateRepositorySettings(
+    repoId: string,
+    settings: Partial<IRepositorySettings>,
   ): Promise<IRepository>;
 }

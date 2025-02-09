@@ -10,7 +10,6 @@ import { TYPES } from '../../utils/types.js';
 
 import type {
   IRepository,
-  IRepositoryDetails,
   IRepositoryFilters,
   IBcryptService,
   ILogger,
@@ -18,6 +17,8 @@ import type {
   IGitHubClient,
   IRepositoryManagementService,
   IRepositoryPaginatedResponse,
+  IRepositoryDetails,
+  IRepositorySettings,
 } from '../../interfaces/index.js';
 @injectable()
 export class RepositoryManagementService
@@ -43,28 +44,37 @@ export class RepositoryManagementService
         name: details.name,
       });
 
+      // Validate and enrich repository details
       const validatedDetails = await this.validateRepository(details);
 
-      if (!validatedDetails.metadata || !validatedDetails.metadata.isPrivate) {
-        const error = new ValidationError('Repository validation failed');
-        this.logger.error('Repository validation failed', error);
-        throw error;
+      // Ensure repository is private for security
+      if (!validatedDetails.metadata?.isPrivate) {
+        throw new ValidationError('Only private repositories are supported');
       }
 
-      if (validatedDetails.credentials) {
-        // Hash the credentials value for secure storage
-        const hashedValue = await this.bcryptService.hash(
+      // Process credentials if provided
+      if (validatedDetails.credentials?.value) {
+        validatedDetails.credentials.value = await this.bcryptService.hash(
           validatedDetails.credentials.value,
           10,
         );
-        validatedDetails.credentials.value = hashedValue;
       }
 
-      const repository = await this.repositoryRepo.create(validatedDetails);
+      // Ensure all required fields are present
+      const repositoryToCreate: IRepositoryDetails = {
+        ...validatedDetails,
+        status: validatedDetails.status || RepositoryStatus.ACTIVE,
+        settings: this.getDefaultSettings(validatedDetails.settings),
+      };
+
+      const repository = await this.repositoryRepo.create(repositoryToCreate);
+
       this.logger.info('Repository created successfully', {
         id: repository.id,
+        fullName: repository.fullName,
       });
-      return repository;
+
+      return this.redactCredentials(repository);
     } catch (error) {
       this.logger.error('Error creating repository:', error as Error);
       if (error instanceof ValidationError) {
@@ -75,33 +85,31 @@ export class RepositoryManagementService
   }
 
   public async removeRepository(repoId: string): Promise<void> {
-    this.logger.info('Removing repository', { repoId });
+    try {
+      this.logger.info('Archiving repository', { repoId });
 
-    const repository = await this.repositoryRepo.findById(repoId);
-    if (!repository) {
-      throw new NotFoundError('Repository not found');
+      const repository = await this.getRepositoryOrThrow(repoId);
+
+      // Archive instead of delete
+      await this.repositoryRepo.markAsArchived(repository.id);
+
+      this.logger.info('Repository archived successfully', {
+        id: repository.id,
+        fullName: repository.fullName,
+      });
+    } catch (error) {
+      this.logger.error('Error archiving repository:', error as Error);
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      throw new AppError(500, 'Failed to archive repository');
     }
-
-    // Archive instead of delete to preserve historical data
-    await this.repositoryRepo.markAsArchived(repoId);
   }
 
   public async getRepository(repoId: string): Promise<IRepository> {
     try {
-      const repository = await this.repositoryRepo.findById(repoId);
-      if (!repository) {
-        throw new NotFoundError('Repository not found');
-      }
-
-      // Don't return credential values
-      if (repository.credentials) {
-        repository.credentials = {
-          ...repository.credentials,
-          value: '[REDACTED]',
-        };
-      }
-
-      return repository;
+      const repository = await this.getRepositoryOrThrow(repoId);
+      return this.redactCredentials(repository);
     } catch (error) {
       this.logger.error('Error fetching repository:', error as Error);
       if (error instanceof NotFoundError) {
@@ -114,90 +122,15 @@ export class RepositoryManagementService
   public async listRepositories(
     filters?: IRepositoryFilters,
   ): Promise<IRepositoryPaginatedResponse> {
-    const result = await this.repositoryRepo.findAll(filters);
-
-    // Redact credential values in the response
-    result.items = result.items.map(repo => {
-      if (repo.credentials) {
-        return {
-          ...repo,
-          credentials: {
-            ...repo.credentials,
-            value: '[REDACTED]',
-          },
-        };
-      }
-      return repo;
-    });
-
-    return result;
-  }
-
-  public async validateRepository(
-    details: IRepositoryDetails,
-  ): Promise<IRepositoryDetails> {
     try {
-      this.logger.info('Validating repository', {
-        owner: details.owner,
-        name: details.name,
-      });
-
-      // Validate required fields
-      if (!details.owner?.trim() || !details.name?.trim()) {
-        throw new ValidationError(
-          'Owner and name are required and cannot be empty',
-        );
-      }
-
-      // Set default metadata
-      const defaultMetadata = {
-        isPrivate: true,
-        defaultBranch: 'main',
-        description: '',
-        topics: [] as string[],
-        language: 'unknown',
-      };
-
-      // Try to fetch metadata but don't fail if unavailable
-      let metadata = defaultMetadata;
-
-      try {
-        const githubMetadata = await this.githubAdapter.getRepositoryMetadata({
-          owner: details.owner,
-          name: details.name,
-          token: details.credentials?.value,
-        });
-
-        if (githubMetadata) {
-          metadata = {
-            isPrivate: githubMetadata.isPrivate,
-            defaultBranch: githubMetadata.defaultBranch,
-            description: githubMetadata.description || '',
-            topics: githubMetadata.topics || [],
-            language: githubMetadata.primaryLanguage || 'unknown',
-          };
-        } else {
-          this.logger.warn('GitHub returned null metadata, using defaults', {
-            owner: details.owner,
-            name: details.name,
-          });
-        }
-      } catch (error) {
-        this.logger.warn('Failed to fetch GitHub metadata, using defaults', {
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-
-      // Always return a valid repository with either GitHub or default metadata
+      const result = await this.repositoryRepo.findAll(filters);
       return {
-        ...details,
-        createdAt: details.createdAt || new Date(),
-        status: details.status || RepositoryStatus.ACTIVE,
-        metadata,
+        ...result,
+        items: result.items.map(repo => this.redactCredentials(repo)),
       };
     } catch (error) {
-      this.logger.error('Repository validation failed:', error as Error);
-      throw error;
+      this.logger.error('Error listing repositories:', error as Error);
+      throw new AppError(500, 'Failed to list repositories');
     }
   }
 
@@ -208,20 +141,18 @@ export class RepositoryManagementService
     try {
       this.logger.info('Updating repository status', { repoId, status });
 
-      // Validate status
       if (!Object.values(RepositoryStatus).includes(status)) {
         throw new ValidationError('Invalid status value');
       }
 
-      const repository = await this.repositoryRepo.findById(repoId);
-      if (!repository) {
-        throw new NotFoundError('Repository not found');
-      }
+      const repository = await this.getRepositoryOrThrow(repoId);
 
-      return await this.repositoryRepo.update(repoId, {
+      const updated = await this.repositoryRepo.update(repository.id, {
         status,
         updatedAt: new Date(),
       });
+
+      return this.redactCredentials(updated);
     } catch (error) {
       this.logger.error('Error updating repository status:', error as Error);
       if (error instanceof NotFoundError || error instanceof ValidationError) {
@@ -233,39 +164,131 @@ export class RepositoryManagementService
 
   public async updateRepositorySettings(
     repoId: string,
-    settings: Partial<IRepository['settings']>,
+    settings: Partial<IRepositorySettings>,
   ): Promise<IRepository> {
     try {
-      const repository = await this.repositoryRepo.findById(repoId);
-      if (!repository) {
-        throw new NotFoundError('Repository not found');
-      }
+      this.logger.info('Updating repository settings', { repoId });
 
-      // Ensure syncEnabled is always defined
-      const settingsToUpdate = {
-        syncEnabled:
-          settings?.syncEnabled ?? repository.settings?.syncEnabled ?? true,
-        ...(settings?.syncInterval !== undefined && {
-          syncInterval: settings.syncInterval,
-        }),
-        ...(settings?.branchPatterns !== undefined && {
-          branchPatterns: settings.branchPatterns,
-        }),
-        ...(settings?.labelPatterns !== undefined && {
-          labelPatterns: settings.labelPatterns,
-        }),
+      const repository = await this.getRepositoryOrThrow(repoId);
+
+      // Merge existing settings with updates
+      const updatedSettings = {
+        ...repository.settings,
+        ...settings,
+        // Ensure required fields
+        syncEnabled: settings.syncEnabled ?? repository.settings.syncEnabled,
       };
 
-      return await this.repositoryRepo.update(repoId, {
-        settings: settingsToUpdate,
+      const updated = await this.repositoryRepo.update(repository.id, {
+        settings: updatedSettings,
         updatedAt: new Date(),
       });
+
+      return this.redactCredentials(updated);
     } catch (error) {
-      this.logger.error('Error removing repository:', error as Error);
+      this.logger.error('Error updating repository settings:', error as Error);
       if (error instanceof NotFoundError) {
         throw error;
       }
-      throw new AppError(500, 'Failed to remove repository');
+      throw new AppError(500, 'Failed to update repository settings');
     }
+  }
+
+  private async validateRepository(
+    details: IRepositoryDetails,
+  ): Promise<IRepositoryDetails> {
+    try {
+      this.logger.info('Validating repository', {
+        owner: details.owner,
+        name: details.name,
+      });
+
+      if (!details.owner?.trim() || !details.name?.trim()) {
+        throw new ValidationError(
+          'Owner and name are required and cannot be empty',
+        );
+      }
+
+      const metadata = await this.fetchRepositoryMetadata(details);
+
+      return {
+        ...details,
+        metadata,
+      };
+    } catch (error) {
+      this.logger.error('Repository validation failed:', error as Error);
+      throw error;
+    }
+  }
+
+  private async fetchRepositoryMetadata(details: IRepositoryDetails) {
+    const defaultMetadata = {
+      isPrivate: true,
+      defaultBranch: 'main',
+      description: '',
+      topics: [] as string[],
+      language: 'unknown',
+    };
+
+    try {
+      const githubMetadata = await this.githubAdapter.getRepositoryMetadata({
+        owner: details.owner,
+        name: details.name,
+        token: details.credentials?.value,
+      });
+
+      if (!githubMetadata) {
+        this.logger.warn('GitHub returned null metadata, using defaults', {
+          owner: details.owner,
+          name: details.name,
+        });
+        return defaultMetadata;
+      }
+
+      return {
+        isPrivate: githubMetadata.isPrivate,
+        defaultBranch: githubMetadata.defaultBranch,
+        description: githubMetadata.description || '',
+        topics: githubMetadata.topics || [],
+        language: githubMetadata.primaryLanguage || 'unknown',
+      };
+    } catch (error) {
+      this.logger.warn('Failed to fetch GitHub metadata, using defaults', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      return defaultMetadata;
+    }
+  }
+
+  private getDefaultSettings(
+    settings?: Partial<IRepositorySettings>,
+  ): IRepositorySettings {
+    return {
+      syncEnabled: settings?.syncEnabled ?? true,
+      branchPatterns: settings?.branchPatterns ?? ['*'],
+      labelPatterns: settings?.labelPatterns ?? ['*'],
+      syncInterval: settings?.syncInterval ?? 3600,
+    };
+  }
+
+  private async getRepositoryOrThrow(id: string): Promise<IRepository> {
+    const repository = await this.repositoryRepo.findById(id);
+    if (!repository) {
+      throw new NotFoundError('Repository not found');
+    }
+    return repository;
+  }
+
+  private redactCredentials(repository: IRepository): IRepository {
+    if (repository.credentials) {
+      return {
+        ...repository,
+        credentials: {
+          ...repository.credentials,
+          value: '[REDACTED]',
+        },
+      };
+    }
+    return repository;
   }
 }
