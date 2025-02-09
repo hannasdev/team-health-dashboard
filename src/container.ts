@@ -157,7 +157,9 @@ export function setupContainer(
   /**
    * !3. Adapters (Clients for external services)
    */
-  container.bind<IMongoAdapter>(TYPES.MongoAdapter).to(MongoAdapter);
+  container
+    .bind<IMongoAdapter<IRepository>>(TYPES.MongoAdapter)
+    .to(MongoAdapter);
   container.bind<IGitHubClient>(TYPES.GitHubClient).to(GitHubAdapter);
   container
     .bind<IGoogleSheetsClient>(TYPES.GoogleSheetsClient)
