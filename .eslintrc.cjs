@@ -11,7 +11,6 @@ module.exports = {
     'plugin:import-x/typescript',
     'plugin:import-x/errors',
     'plugin:import-x/warnings',
-    'plugin:node/recommended',
     'prettier',
   ],
   ignorePatterns: [
@@ -84,7 +83,7 @@ module.exports = {
     ],
 
     // Express-specific error handling rules
-    'node/handle-callback-err': 'error', // Enforces error handling in callbacks
+
     'no-promise-executor-return': 'error', // Prevents returning from Promise executor
     'no-throw-literal': 'error', // Ensures only Error objects are thrown
 
@@ -110,7 +109,6 @@ module.exports = {
         ],
       },
     ],
-    'node/no-missing-import': ['off'],
   },
   settings: {
     'import-x/parsers': {
