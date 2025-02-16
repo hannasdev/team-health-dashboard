@@ -15,13 +15,11 @@ import {
 import { AppError } from '../../../utils/errors';
 import { TYPES } from '../../../utils/types';
 
-import type {
-  ILogger,
-  IMetricsService,
-  IApiResponse,
-  IEnhancedResponse,
-  IAuthenticatedRequest,
-} from '../../../interfaces';
+import type { IApiResponse } from '../../../cross-cutting/ApiResponse/IApiResponse.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { IMetricsService } from '../../../services/MetricsService/IMetricsService.js';
+import type { IAuthenticatedRequest } from '../../middleware/AuthMiddleware/IAuthenticatedRequest.js';
+import type { IEnhancedResponse } from '../../middleware/interfaces/index.js';
 
 describe('MetricsController', () => {
   let container: Container;

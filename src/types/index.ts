@@ -1,13 +1,4 @@
 // src/types/index.ts
-
-import { Model } from 'mongoose';
-
-import {
-  IGoogleSheetsMetric,
-  IGitHubPullRequest,
-  IRepository,
-} from '../interfaces';
-
 export type ProgressCallback = (
   current: number,
   total: number,
@@ -33,6 +24,28 @@ export enum HeaderValues {
   KEEP_ALIVE = 'keep-alive',
 }
 
-export type GoogleSheetsMetricModel = Model<IGoogleSheetsMetric>;
-export type GitHubPullRequestModel = Model<IGitHubPullRequest>;
-export type RepositoryModel = Model<IRepository>;
+// Enum for repository status to ensure type safety
+export enum RepositoryStatus {
+  ACTIVE = 'active',
+  INACTIVE = 'inactive',
+  ARCHIVED = 'archived',
+  VALIDATION_PENDING = 'validation_pending',
+  VALIDATION_FAILED = 'validation_failed',
+}
+
+export enum SecurityEventType {
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
+  INVALID_TOKEN = 'INVALID_TOKEN',
+  BLOCKED_REQUEST = 'BLOCKED_REQUEST',
+  CSP_VIOLATION = 'CSP_VIOLATION',
+  SUSPICIOUS_ACTIVITY = 'SUSPICIOUS_ACTIVITY',
+  AUTH_FAILURE = 'AUTH_FAILURE',
+  SECURITY_HEADER_FAILURE = 'SECURITY_HEADER_FAILURE',
+}
+
+export enum SecurityEventSeverity {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  CRITICAL = 'CRITICAL',
+}

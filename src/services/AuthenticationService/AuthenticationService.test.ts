@@ -12,7 +12,7 @@ import {
   createMockLogger,
 } from '../../__mocks__/index.js';
 import { Config } from '../../cross-cutting/Config/config.js';
-import { createUser } from '../../data/models/User.js';
+import { createUser } from '../../data/models/userModel/index.js';
 import {
   InvalidCredentialsError,
   InvalidRefreshTokenError,

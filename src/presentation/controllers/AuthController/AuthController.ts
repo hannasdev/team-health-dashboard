@@ -5,17 +5,16 @@ import { inject, injectable } from 'inversify';
 import { InvalidInputError, AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
+import type { IAuthController, IAuthRequest } from './interfaces/index.js';
+import type { IApiResponse } from '../../../cross-cutting/ApiResponse/IApiResponse.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
 import type {
-  IAuthController,
-  IAuthenticationService,
-  IAuthRequest,
-  ILogger,
-  IApiResponse,
-  IUserService,
-  IUser,
+  IUserModel,
   SanitizedUser,
-  IEnhancedResponse,
-} from '../../../interfaces/index.js';
+} from '../../../data/models/userModel/IUserModel.js';
+import type { IAuthenticationService } from '../../../services/AuthenticationService/IAuthenticationService.js';
+import type { IUserService } from '../../../services/UserService/IUserService.js';
+import type { IEnhancedResponse } from '../../middleware/interfaces/index.js';
 
 @injectable()
 export class AuthController implements IAuthController {
@@ -136,7 +135,7 @@ export class AuthController implements IAuthController {
     }
   }
 
-  private sanitizeUser(user: IUser): SanitizedUser {
+  private sanitizeUser(user: IUserModel): SanitizedUser {
     const { password, ...sanitizedData } = user.toObject();
     return {
       ...sanitizedData,

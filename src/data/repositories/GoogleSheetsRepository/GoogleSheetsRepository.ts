@@ -2,15 +2,14 @@ import { injectable, inject } from 'inversify';
 
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
+import { GoogleSheetsMetricModel } from '../../models/googleSheetsMetricModel/index.js';
+import { MetricModel } from '../../models/metricModel/index.js';
 
-import type {
-  IGoogleSheetsClient,
-  IGoogleSheetsRepository,
-  IConfig,
-  IMetric,
-  ILogger,
-} from '../../../interfaces';
-import type { GoogleSheetsMetricModel } from '../../../types/index.js';
+import type { IGoogleSheetsRepository } from './IGoogleSheetsRepository.js';
+import type { IConfig } from '../../../cross-cutting/Config/IConfig.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { IGoogleSheetsAdapter } from '../../adapters/GoogleSheetsAdapter/IGoogleSheetsAdapter.js';
+import type { IMetricDocument } from '../../models/metricModel/index.js';
 
 /**
  * Implements the `IGoogleSheetsRepository` interface and provides methods to fetch and store metrics from Google Sheets.
@@ -27,12 +26,12 @@ export class GoogleSheetsRepository implements IGoogleSheetsRepository {
   private spreadsheetId: string;
 
   constructor(
-    @inject(TYPES.GoogleSheetsClient)
-    private googleSheetsClient: IGoogleSheetsClient,
+    @inject(TYPES.GoogleSheetsAdapter)
+    private googleSheetsClient: IGoogleSheetsAdapter,
     @inject(TYPES.Config) private configService: IConfig,
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.GoogleSheetsMetricModel)
-    private GoogleSheetsMetric: GoogleSheetsMetricModel,
+    private GoogleSheetsMetric: typeof GoogleSheetsMetricModel,
   ) {
     this.spreadsheetId = this.configService.GOOGLE_SHEETS_ID;
     if (!this.spreadsheetId) {
@@ -61,7 +60,7 @@ export class GoogleSheetsRepository implements IGoogleSheetsRepository {
     }
   }
 
-  public async storeMetrics(metrics: IMetric[]): Promise<void> {
+  public async storeMetrics(metrics: IMetricDocument[]): Promise<void> {
     try {
       await this.GoogleSheetsMetric.insertMany(
         metrics.map(metric => ({
@@ -84,7 +83,7 @@ export class GoogleSheetsRepository implements IGoogleSheetsRepository {
   public async getMetrics(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<IMetric[]> {
+  ): Promise<MetricModel[]> {
     try {
       const skip = (page - 1) * pageSize;
       const metrics = await this.GoogleSheetsMetric.find()
@@ -122,7 +121,7 @@ export class GoogleSheetsRepository implements IGoogleSheetsRepository {
     }
   }
 
-  public async updateMetrics(metrics: IMetric[]): Promise<void> {
+  public async updateMetrics(metrics: IMetricDocument[]): Promise<void> {
     try {
       for (const metric of metrics) {
         await this.GoogleSheetsMetric.findOneAndUpdate(

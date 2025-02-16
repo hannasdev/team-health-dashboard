@@ -6,22 +6,22 @@ import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 import { MetricsController } from '../controllers/MetricsController/MetricsController.js';
 
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IAuthenticatedRequest } from '../middleware/AuthMiddleware/index.js';
 import type {
   IMiddleware,
-  ILogger,
-  IAuthenticatedRequest,
   IEnhancedResponse,
-} from '../../interfaces/index.js';
+} from '../middleware/interfaces/index.js';
 
 const router = Router();
 
-const getMetricsController = () =>
+const getMetricsController = (): MetricsController =>
   container.get<MetricsController>(TYPES.MetricsController);
 
-const getAuthMiddleware = () =>
+const getAuthMiddleware = (): IMiddleware =>
   container.get<IMiddleware>(TYPES.AuthMiddleware);
 
-const getLogger = () => container.get<ILogger>(TYPES.Logger);
+const getLogger = (): ILogger => container.get<ILogger>(TYPES.Logger);
 
 // GET /metrics endpoint
 router.get(

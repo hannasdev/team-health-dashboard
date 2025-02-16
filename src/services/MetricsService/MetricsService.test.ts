@@ -10,11 +10,9 @@ import {
 } from '../../__mocks__';
 import { TYPES } from '../../utils/types';
 
-import type {
-  ILogger,
-  IGitHubService,
-  IGoogleSheetsService,
-} from '../../interfaces';
+import type { ILogger } from '../../cross-cutting/Logger';
+import type { IGitHubService } from '../GitHubService/index';
+import type { IGoogleSheetsService } from '../GoogleSheetsService/index';
 
 describe('MetricsService', () => {
   let container: Container;

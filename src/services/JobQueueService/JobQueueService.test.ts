@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { Container } from 'inversify';
 
+import { JobQueueService } from './JobQueueService';
 import { createMockLogger, createMockConfig } from '../../__mocks__';
-import { JobQueueService } from '../../services/JobQueueService/JobQueueService';
 import { TYPES } from '../../utils/types';
 
 // Mock Agenda

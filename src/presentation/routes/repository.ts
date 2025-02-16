@@ -2,32 +2,31 @@
 import { Router, NextFunction } from 'express';
 
 import { container } from '../../container.js';
-import { RepositoryStatus } from '../../interfaces/IRepository.js';
+import { RepositoryStatus } from '../../types/index.js';
 import { ValidationError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IRepositoryManagementService } from '../../services/RepositoryManagementService/index.js';
+import type { IAuthenticatedRequest } from '../middleware/AuthMiddleware/index.js';
 import type {
-  IAuthenticatedRequest,
   IEnhancedResponse,
   IMiddleware,
-  IRateLimitMiddleware,
-  ILogger,
-  IRepositoryManagementService,
-  IRepository,
-} from '../../interfaces/index.js';
+} from '../middleware/interfaces/index.js';
+import type { IRateLimitMiddleware } from '../middleware/RateLimitMiddleware/index.js';
 
 const router = Router();
 
 // Get service instances
-const getRepositoryService = () =>
+const getRepositoryService = (): IRepositoryManagementService =>
   container.get<IRepositoryManagementService>(
     TYPES.RepositoryManagementService,
   );
-const getAuthMiddleware = () =>
+const getAuthMiddleware = (): IMiddleware =>
   container.get<IMiddleware>(TYPES.AuthMiddleware);
-const getRateLimitMiddleware = () =>
+const getRateLimitMiddleware = (): IRateLimitMiddleware =>
   container.get<IRateLimitMiddleware>(TYPES.RateLimitMiddleware);
-const getLogger = () => container.get<ILogger>(TYPES.Logger);
+const getLogger = (): ILogger => container.get<ILogger>(TYPES.Logger);
 
 // Apply auth middleware to all routes
 router.use((req, res, next) =>
@@ -72,7 +71,6 @@ router.post('/', async (req, res, next) => {
       name,
       credentials,
       status: RepositoryStatus.ACTIVE,
-      createdAt: new Date(),
     });
 
     logger.info('Repository created successfully', { id: repository.id });

@@ -1,20 +1,20 @@
 // src/data/repositories/RepositoryRepository/RepositoryRepository.ts
 import { injectable, inject } from 'inversify';
-
 import mongoose from 'mongoose';
-import { RepositoryStatus } from '../../../interfaces/index.js';
+
+import { RepositoryStatus } from '../../../types/index.js';
 import { TYPES } from '../../../utils/types.js';
 
 import type {
   IRepository,
+  IRepositoryDetails,
+  IRepositoryRepository,
   IRepositoryFilters,
   IRepositoryPaginatedResponse,
-  ICacheService,
-  ILogger,
-  IRepositoryRepository,
-  IRepositoryDetails,
-  IMongoAdapter,
-} from '../../../interfaces/index.js';
+} from './interfaces/index.js';
+import type { ICacheService } from '../../../cross-cutting/CacheService/ICacheService.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { IMongoAdapter } from '../../adapters/MongoAdapter/index.js';
 
 @injectable()
 export class RepositoryRepository implements IRepositoryRepository {

@@ -1,0 +1,10 @@
+// src/interfaces/IGitHubService.ts
+import { MetricModel } from '../../data/models/metricModel/index.js';
+
+export interface IGitHubService {
+  fetchAndStoreRawData(timePeriod: number): Promise<void>;
+  getProcessedMetrics(page: number, pageSize: number): Promise<MetricModel[]>;
+  syncData(timePeriod: number): Promise<void>;
+  getTotalPRCount(): Promise<number>;
+  resetData(): Promise<void>;
+}

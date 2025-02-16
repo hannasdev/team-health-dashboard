@@ -8,20 +8,19 @@ import {
 } from '../../../cross-cutting/CacheDecorator/index.js';
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
+import { MetricModel } from '../../models/metricModel/index.js';
 
+import type { IPullRequest, IGitHubRepository } from './interfaces/index.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
 import type {
-  IGitHubMetricDocument,
-  IGitHubPullRequest,
-  IGitHubClient,
-  IPullRequest,
-  IGitHubRepository,
+  IGitHubAdapter,
   IGraphQLResponse,
   IGraphQLPullRequest,
-  ILogger,
-  IMetric,
-  IConfig,
-  ICacheService,
-} from '../../../interfaces';
+} from '../../adapters/GitHubAdapter/index.js';
+import type { IGitHubMetricDocument } from '../../models/githubMetricModel/index.js';
+import type { IGitHubPullRequestDocument } from '../../models/githubPullRequestModel/index.js';
+import type { IMetricDocument } from '../../models/metricModel/index.js';
+import type { ICacheService } from 'cross-cutting/CacheService/ICacheService.js';
 
 type GitHubApiErrorMeta = Record<string, unknown>;
 type PullRequestsErrorMeta = Record<string, unknown>;
@@ -31,26 +30,18 @@ export class GitHubRepository
   extends CacheableClass
   implements IGitHubRepository
 {
-  private owner: string;
-  private repo: string;
   private readonly timeout: number = 300000; // 5 minutes timeout
 
   constructor(
-    @inject(TYPES.GitHubClient) private client: IGitHubClient,
-    @inject(TYPES.Config) private configService: IConfig,
+    @inject(TYPES.GitHubAdapter) private client: IGitHubAdapter,
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.GitHubPullRequestModel)
-    private GitHubPullRequest: Model<IGitHubPullRequest>,
+    private GitHubPullRequest: Model<IGitHubPullRequestDocument>,
     @inject(TYPES.GitHubMetricModel)
     private GitHubMetric: Model<IGitHubMetricDocument>,
     @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
     super(cacheService);
-    this.owner = this.configService.REPO_OWNER;
-    this.repo = this.configService.REPO_REPO;
-    if (this.repo.includes('/')) {
-      [this.owner, this.repo] = this.repo.split('/');
-    }
   }
 
   /**
@@ -61,7 +52,14 @@ export class GitHubRepository
    * @throws {AppError} If there is an error fetching the pull requests.
    */
   @Cacheable('github-prs', 3600) // Cache for 1 hour
-  public async fetchPullRequests(timePeriod: number): Promise<{
+  public async fetchPullRequests(
+    timePeriod: number,
+    credentials: {
+      owner: string;
+      name: string;
+      token: string;
+    },
+  ): Promise<{
     pullRequests: IPullRequest[];
     totalPRs: number;
     fetchedPRs: number;
@@ -81,34 +79,16 @@ export class GitHubRepository
           throw new Error('Operation timed out');
         }
 
-        // Log the query variables for debugging
-        const queryVariables = {
-          owner: this.owner,
-          repo: this.repo,
-          cursor: cursor,
-        };
-        this.logger.debug(
-          'Executing GitHub GraphQL query with variables:',
-          queryVariables,
-        );
-
         const response: IGraphQLResponse = await this.client.graphql(
           this.getPRQuery(),
-          queryVariables,
+          {
+            owner: credentials.owner,
+            repo: credentials.name,
+            cursor: cursor,
+          },
         );
 
         // Validate response structure
-        if (!response || !response.repository) {
-          const meta: GitHubApiErrorMeta = {
-            response,
-            owner: this.owner,
-            repo: this.repo,
-          };
-          const error = new Error('Invalid GitHub API response structure');
-          this.logger.error('Invalid GitHub API response:', error, meta);
-          throw error;
-        }
-
         if (
           !response.repository.pullRequests ||
           !Array.isArray(response.repository.pullRequests.nodes)
@@ -130,9 +110,9 @@ export class GitHubRepository
         );
 
         pullRequests = [...pullRequests, ...newPRs];
-
         hasNextPage = response.repository.pullRequests.pageInfo.hasNextPage;
         cursor = response.repository.pullRequests.pageInfo.endCursor;
+        totalPRs = response.repository.pullRequests.totalCount || 0;
 
         // Update totalPRs if it's available in the response
         if (response.repository.pullRequests.totalCount) {
@@ -162,8 +142,8 @@ export class GitHubRepository
     } catch (error) {
       // Log detailed error information
       const meta: GitHubApiErrorMeta = {
-        owner: this.owner,
-        repo: this.repo,
+        owner: credentials.owner,
+        repo: credentials.name,
         timePeriod,
         errorMessage: error instanceof Error ? error.message : 'Unknown error',
       };
@@ -233,7 +213,9 @@ export class GitHubRepository
     }
   }
 
-  public async storeProcessedMetrics(metrics: IMetric[]): Promise<void> {
+  public async storeProcessedMetrics(
+    metrics: IMetricDocument[],
+  ): Promise<void> {
     try {
       await this.GitHubMetric.insertMany(metrics);
       this.logger.info(`Stored ${metrics.length} processed metrics`);
@@ -246,7 +228,7 @@ export class GitHubRepository
   public async getProcessedMetrics(
     page: number,
     pageSize: number,
-  ): Promise<IMetric[]> {
+  ): Promise<MetricModel[]> {
     try {
       const count = await this.GitHubMetric.countDocuments();
       this.logger.info(`Total GitHub metrics in database: ${count}`);
@@ -278,9 +260,19 @@ export class GitHubRepository
     }
   }
 
-  public async syncPullRequests(timePeriod: number): Promise<void> {
+  public async syncPullRequests(
+    timePeriod: number,
+    credentials: {
+      owner: string;
+      name: string;
+      token: string;
+    },
+  ): Promise<void> {
     try {
-      const { pullRequests } = await this.fetchPullRequests(timePeriod);
+      const { pullRequests } = await this.fetchPullRequests(
+        timePeriod,
+        credentials,
+      );
       for (const pr of pullRequests) {
         await this.GitHubPullRequest.findOneAndUpdate(
           { number: pr.number },
@@ -366,7 +358,7 @@ export class GitHubRepository
     }
   }
 
-  private mapToIMetric(doc: any): IMetric {
+  private mapToIMetric(doc: any): MetricModel {
     return {
       _id: doc._id instanceof Types.ObjectId ? doc._id.toString() : doc._id,
       metric_category: doc.metric_category,

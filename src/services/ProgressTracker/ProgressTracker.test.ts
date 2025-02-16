@@ -1,6 +1,7 @@
 import { createProgressCallback, ProgressTracker } from './ProgressTracker.js';
 
-import type { IProgressTracker, ILogger } from '../../interfaces/index.js';
+import type { IProgressTracker } from './IProgressTracker.js';
+import type { ILogger } from '../../cross-cutting/Logger/ILogger.js';
 
 describe('ProgressTracker', () => {
   let progressTracker: ProgressTracker;

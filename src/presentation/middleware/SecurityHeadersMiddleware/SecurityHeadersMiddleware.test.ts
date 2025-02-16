@@ -9,15 +9,13 @@ import {
 import {
   SecurityEventType,
   SecurityEventSeverity,
-} from '../../../services/SecurityLogger/SecurityLogger.js';
+} from '../../../types/index.js';
 
-import type {
-  ISecurityHeadersConfig,
-  IEnhancedResponse,
-  ILogger,
-  ISecurityLogger,
-  ISecurityRequest,
-} from '../../../interfaces/index.js';
+import type { ISecurityHeadersConfig } from './interfaces/index.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { ISecurityLogger } from '../../../cross-cutting/SecurityLogger/ISecurityLogger.js';
+import type { IEnhancedResponse } from '../interfaces/index.js';
+import type { ISecurityRequest } from '../RateLimitMiddleware/interfaces/index.js';
 
 describe('SecurityHeadersMiddleware', () => {
   let middleware: SecurityHeadersMiddleware;

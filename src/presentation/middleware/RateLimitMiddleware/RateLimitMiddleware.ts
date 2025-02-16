@@ -4,20 +4,9 @@ import { inject, injectable } from 'inversify';
 import {
   SecurityEventType,
   SecurityEventSeverity,
-} from '../../../services/SecurityLogger/SecurityLogger.js';
+} from '../../../types/index.js';
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
-
-import type {
-  ILogger,
-  ICacheService,
-  IRateLimitConfig,
-  ISecurityLogger,
-  IMiddleware,
-  IEnhancedRequest,
-  ISecurityResponse,
-  ISecurityRequest,
-} from '../../../interfaces/index.js';
 
 interface RateLimitState {
   key: string;
@@ -25,6 +14,15 @@ interface RateLimitState {
   remaining: number;
   reset: number;
 }
+import type { ISecurityLogger } from '../../../cross-cutting/SecurityLogger/ISecurityLogger.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { ICacheService } from '../../../cross-cutting/CacheService/ICacheService.js';
+import type { IEnhancedRequest, IMiddleware } from '../interfaces/index.js';
+import type {
+  IRateLimitConfig,
+  ISecurityResponse,
+  ISecurityRequest,
+} from './interfaces/index.js';
 
 @injectable()
 export class RateLimitMiddleware implements IMiddleware {

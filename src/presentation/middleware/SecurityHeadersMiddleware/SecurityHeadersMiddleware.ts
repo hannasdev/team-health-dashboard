@@ -4,17 +4,17 @@ import { inject, injectable } from 'inversify';
 import {
   SecurityEventType,
   SecurityEventSeverity,
-} from '../../../services/SecurityLogger/SecurityLogger.js';
+} from '../../../types/index.js';
 import { TYPES } from '../../../utils/types.js';
 
+import type { ISecurityHeadersConfig } from './interfaces/index.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { ISecurityLogger } from '../../../cross-cutting/SecurityLogger/ISecurityLogger.js';
+import type { IMiddleware } from '../interfaces/index.js';
 import type {
-  ILogger,
-  ISecurityHeadersConfig,
-  ISecurityLogger,
   ISecurityRequest,
-  IMiddleware,
   ISecurityResponse,
-} from '../../../interfaces/index.js';
+} from '../RateLimitMiddleware/interfaces/index.js';
 
 @injectable()
 export class SecurityHeadersMiddleware implements IMiddleware {

@@ -1,2 +1,2 @@
-import TokenBlacklistService from './TokenBlacklistService.js';
-export default TokenBlacklistService;
+export type { ITokenBlacklistService } from './ITokenBlacklistService.js';
+export { TokenBlacklistService } from './TokenBlacklistService.js';

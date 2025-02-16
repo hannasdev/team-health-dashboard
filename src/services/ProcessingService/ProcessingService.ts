@@ -1,16 +1,21 @@
 import { injectable, inject } from 'inversify';
 
+import { RepositoryStatus } from '../../types/index.js';
 import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
+import type { IProcessingService } from './IProcessingService.js';
+import type { ILogger } from '../../cross-cutting/Logger/ILogger.js';
 import type {
-  IProcessingService,
-  IGitHubRepository,
-  IMetricCalculator,
-  ILogger,
   IPullRequest,
-  IJobQueueService,
-} from '../../interfaces/index.js';
+  IGitHubRepository,
+} from '../../data/repositories/GitHubRepository/interfaces/index.js';
+import type {
+  IRepository,
+  IRepositoryRepository,
+} from '../../data/repositories/RepositoryRepository/interfaces/index.js';
+import type { IJobQueueService } from '../JobQueueService/IJobQueueService.js';
+import type { IMetricsCalculator } from '../MetricsCalculator/index.js';
 
 /**
  * Processes GitHub data by fetching pull requests, calculating metrics, and storing the processed metrics.
@@ -21,10 +26,44 @@ import type {
 export class ProcessingService implements IProcessingService {
   constructor(
     @inject(TYPES.GitHubRepository) private repository: IGitHubRepository,
-    @inject(TYPES.MetricCalculator) private metricCalculator: IMetricCalculator,
+    @inject(TYPES.RepositoryRepository)
+    private repoMetadataRepo: IRepositoryRepository,
+    @inject(TYPES.MetricCalculator)
+    private metricCalculator: IMetricsCalculator,
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.JobQueueService) private jobQueue: IJobQueueService,
   ) {}
+
+  private async getActiveRepository(): Promise<IRepository> {
+    const repositories = await this.repoMetadataRepo.findAll({
+      status: RepositoryStatus.ACTIVE,
+      syncEnabled: true,
+      page: 0,
+      pageSize: 1,
+    });
+
+    if (!repositories.items.length) {
+      throw new AppError(404, 'No active repositories configured');
+    }
+
+    return repositories.items[0];
+  }
+
+  private getRepositoryCredentials(repository: IRepository): {
+    owner: string;
+    name: string;
+    token: string;
+  } {
+    if (!repository.credentials?.value) {
+      throw new AppError(400, 'Repository credentials not configured');
+    }
+
+    return {
+      owner: repository.owner,
+      name: repository.name,
+      token: repository.credentials.value,
+    };
+  }
 
   public async processGitHubData(): Promise<void> {
     try {
@@ -41,6 +80,9 @@ export class ProcessingService implements IProcessingService {
 
   public async processGitHubDataJob(): Promise<void> {
     try {
+      const repository = await this.getActiveRepository();
+      const credentials = this.getRepositoryCredentials(repository);
+
       const batchSize = 100;
       let page = 1;
       let hasMore = true;

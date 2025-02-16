@@ -1,11 +1,10 @@
 // src/services/metrics/MetricCalculator.ts
 import { injectable } from 'inversify';
 
-import type {
-  IMetric,
-  IMetricCalculator,
-  IPullRequest,
-} from '../../interfaces/index.js';
+import { MetricModel } from '../../data/models/metricModel/index.js';
+
+import type { IMetricsCalculator } from './IMetricsCalculator.js';
+import type { IPullRequest } from '../../data/repositories/GitHubRepository/index.js';
 
 /**
  * MetricCalculator
@@ -17,8 +16,8 @@ import type {
  * @implements {IMetricCalculator}
  */
 @injectable()
-export class MetricCalculator implements IMetricCalculator {
-  public calculateMetrics(data: IPullRequest[] | IMetric[]): IMetric[] {
+export class MetricsCalculator implements IMetricsCalculator {
+  public calculateMetrics(data: IPullRequest[] | MetricModel[]): MetricModel[] {
     if (this.isPullRequestArray(data)) {
       return this.calculateGitHubMetrics(data);
     } else {
@@ -26,8 +25,8 @@ export class MetricCalculator implements IMetricCalculator {
     }
   }
 
-  private calculateGitHubMetrics(pullRequests: IPullRequest[]): IMetric[] {
-    const metrics: IMetric[] = [];
+  private calculateGitHubMetrics(pullRequests: IPullRequest[]): MetricModel[] {
+    const metrics: MetricModel[] = [];
 
     metrics.push(this.calculatePRCount(pullRequests));
     metrics.push(this.calculatePRCycleTime(pullRequests));
@@ -36,7 +35,7 @@ export class MetricCalculator implements IMetricCalculator {
     return metrics;
   }
 
-  private calculatePRCount(pullRequests: IPullRequest[]): IMetric {
+  private calculatePRCount(pullRequests: IPullRequest[]): MetricModel {
     return {
       _id: 'github-pr-count',
       metric_category: 'GitHub',
@@ -55,9 +54,9 @@ export class MetricCalculator implements IMetricCalculator {
    *
    * @private
    * @param {IPullRequest[]} pullRequests - An array of pull requests.
-   * @returns {IMetric} The PR cycle time metric.
+   * @returns {IMetricModel} The PR cycle time metric.
    */
-  private calculatePRCycleTime(pullRequests: IPullRequest[]): IMetric {
+  private calculatePRCycleTime(pullRequests: IPullRequest[]): MetricModel {
     const mergedPRs = pullRequests.filter(pr => pr.mergedAt);
 
     const averageCycleTime =
@@ -89,9 +88,9 @@ export class MetricCalculator implements IMetricCalculator {
    *
    * @private
    * @param {IPullRequest[]} pullRequests - An array of pull requests.
-   * @returns {IMetric} The PR size metric.
+   * @returns {IMetricModel} The PR size metric.
    */
-  private calculatePRSize(pullRequests: IPullRequest[]): IMetric {
+  private calculatePRSize(pullRequests: IPullRequest[]): MetricModel {
     const totalSize = pullRequests.reduce(
       (sum, pr) => sum + (pr.additions || 0) + (pr.deletions || 0),
       0,
@@ -111,7 +110,7 @@ export class MetricCalculator implements IMetricCalculator {
     };
   }
 
-  private calculateGoogleSheetsMetrics(metrics: IMetric[]): IMetric[] {
+  private calculateGoogleSheetsMetrics(metrics: MetricModel[]): MetricModel[] {
     // For Google Sheets, we might not need to do any additional calculation
     // as the data is already in the IMetric format. However, you can add any
     // additional processing or validation here if needed.
@@ -119,7 +118,7 @@ export class MetricCalculator implements IMetricCalculator {
   }
 
   private isPullRequestArray(
-    data: IPullRequest[] | IMetric[],
+    data: IPullRequest[] | MetricModel[],
   ): data is IPullRequest[] {
     return data.length > 0 && 'number' in data[0];
   }

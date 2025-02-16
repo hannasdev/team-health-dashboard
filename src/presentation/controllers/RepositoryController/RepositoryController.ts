@@ -1,21 +1,21 @@
 import { NextFunction } from 'express';
 import { inject, injectable } from 'inversify';
 
-import { RepositoryStatus } from '../../../interfaces/index.js';
+import { RepositoryStatus } from '../../../types/index.js';
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
+import type { IRepositoryController } from './IRepositoryController.js';
+import type { IEnhancedResponse } from '..//../middleware/interfaces/index.js';
+import type { IApiResponse } from '../../../cross-cutting/ApiResponse/index.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
 import type {
-  IRepositoryManagementService,
+  IRepository,
   IRepositoryDetails,
   IRepositoryFilters,
-  ILogger,
-  IApiResponse,
-  IAuthenticatedRequest,
-  IEnhancedResponse,
-  IRepository,
-  IRepositoryController,
-} from '../../../interfaces/index.js';
+} from '../../../data/repositories/RepositoryRepository/index.js';
+import type { IRepositoryManagementService } from '../../../services/RepositoryManagementService/index.js';
+import type { IAuthenticatedRequest } from '../../middleware/AuthMiddleware/index.js';
 
 @injectable()
 export class RepositoryController implements IRepositoryController {

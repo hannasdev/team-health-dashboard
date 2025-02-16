@@ -3,7 +3,8 @@ import { inject, injectable } from 'inversify';
 
 import { TYPES } from '../../utils/types.js';
 
-import type { IProgressTracker, ILogger } from '../../interfaces/index.js';
+import type { IProgressTracker } from './IProgressTracker.js';
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
 
 @injectable()
 export class ProgressTracker implements IProgressTracker {

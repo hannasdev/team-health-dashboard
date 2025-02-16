@@ -9,16 +9,13 @@ import {
 import {
   SecurityEventType,
   SecurityEventSeverity,
-} from '../../../services/SecurityLogger/SecurityLogger.js';
+} from '../../../types/index.js';
 
-import type {
-  IRateLimitConfig,
-  IEnhancedResponse,
-  ILogger,
-  ICacheService,
-  ISecurityLogger,
-  ISecurityRequest,
-} from '../../../interfaces/index.js';
+import type { ISecurityRequest, IRateLimitConfig } from './index.js';
+import type { ICacheService } from '../../../cross-cutting/CacheService/index.js';
+import type { ILogger } from '../../../cross-cutting/Logger/index.js';
+import type { ISecurityLogger } from '../../../cross-cutting/SecurityLogger/index.js';
+import type { IEnhancedResponse } from '../../middleware/interfaces/index.js';
 
 describe('RateLimitMiddleware', () => {
   let middleware: RateLimitMiddleware;

@@ -12,25 +12,23 @@ import {
 } from '../../../__mocks__/index.js';
 import { TYPES } from '../../../utils/types.js';
 
-import type {
-  IGitHubClient,
-  IConfig,
-  ICacheService,
-  ILogger,
-  IGitHubRepository,
-  IGitHubPullRequest,
-  IGitHubMetricDocument,
-} from '../../../interfaces/index.js';
+import type { IGitHubRepository } from './interfaces/index.js';
+import type { ICacheService } from '../../../cross-cutting/CacheService/ICacheService.js';
+import type { IConfig } from '../../../cross-cutting/Config/IConfig.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { IGitHubAdapter } from '../../adapters/GitHubAdapter/interfaces/index.js';
+import type { IGitHubMetricDocument } from '../../models/githubMetricModel/index.js';
+import type { IGitHubPullRequestDocument } from '../../models/githubPullRequestModel/index.js';
 
 describe('GitHubRepository', () => {
   let container: Container;
   let gitHubRepository: IGitHubRepository;
-  let mockClient: jest.Mocked<IGitHubClient>;
+  let mockClient: jest.Mocked<IGitHubAdapter>;
   let mockConfig: jest.Mocked<IConfig>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockCacheService: jest.Mocked<ICacheService>;
   let mockGitHubPullRequestModel: ReturnType<
-    typeof createMockMongooseModel<IGitHubPullRequest>
+    typeof createMockMongooseModel<IGitHubPullRequestDocument>
   >;
   let mockGitHubMetricModel: ReturnType<
     typeof createMockMongooseModel<IGitHubMetricDocument>
@@ -42,7 +40,8 @@ describe('GitHubRepository', () => {
     mockCacheService = createMockCacheService();
     mockClient = createMockGitHubClient();
 
-    mockGitHubPullRequestModel = createMockMongooseModel<IGitHubPullRequest>();
+    mockGitHubPullRequestModel =
+      createMockMongooseModel<IGitHubPullRequestDocument>();
     mockGitHubPullRequestModel.insertMany = jest.fn();
     mockGitHubPullRequestModel.find = jest.fn().mockReturnValue({
       sort: jest.fn().mockReturnThis(),
@@ -68,7 +67,7 @@ describe('GitHubRepository', () => {
 
     container = new Container();
     container
-      .bind<IGitHubClient>(TYPES.GitHubClient)
+      .bind<IGitHubAdapter>(TYPES.IGitHubAdapter)
       .toConstantValue(mockClient);
     container.bind<IConfig>(TYPES.Config).toConstantValue(mockConfig);
     container.bind<ILogger>(TYPES.Logger).toConstantValue(mockLogger);

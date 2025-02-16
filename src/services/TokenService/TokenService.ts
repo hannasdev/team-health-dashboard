@@ -8,12 +8,10 @@ import {
 } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
-import type {
-  ITokenService,
-  IJwtService,
-  IConfig,
-  ILogger,
-} from '../../interfaces/index.js';
+import type { ITokenService } from './ITokenService.js';
+import type { IConfig } from '../../cross-cutting/Config/index.js';
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IJwtService } from '../JwtService/index.js';
 
 @injectable()
 export class TokenService implements ITokenService {

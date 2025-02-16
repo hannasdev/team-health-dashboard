@@ -6,19 +6,20 @@ import { Connection } from 'mongoose';
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
+import type { IMongoClientService } from './../../../services/MongoClientService/IMongoClientService';
+import type { IHealthCheckController } from './IHealthCheckController.js';
+import type { IApiResponse } from '../../../cross-cutting/ApiResponse/IApiResponse.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
 import type {
-  ILogger,
-  IHealthCheckController,
-  IMongoDbClient,
-  IApiResponse,
   IEnhancedRequest,
   IEnhancedResponse,
-} from '../../../interfaces/index.js';
+} from '../../middleware/interfaces/index.js';
+
 @injectable()
 export class HealthCheckController implements IHealthCheckController {
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
-    @inject(TYPES.MongoDbClient) private mongoClient: IMongoDbClient,
+    @inject(TYPES.MongoClientService) private mongoClient: IMongoClientService,
     @inject(TYPES.ApiResponse) private apiResponse: IApiResponse,
   ) {}
 

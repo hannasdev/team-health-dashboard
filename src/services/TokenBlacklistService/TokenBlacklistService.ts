@@ -3,12 +3,9 @@ import { injectable, inject } from 'inversify';
 
 import { TYPES } from '../../utils/types.js';
 
-import type {
-  ITokenBlacklistService,
-  ILogger,
-  IMongoDbClient,
-} from '../../interfaces/index.js';
-
+import type { ITokenBlacklistService } from './ITokenBlacklistService.js';
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IMongoClientService } from '../MongoClientService/index.js';
 @injectable()
 export class TokenBlacklistService implements ITokenBlacklistService {
   private readonly COLLECTION_NAME = 'blacklisted_tokens';
@@ -16,7 +13,7 @@ export class TokenBlacklistService implements ITokenBlacklistService {
 
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
-    @inject(TYPES.MongoDbClient) private mongoClient: IMongoDbClient,
+    @inject(TYPES.MongoClientService) private mongoClient: IMongoClientService,
   ) {
     this.setupCleanupTask();
   }

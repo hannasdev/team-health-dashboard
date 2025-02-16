@@ -1,5 +1,4 @@
 // src/services/GoogleSheetsService/GoogleSheetsService.test.ts
-
 import { Container } from 'inversify';
 
 import { GoogleSheetsService } from './GoogleSheetsService';
@@ -12,12 +11,10 @@ import {
 } from '../../__mocks__';
 import { TYPES } from '../../utils/types';
 
-import type {
-  ILogger,
-  ICacheService,
-  IGoogleSheetsRepository,
-  IMetricCalculator,
-} from '../../interfaces';
+import type { ICacheService } from '../../cross-cutting/CacheService/index.js';
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IGoogleSheetsRepository } from '../../data/repositories/GoogleSheetsRepository/index.js';
+import type { IMetricsCalculator } from '../MetricsCalculator/index.js';
 
 describe('GoogleSheetsService', () => {
   let container: Container;
@@ -25,7 +22,7 @@ describe('GoogleSheetsService', () => {
   let mockLogger: jest.Mocked<ILogger>;
   let mockCacheService: jest.Mocked<ICacheService>;
   let mockRepository: jest.Mocked<IGoogleSheetsRepository>;
-  let mockMetricCalculator: jest.Mocked<IMetricCalculator>;
+  let mockMetricCalculator: jest.Mocked<IMetricsCalculator>;
 
   beforeEach(() => {
     container = new Container();
@@ -42,7 +39,7 @@ describe('GoogleSheetsService', () => {
       .bind<IGoogleSheetsRepository>(TYPES.GoogleSheetsRepository)
       .toConstantValue(mockRepository);
     container
-      .bind<IMetricCalculator>(TYPES.MetricCalculator)
+      .bind<IMetricsCalculator>(TYPES.MetricCalculator)
       .toConstantValue(mockMetricCalculator);
     container.bind<GoogleSheetsService>(GoogleSheetsService).toSelf();
 

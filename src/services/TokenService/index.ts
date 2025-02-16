@@ -1,3 +1,2 @@
-import TokenService from './TokenService.js';
-export { TokenService };
-export default TokenService;
+export type { ITokenService } from './ITokenService.js';
+export { TokenService } from './TokenService.js';

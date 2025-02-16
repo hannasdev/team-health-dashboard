@@ -11,23 +11,21 @@ import {
   createMockGoogleSheetsMetricModel,
   createMockMetric,
 } from '../../../__mocks__/index';
-import { GoogleSheetsMetricModel } from '../../../types/index';
 import { AppError } from '../../../utils/errors';
 import { TYPES } from '../../../utils/types';
+import { GoogleSheetsMetricModel } from '../../models/googleSheetsMetricModel/index';
 
-import type {
-  ILogger,
-  IGoogleSheetsClient,
-  IConfig,
-} from '../../../interfaces/index';
+import type { IConfig } from '../../../cross-cutting/Config/IConfig';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger';
+import type { IGoogleSheetsAdapter } from '../../adapters/GoogleSheetsAdapter/index.js';
 
 describe('GoogleSheetsRepository', () => {
   let container: Container;
   let googleSheetsRepository: GoogleSheetsRepository;
-  let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsClient>;
+  let mockGoogleSheetsClient: jest.Mocked<IGoogleSheetsAdapter>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockConfig: jest.Mocked<IConfig>;
-  let mockGoogleSheetsMetricModel: jest.Mocked<GoogleSheetsMetricModel>;
+  let mockGoogleSheetsMetricModel: jest.Mocked<typeof GoogleSheetsMetricModel>;
 
   beforeEach(() => {
     container = new Container();
@@ -37,7 +35,7 @@ describe('GoogleSheetsRepository', () => {
     mockGoogleSheetsMetricModel = createMockGoogleSheetsMetricModel();
 
     container
-      .bind(TYPES.GoogleSheetsClient)
+      .bind(TYPES.GoogleSheetsAdapter)
       .toConstantValue(mockGoogleSheetsClient);
     container.bind(TYPES.Config).toConstantValue(mockConfig);
     container.bind(TYPES.Logger).toConstantValue(mockLogger);

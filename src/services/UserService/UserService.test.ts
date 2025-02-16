@@ -8,7 +8,7 @@ import {
   createMockBcryptService,
   createMockLogger,
 } from '../../__mocks__';
-import { createUser } from '../../data/models/User';
+import { createUser } from '../../data/models/userModel/index.js';
 import { UserAlreadyExistsError, UserNotFoundError } from '../../utils/errors';
 import { TYPES } from '../../utils/types';
 

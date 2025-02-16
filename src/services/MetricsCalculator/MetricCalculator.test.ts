@@ -1,12 +1,12 @@
-import { MetricCalculator } from './MetricsCalculator.js';
+import { MetricsCalculator } from './MetricsCalculator.js';
 
-import type { IPullRequest } from '../../interfaces/index.js';
+import type { IPullRequest } from '../../data/repositories/GitHubRepository/index.js';
 
-describe('MetricCalculator', () => {
-  let calculator: MetricCalculator;
+describe('MetricsCalculator', () => {
+  let calculator: MetricsCalculator;
 
   beforeEach(() => {
-    calculator = new MetricCalculator();
+    calculator = new MetricsCalculator();
   });
 
   const createMockPullRequest = (

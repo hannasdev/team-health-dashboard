@@ -5,12 +5,12 @@ import {
   createMockLogger,
 } from '../../../__mocks__/index.js';
 
+import type { IConfig } from '../../../cross-cutting/Config/index.js';
+import type { ILogger } from '../../../cross-cutting/Logger/index.js';
 import type {
   IEnhancedRequest,
   IEnhancedResponse,
-  ILogger,
-  IConfig,
-} from '../../../interfaces/index.js';
+} from '../interfaces/index.js';
 
 describe('CorsMiddleware', () => {
   let middleware: CorsMiddleware;

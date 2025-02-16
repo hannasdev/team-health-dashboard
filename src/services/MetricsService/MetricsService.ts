@@ -1,14 +1,12 @@
 import { injectable, inject } from 'inversify';
 
+import { MetricModel } from '../../data/models/metricModel/index.js';
 import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
-import type {
-  IGitHubService,
-  IGoogleSheetsService,
-  ILogger,
-  IMetric,
-} from '../../interfaces';
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IGitHubService } from '../GitHubService/index.js';
+import type { IGoogleSheetsService } from '../GoogleSheetsService/index.js';
 
 @injectable()
 export class MetricsService {
@@ -23,7 +21,7 @@ export class MetricsService {
     page: number,
     pageSize: number,
   ): Promise<{
-    metrics: IMetric[];
+    metrics: MetricModel[];
     githubStats: {
       totalPRs: number;
       fetchedPRs: number;
@@ -125,9 +123,9 @@ export class MetricsService {
   }
 
   private combineAndSortMetrics(
-    githubMetrics: IMetric[],
-    googleSheetsMetrics: IMetric[],
-  ): IMetric[] {
+    githubMetrics: MetricModel[],
+    googleSheetsMetrics: MetricModel[],
+  ): MetricModel[] {
     return [...githubMetrics, ...googleSheetsMetrics].sort(
       (a, b) => b.timestamp.getTime() - a.timestamp.getTime(),
     );

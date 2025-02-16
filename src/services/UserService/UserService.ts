@@ -7,13 +7,11 @@ import {
 } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
-import type {
-  IUserService,
-  IUserRepository,
-  IBcryptService,
-  ILogger,
-  IUser,
-} from '../../interfaces/index.js';
+import type { IUserService } from './IUserService';
+import type { ILogger } from '../../cross-cutting/Logger/index';
+import type { IUserModel } from '../../data/models/userModel/index';
+import type { IUserRepository } from '../../data/repositories/UserRepository/index';
+import type { IBcryptService } from '../BcryptService/index';
 
 @injectable()
 export class UserService implements IUserService {
@@ -23,7 +21,10 @@ export class UserService implements IUserService {
     @inject(TYPES.Logger) private logger: ILogger,
   ) {}
 
-  public async registerUser(email: string, password: string): Promise<IUser> {
+  public async registerUser(
+    email: string,
+    password: string,
+  ): Promise<IUserModel> {
     const existingUser = await this.userRepository.findByEmail(email);
     if (existingUser) {
       this.logger.warn(`Registration attempt with existing email: ${email}`);
@@ -35,7 +36,7 @@ export class UserService implements IUserService {
     return newUser;
   }
 
-  public async getUserById(id: string): Promise<IUser> {
+  public async getUserById(id: string): Promise<IUserModel> {
     const user = await this.userRepository.findById(id);
     if (!user) {
       throw new UserNotFoundError(`User not found for id: ${id}`);
@@ -45,8 +46,8 @@ export class UserService implements IUserService {
 
   public async updateUserProfile(
     id: string,
-    data: Partial<IUser>,
-  ): Promise<IUser> {
+    data: Partial<IUserModel>,
+  ): Promise<IUserModel> {
     const user = await this.getUserById(id);
     // Implement update logic here
     // For now, we'll just return the user as is

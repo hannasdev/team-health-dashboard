@@ -6,16 +6,16 @@ import { HeaderKeys, HeaderValues } from '../../../types/index.js';
 import { UnauthorizedError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
+import type { IAuthenticatedRequest } from './IAuthenticatedRequest.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { IAuthenticationService } from '../../../services/AuthenticationService/IAuthenticationService.js';
+import type { ITokenBlacklistService } from '../../../services/TokenBlacklistService/ITokenBlacklistService.js';
+import type { ITokenService } from '../../../services/TokenService/ITokenService.js';
 import type {
-  IMiddleware,
-  ITokenService,
-  ITokenBlacklistService,
-  ILogger,
-  IAuthenticationService,
   IEnhancedRequest,
   IEnhancedResponse,
-  IAuthenticatedRequest,
-} from '../../../interfaces';
+  IMiddleware,
+} from '../interfaces/index.js';
 
 @injectable()
 export class AuthMiddleware implements IMiddleware {

@@ -1,4 +1,5 @@
 import { Container } from 'inversify';
+
 import { RepositoryManagementService } from './RepositoryManagementService';
 import {
   createMockLogger,
@@ -7,25 +8,25 @@ import {
   createMockRepositoryRepository,
   createMockRepositoryItem,
 } from '../../__mocks__/index.js';
-import { RepositoryStatus } from '../../interfaces/index.js';
+import { RepositoryStatus } from '../../types/index.js';
 import { ValidationError, NotFoundError } from '../../utils/errors';
 import { TYPES } from '../../utils/types.js';
 
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IGitHubAdapter } from '../../data/adapters/GitHubAdapter/index.js';
 import type {
-  IBcryptService,
-  IGitHubClient,
-  ILogger,
   IRepositoryRepository,
   IRepositoryDetails,
   IRepositorySettings,
   IRepository,
-} from '../../interfaces/index.js';
+} from '../../data/repositories/RepositoryRepository/index.js';
+import type { IBcryptService } from '../BcryptService/index.js';
 
 describe('RepositoryManagementService', () => {
   let container: Container;
   let service: RepositoryManagementService;
   let mockRepository: jest.Mocked<IRepositoryRepository>;
-  let mockGitHubAdapter: jest.Mocked<IGitHubClient>;
+  let mockGitHubAdapter: jest.Mocked<IGitHubAdapter>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockBcryptService: jest.Mocked<IBcryptService>;
 
@@ -68,7 +69,7 @@ describe('RepositoryManagementService', () => {
       .bind<IRepositoryRepository>(TYPES.RepositoryRepository)
       .toConstantValue(mockRepository);
     container
-      .bind<IGitHubClient>(TYPES.GitHubClient)
+      .bind<IGitHubAdapter>(TYPES.GitHubAdapter)
       .toConstantValue(mockGitHubAdapter);
     container.bind<ILogger>(TYPES.Logger).toConstantValue(mockLogger);
     container
@@ -346,7 +347,7 @@ describe('RepositoryManagementService', () => {
     it('should properly redact credentials when getting repository', async () => {
       const repoId = 'test-id';
       const now = new Date();
-      const repo = {
+      const repo: IRepository = {
         id: repoId,
         owner: 'testorg',
         name: 'testrepo',
@@ -372,7 +373,7 @@ describe('RepositoryManagementService', () => {
           topics: [],
           language: 'TypeScript',
         },
-      } as IRepository;
+      };
 
       mockRepository.findById.mockResolvedValue(repo);
 

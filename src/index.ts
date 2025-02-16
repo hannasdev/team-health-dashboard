@@ -3,7 +3,8 @@ console.log('Current working directory:', process.cwd());
 import 'reflect-metadata';
 
 import { container } from './container.js';
-import { ILogger, IApplication } from './interfaces/index.js';
+import type { ILogger } from './cross-cutting/Logger/ILogger.js';
+import type { IApplication } from './IApplication.js';
 import { TYPES } from './utils/types.js';
 
 const port = parseInt(process.env.PORT || '3000', 10);

@@ -1,6 +1,6 @@
 import { inject, injectable } from 'inversify';
 
-import { RepositoryStatus } from '../../interfaces/index.js';
+import { RepositoryStatus } from '../../types/index.js';
 import {
   ValidationError,
   NotFoundError,
@@ -8,18 +8,22 @@ import {
 } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
+import type { IRepositoryManagementService } from './IRepositoryManagementService.js';
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type {
+  IGitHubAdapter,
+  IRepositoryMetadata,
+} from '../../data/adapters/GitHubAdapter/interfaces/index.js';
 import type {
   IRepository,
-  IRepositoryFilters,
-  IBcryptService,
-  ILogger,
   IRepositoryRepository,
-  IGitHubClient,
-  IRepositoryManagementService,
+  IRepositoryFilters,
   IRepositoryPaginatedResponse,
   IRepositoryDetails,
   IRepositorySettings,
-} from '../../interfaces/index.js';
+} from '../../data/repositories/RepositoryRepository/interfaces/index.js';
+import type { IBcryptService } from '../BcryptService/index.js';
+
 @injectable()
 export class RepositoryManagementService
   implements IRepositoryManagementService
@@ -27,8 +31,8 @@ export class RepositoryManagementService
   constructor(
     @inject(TYPES.RepositoryRepository)
     private readonly repositoryRepo: IRepositoryRepository,
-    @inject(TYPES.GitHubClient)
-    private readonly githubAdapter: IGitHubClient,
+    @inject(TYPES.GitHubAdapter)
+    private readonly githubAdapter: IGitHubAdapter,
     @inject(TYPES.Logger)
     private readonly logger: ILogger,
     @inject(TYPES.BcryptService)
@@ -221,7 +225,9 @@ export class RepositoryManagementService
     }
   }
 
-  private async fetchRepositoryMetadata(details: IRepositoryDetails) {
+  private async fetchRepositoryMetadata(
+    details: IRepositoryDetails,
+  ): Promise<IRepositoryMetadata> {
     const defaultMetadata = {
       isPrivate: true,
       defaultBranch: 'main',

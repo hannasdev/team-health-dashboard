@@ -7,8 +7,8 @@ import winston from 'winston';
 import { serializeError } from '../../utils/errorUtils.js';
 import { TYPES } from '../../utils/types.js';
 
-import type { IConfig } from '../../interfaces/IConfig.js';
-import type { ILogger } from '../../interfaces/ILogger.js';
+import type { ILogger } from './index.js';
+import type { IConfig } from '../Config/index.js';
 
 @injectable()
 export class Logger implements ILogger {

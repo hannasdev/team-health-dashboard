@@ -5,17 +5,15 @@ import {
   Cacheable,
   CacheableClass,
 } from '../../cross-cutting/CacheDecorator/index.js';
+import { MetricModel } from '../../data/models/metricModel/index.js';
 import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
-import type {
-  IGoogleSheetsRepository,
-  IGoogleSheetsService,
-  IMetric,
-  ILogger,
-  IMetricCalculator,
-  ICacheService,
-} from '../../interfaces/index.js';
+import type { IGoogleSheetsService } from './IGoogleSheetsService.js';
+import type { ICacheService } from '../../cross-cutting/CacheService/ICacheService.js';
+import type { ILogger } from '../../cross-cutting/Logger/ILogger.js';
+import type { IGoogleSheetsRepository } from '../../data/repositories/GoogleSheetsRepository/IGoogleSheetsRepository.js';
+import type { IMetricsCalculator } from '../MetricsCalculator/index.js';
 
 @injectable()
 export class GoogleSheetsService
@@ -25,7 +23,8 @@ export class GoogleSheetsService
   constructor(
     @inject(TYPES.GoogleSheetsRepository)
     private repository: IGoogleSheetsRepository,
-    @inject(TYPES.MetricCalculator) private metricCalculator: IMetricCalculator,
+    @inject(TYPES.MetricCalculator)
+    private metricCalculator: IMetricsCalculator,
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.CacheService) cacheService: ICacheService,
   ) {
@@ -57,7 +56,7 @@ export class GoogleSheetsService
   public async getMetrics(
     page: number = 1,
     pageSize: number = 20,
-  ): Promise<IMetric[]> {
+  ): Promise<MetricModel[]> {
     return this.repository.getMetrics(page, pageSize);
   }
 
@@ -90,16 +89,16 @@ export class GoogleSheetsService
     }
   }
 
-  private processRawData(rawData: any[][]): IMetric[] {
+  private processRawData(rawData: any[][]): MetricModel[] {
     const processedMetrics = rawData
       .slice(1)
       .map((row, index) => this.processRow(row, index))
-      .filter((metric): metric is IMetric => metric !== null);
+      .filter((metric): metric is MetricModel => metric !== null);
 
     return this.metricCalculator.calculateMetrics(processedMetrics);
   }
 
-  private processRow(row: any[], index: number): IMetric | null {
+  private processRow(row: any[], index: number): MetricModel | null {
     if (row.length < 4) {
       this.logger.warn(`Skipping row with insufficient data: ${row}`);
       return null;

@@ -3,15 +3,16 @@
 import { TokenBlacklistService } from './TokenBlacklistService';
 import {
   createMockLogger,
-  createMockMongoDbClient,
+  createMockMongoAdapter,
 } from '../../__mocks__/index.js';
 
-import type { ILogger, IMongoDbClient } from '../../interfaces/index';
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IMongoClientService } from '../MongoClientService/index';
 
 describe('TokenBlacklistService', () => {
   let tokenBlacklistService: TokenBlacklistService;
   let mockLogger: jest.Mocked<ILogger>;
-  let mockMongoClient: jest.Mocked<IMongoDbClient>;
+  let mockMongoClient: jest.Mocked<IMongoClientService>;
   let mockCollection: jest.Mocked<any>;
 
   beforeEach(() => {
@@ -23,7 +24,7 @@ describe('TokenBlacklistService', () => {
       findOne: jest.fn(),
       deleteMany: jest.fn(),
     };
-    mockMongoClient = createMockMongoDbClient();
+    mockMongoClient = createMockMongoAdapter();
     mockMongoClient.getDb.mockReturnValue({
       collection: jest.fn().mockReturnValue(mockCollection),
     } as any);

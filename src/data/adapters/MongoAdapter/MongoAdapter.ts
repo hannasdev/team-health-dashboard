@@ -1,26 +1,30 @@
 // src/data/adapters/MongoDBAdapter.ts
 import { injectable, inject } from 'inversify';
 import { FilterQuery, Model, SortOrder } from 'mongoose';
-import { TYPES } from '../../../utils/types.js';
+
 import { AppError } from '../../../utils/errors.js';
+import { TYPES } from '../../../utils/types.js';
+
+import type { IMongoAdapter } from './IMongoAdapter.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
 import type {
-  IMongoAdapter,
-  IRepository,
-  IRepositoryDetails,
   IRepositoryDocument,
   IRepositoryDocumentData,
-  ILogger,
-} from '../../../interfaces/index.js';
+} from '../../models/repositoryModel/index.js';
+import type {
+  IRepository,
+  IRepositoryDetails,
+} from '../../repositories/RepositoryRepository/index.js';
 
 @injectable()
 export class MongoAdapter<T extends IRepository> implements IMongoAdapter<T> {
+  private model!: Model<IRepositoryDocument>;
+
   constructor(@inject(TYPES.Logger) private logger: ILogger) {}
 
   public setModel(model: Model<IRepositoryDocument>): void {
     this.model = model;
   }
-
-  private model!: Model<IRepositoryDocument>;
 
   public async create(data: IRepositoryDetails): Promise<T> {
     try {

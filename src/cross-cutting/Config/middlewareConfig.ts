@@ -1,7 +1,5 @@
-import type {
-  IRateLimitConfig,
-  ISecurityHeadersConfig,
-} from '../../interfaces/index.js';
+import type { IRateLimitConfig } from '../../presentation/middleware/RateLimitMiddleware/index.js';
+import type { ISecurityHeadersConfig } from '../../presentation/middleware/SecurityHeadersMiddleware/index.js';
 
 export const rateLimitConfig: IRateLimitConfig = {
   windowMs:

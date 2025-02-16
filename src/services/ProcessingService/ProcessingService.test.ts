@@ -9,25 +9,28 @@ import {
   createMockPullRequest,
   createMockMetric,
   createMockJobQueueService,
+  createMockRepositoryRepository,
 } from '../../__mocks__';
+import { MetricModel } from '../../data/models/metricModel/index.js';
 import { TYPES } from '../../utils/types';
 
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
 import type {
   IGitHubRepository,
-  IMetricCalculator,
-  ILogger,
   IPullRequest,
-  IMetric,
-  IJobQueueService,
-} from '../../interfaces';
+} from '../../data/repositories/GitHubRepository/index.js';
+import type { IRepositoryRepository } from '../../data/repositories/RepositoryRepository/index.js';
+import type { IJobQueueService } from '../JobQueueService/index.js';
+import type { IMetricsCalculator } from '../MetricsCalculator/index.js';
 
 describe('ProcessingService', () => {
   let container: Container;
   let processingService: ProcessingService;
   let mockGitHubRepository: jest.Mocked<IGitHubRepository>;
-  let mockMetricCalculator: jest.Mocked<IMetricCalculator>;
+  let mockMetricCalculator: jest.Mocked<IMetricsCalculator>;
   let mockLogger: jest.Mocked<ILogger>;
   let mockJobQueueService: jest.Mocked<IJobQueueService>;
+  let mockRepositoryRepository: jest.Mocked<IRepositoryRepository>;
 
   beforeEach(() => {
     container = new Container();
@@ -35,14 +38,20 @@ describe('ProcessingService', () => {
     mockMetricCalculator = createMockMetricCalculator();
     mockLogger = createMockLogger();
     mockJobQueueService = createMockJobQueueService();
+    mockRepositoryRepository = createMockRepositoryRepository();
 
+    container
+      .bind<IRepositoryRepository>(TYPES.RepositoryRepository)
+      .toConstantValue(mockRepositoryRepository);
     container
       .bind<IGitHubRepository>(TYPES.GitHubRepository)
       .toConstantValue(mockGitHubRepository);
     container
-      .bind<IMetricCalculator>(TYPES.MetricCalculator)
+      .bind<IMetricsCalculator>(TYPES.MetricCalculator)
       .toConstantValue(mockMetricCalculator);
     container.bind<ILogger>(TYPES.Logger).toConstantValue(mockLogger);
+
+    container.bind<ProcessingService>(ProcessingService).toSelf();
     container
       .bind<IJobQueueService>(TYPES.JobQueueService)
       .toConstantValue(mockJobQueueService);
@@ -115,7 +124,7 @@ describe('ProcessingService', () => {
       const mockPullRequests2: IPullRequest[] = Array(50).fill(
         createMockPullRequest({ number: 2 }),
       );
-      const mockMetrics: IMetric[] = [createMockMetric({ _id: 'metric1' })];
+      const mockMetrics: MetricModel[] = [createMockMetric({ _id: 'metric1' })];
 
       mockGitHubRepository.getRawPullRequests
         .mockResolvedValueOnce(mockPullRequests1)

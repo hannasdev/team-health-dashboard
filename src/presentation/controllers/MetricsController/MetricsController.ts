@@ -5,14 +5,12 @@ import { inject, injectable } from 'inversify';
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
-import type {
-  IMetricsService,
-  IMetricsController,
-  ILogger,
-  IApiResponse,
-  IAuthenticatedRequest,
-  IEnhancedResponse,
-} from '../../../interfaces/index.js';
+import type { IMetricsController } from './IMetricsController.js';
+import type { IApiResponse } from '../../../cross-cutting/ApiResponse/IApiResponse.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { IMetricsService } from '../../../services/MetricsService/IMetricsService.js';
+import type { IAuthenticatedRequest } from '../../middleware/AuthMiddleware/IAuthenticatedRequest.js';
+import type { IEnhancedResponse } from '../../middleware/interfaces/index.js';
 
 @injectable()
 export class MetricsController implements IMetricsController {

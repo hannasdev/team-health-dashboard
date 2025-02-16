@@ -6,20 +6,18 @@ import mongoose from 'mongoose';
 import { UserNotFoundError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
-import type {
-  IUser,
-  ILogger,
-  IUserRepository,
-} from '../../../interfaces/index.js';
+import type { IUserRepository } from './index.js';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { IUserModel } from '../../models/userModel/index.js';
 
 @injectable()
 export class UserRepository implements IUserRepository {
   constructor(
     @inject(TYPES.Logger) private logger: ILogger,
-    @inject(TYPES.UserModel) private UserModel: mongoose.Model<IUser>,
+    @inject(TYPES.UserModel) private UserModel: mongoose.Model<IUserModel>,
   ) {}
 
-  public async findByEmail(email: string): Promise<IUser | undefined> {
+  public async findByEmail(email: string): Promise<IUserModel | undefined> {
     const user = await this.UserModel.findOne({ email });
 
     if (!user) {
@@ -31,7 +29,7 @@ export class UserRepository implements IUserRepository {
     return user;
   }
 
-  public async findById(id: string): Promise<IUser | undefined> {
+  public async findById(id: string): Promise<IUserModel | undefined> {
     try {
       const user = await this.UserModel.findById(id);
 
@@ -51,7 +49,7 @@ export class UserRepository implements IUserRepository {
     }
   }
 
-  public async create(email: string, password: string): Promise<IUser> {
+  public async create(email: string, password: string): Promise<IUserModel> {
     const user = await this.UserModel.create({ email, password });
 
     this.logger.info(`New user created with email: ${email}`);

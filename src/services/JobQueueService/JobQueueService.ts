@@ -3,11 +3,9 @@ import { inject, injectable } from 'inversify';
 
 import { TYPES } from '../../utils/types.js';
 
-import type {
-  IConfig,
-  ILogger,
-  IJobQueueService,
-} from '../../interfaces/index.js';
+import type { IConfig } from '../../cross-cutting/Config/index.js';
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IJobQueueService } from '../JobQueueService/index.js';
 
 @injectable()
 export class JobQueueService implements IJobQueueService {

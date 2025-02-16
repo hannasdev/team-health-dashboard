@@ -3,13 +3,13 @@ import { injectable, inject } from 'inversify';
 
 import { TYPES } from '../../../utils/types.js';
 
+import type { IConfig } from '../../../cross-cutting/Config/index.js';
+import type { ILogger } from '../../../cross-cutting/Logger/index.js';
 import type {
-  IConfig,
-  ILogger,
   IMiddleware,
   IEnhancedRequest,
   IEnhancedResponse,
-} from '../../../interfaces/index.js';
+} from '../interfaces/index.js';
 
 @injectable()
 export class CorsMiddleware implements IMiddleware {

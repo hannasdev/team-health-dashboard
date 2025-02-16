@@ -5,12 +5,12 @@ import { injectable, inject } from 'inversify';
 import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger.js';
+import type { IApiResponse } from '../../../cross-cutting/ApiResponse/IApiResponse.js';
 import type {
-  ILogger,
-  IApiResponse,
   IEnhancedRequest,
   IEnhancedResponse,
-} from '../../../interfaces/index.js';
+} from '../interfaces/index.js';
 
 @injectable()
 export class ErrorHandler {
@@ -24,7 +24,7 @@ export class ErrorHandler {
     req: IEnhancedRequest,
     res: IEnhancedResponse,
     next: NextFunction,
-  ) => {
+  ): void => {
     this.logger.error('Error caught in error handler:', err);
 
     let statusCode = 500;

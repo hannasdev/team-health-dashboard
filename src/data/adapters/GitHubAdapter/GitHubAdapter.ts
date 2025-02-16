@@ -6,29 +6,28 @@ import { AppError } from '../../../utils/errors.js';
 import { TYPES } from '../../../utils/types.js';
 
 import type {
-  IGitHubClient,
-  IConfig,
+  IGitHubAdapter,
   IRepositoryMetadata,
-} from '../../../interfaces/index.js';
+} from './interfaces/index.js';
+import type { IConfig } from '../../../cross-cutting/Config/IConfig.js';
+import type { IGitHubRepositoryMetadataResponse } from '../../repositories/GitHubRepository/interfaces/index.js';
 
 @injectable()
-export class GitHubAdapter implements IGitHubClient {
-  private graphqlWithAuth: typeof graphql;
-
-  constructor(@inject(TYPES.Config) private config: IConfig) {
-    this.graphqlWithAuth = graphql.defaults({
-      headers: {
-        authorization: `token ${this.config.REPO_TOKEN}`,
-      },
-    });
-  }
+export class GitHubAdapter implements IGitHubAdapter {
+  constructor(@inject(TYPES.Config) private config: IConfig) {}
 
   public async graphql<T = any>(
     query: string,
     variables?: Record<string, any>,
+    token?: string,
   ): Promise<T> {
     try {
-      return await this.graphqlWithAuth<T>(query, variables);
+      const graphqlWithAuth = graphql.defaults({
+        headers: {
+          authorization: `token ${token || this.config.REPO_TOKEN}`,
+        },
+      });
+      return await graphqlWithAuth<T>(query, variables);
     } catch (error) {
       throw new AppError(
         502,
@@ -48,28 +47,32 @@ export class GitHubAdapter implements IGitHubClient {
   }): Promise<IRepositoryMetadata | null> {
     try {
       const query = `
-      query($owner: String!, $name: String!) {
-        repository(owner: $owner, name: $name) {
-          isPrivate
-          description
-          defaultBranchRef {
-            name
-          }
-          repositoryTopics(first: 10) {
-            nodes {
-              topic {
-                name
+        query($owner: String!, $name: String!) {
+          repository(owner: $owner, name: $name) {
+            isPrivate
+            description
+            defaultBranchRef {
+              name
+            }
+            repositoryTopics(first: 10) {
+              nodes {
+                topic {
+                  name
+                }
               }
             }
-          }
-          primaryLanguage {
-            name
+            primaryLanguage {
+              name
+            }
           }
         }
-      }
-    `;
+      `;
 
-      const response = await this.graphql(query, { owner, name });
+      const response = await this.graphql<IGitHubRepositoryMetadataResponse>(
+        query,
+        { owner, name },
+        token,
+      );
 
       if (!response.repository) {
         return null;
@@ -77,7 +80,7 @@ export class GitHubAdapter implements IGitHubClient {
 
       return {
         isPrivate: response.repository.isPrivate,
-        description: response.repository.description,
+        description: response.repository.description || undefined,
         defaultBranch: response.repository.defaultBranchRef.name,
         topics: response.repository.repositoryTopics.nodes.map(
           (node: any) => node.topic.name,

@@ -1,21 +1,22 @@
 import { Container } from 'inversify';
-import { RepositoryStatus } from '../../../interfaces';
+
 import { RepositoryRepository } from './RepositoryRepository';
-import { TYPES } from '../../../utils/types';
 import {
   createMockCacheService,
   createMockLogger,
   createMockRepositoryItem,
 } from '../../../__mocks__';
+import { RepositoryStatus } from '../../../types/index.js';
+import { TYPES } from '../../../utils/types';
 
 import type {
   IRepository,
-  ICacheService,
-  ILogger,
   IRepositoryDetails,
   IRepositoryFilters,
-  IMongoAdapter,
-} from '../../../interfaces';
+} from './index.js';
+import type { ICacheService } from '../../../cross-cutting/CacheService/ICacheService';
+import type { ILogger } from '../../../cross-cutting/Logger/ILogger';
+import type { IMongoAdapter } from '../../adapters/MongoAdapter/index.js';
 
 describe('RepositoryRepository', () => {
   let container: Container;

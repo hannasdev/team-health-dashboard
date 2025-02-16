@@ -5,17 +5,21 @@ import {
   Cacheable,
   CacheableClass,
 } from '../../cross-cutting/CacheDecorator/index.js';
+import { MetricModel } from '../../data/models/metricModel/index.js';
+import { RepositoryStatus } from '../../types/index.js';
 import { AppError } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
+import type { ICacheService } from '../../cross-cutting/CacheService/index.js';
+import type { ILogger } from '../../cross-cutting/Logger/ILogger.js';
+import type { IGitHubRepository } from '../../data/repositories/GitHubRepository/index.js';
 import type {
-  ICacheService,
-  IGitHubRepository,
-  IGitHubService,
-  ILogger,
-  IMetric,
-  IProcessingService,
-} from '../../interfaces/index.js';
+  IRepositoryFilters,
+  IRepositoryRepository,
+  IRepository,
+} from '../../data/repositories/RepositoryRepository/interfaces/index.js';
+import type { IGitHubService } from '../GitHubService/index.js';
+import type { IProcessingService } from '../ProcessingService/IProcessingService.js';
 
 @injectable()
 export class GitHubService extends CacheableClass implements IGitHubService {
@@ -25,32 +29,51 @@ export class GitHubService extends CacheableClass implements IGitHubService {
     private processingService: IProcessingService,
     @inject(TYPES.Logger) private logger: ILogger,
     @inject(TYPES.CacheService) cacheService: ICacheService,
+    @inject(TYPES.RepositoryRepository)
+    private repoMetadataRepo: IRepositoryRepository,
   ) {
     super(cacheService);
   }
 
   @Cacheable('github-raw-data', 3600) // Cache for 1 hour
   public async fetchAndStoreRawData(timePeriod: number): Promise<void> {
+    const activeRepo = await this.getActiveRepository();
+
     try {
       const { pullRequests, totalPRs, fetchedPRs } =
-        await this.repository.fetchPullRequests(timePeriod);
+        await this.repository.fetchPullRequests(timePeriod, {
+          owner: activeRepo.owner,
+          name: activeRepo.name,
+          token: activeRepo.credentials.value,
+        });
+
       await this.repository.storeRawPullRequests(pullRequests);
+
+      // CHANGED: Added repository identification to log message
       this.logger.info(
-        `Fetched ${fetchedPRs} pull requests out of ${totalPRs} total PRs for the last ${timePeriod} days`,
+        `Fetched ${fetchedPRs} pull requests out of ${totalPRs} total PRs for repository ${activeRepo.fullName} over the last ${timePeriod} days`,
       );
+
+      // CHANGED: Update last sync timestamp
+      await this.repoMetadataRepo.update(activeRepo.id, {
+        lastSyncAt: new Date(),
+      });
     } catch (error) {
       this.logger.error(
-        'Error fetching and storing raw GitHub data:',
+        `Error fetching and storing raw GitHub data for repository ${activeRepo.fullName}:`,
         error as Error,
       );
-      throw new AppError(500, 'Failed to fetch and store raw GitHub data');
+      throw new AppError(
+        500,
+        `Failed to fetch and store raw GitHub data for repository ${activeRepo.fullName}`,
+      );
     }
   }
 
   public async getProcessedMetrics(
     page: number,
     pageSize: number,
-  ): Promise<IMetric[]> {
+  ): Promise<MetricModel[]> {
     try {
       const metrics = await this.repository.getProcessedMetrics(page, pageSize);
       this.logger.info(`Fetched ${metrics.length} metrics from GitHubService`);
@@ -118,6 +141,48 @@ export class GitHubService extends CacheableClass implements IGitHubService {
     } catch (error) {
       this.logger.error('Error getting total PR count:', error as Error);
       throw new AppError(500, 'Failed to get total PR count');
+    }
+  }
+
+  private async getActiveRepository(): Promise<IRepository> {
+    try {
+      const filters: IRepositoryFilters = {
+        status: RepositoryStatus.ACTIVE,
+        syncEnabled: true,
+        page: 0,
+        pageSize: 1,
+        sort: {
+          field: 'lastSyncAt',
+          order: 'desc',
+        },
+      };
+
+      const repositories = await this.repoMetadataRepo.findAll(filters);
+
+      if (!repositories.items.length) {
+        throw new AppError(
+          404,
+          'No active repositories found with sync enabled',
+        );
+      }
+
+      const repository = repositories.items[0];
+
+      if (!repository.credentials?.value) {
+        throw new AppError(
+          401,
+          `Repository ${repository.fullName} is missing required credentials`,
+        );
+      }
+
+      return repository;
+    } catch (error) {
+      // Preserve original AppError if thrown, otherwise wrap in new AppError
+      if (error instanceof AppError) {
+        throw error;
+      }
+      this.logger.error('Error fetching active repository:', error as Error);
+      throw new AppError(500, 'Failed to fetch active repository');
     }
   }
 }

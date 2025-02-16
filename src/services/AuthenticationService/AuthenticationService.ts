@@ -7,15 +7,13 @@ import {
 } from '../../utils/errors.js';
 import { TYPES } from '../../utils/types.js';
 
-import type {
-  IAuthenticationService,
-  IUserRepository,
-  ITokenService,
-  ITokenBlacklistService,
-  IBcryptService,
-  ILogger,
-  IUser,
-} from '../../interfaces/index.js';
+import type { IAuthenticationService } from './IAuthenticationService.js';
+import type { ILogger } from '../../cross-cutting/Logger/index.js';
+import type { IUserModel } from '../../data/models/userModel/index.js';
+import type { IUserRepository } from '../../data/repositories/UserRepository/index.js';
+import type { IBcryptService } from '../BcryptService/index.js';
+import type { ITokenBlacklistService } from '../TokenBlacklistService/index.js';
+import type { ITokenService } from '../TokenService/index.js';
 
 @injectable()
 export class AuthenticationService implements IAuthenticationService {
@@ -32,7 +30,7 @@ export class AuthenticationService implements IAuthenticationService {
     email: string,
     password: string,
     shortLived: boolean = false,
-  ): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+  ): Promise<{ user: IUserModel; accessToken: string; refreshToken: string }> {
     const user = await this.userRepository.findByEmail(email);
     if (!user || !(await this.bcryptService.compare(password, user.password))) {
       this.logger.warn(`Failed login attempt for email: ${email}`);
